@@ -301,7 +301,7 @@ function createUserDialog(rooms){
     <form id="cu"><div class="form-grid">
       <div class="field"><label>ชื่อ-สกุล</label><input name="full_name" required></div>
       <div class="field"><label>ชื่อผู้ใช้</label><input name="username" required></div>
-      <div class="field"><label>อีเมล</label><input name="email" type="email" required></div>
+      <div class="field"><label>อีเมล (ไม่บังคับ)</label><input name="email" type="email" placeholder="เว้นว่างได้"></div>
       <div class="field"><label>รหัสนักศึกษา</label><input name="student_code"></div>
       <div class="field"><label>ห้องเรียน</label><select name="classroom_id"><option value="">ยังไม่กำหนด</option>${rooms.map(r=>`<option value="${r.id}" data-name="${esc(r.name)}">${esc(r.name)}</option>`).join("")}</select></div>
       <div class="field"><label>รหัสผ่านเริ่มต้น</label><input name="password" type="password" minlength="8" required></div>
