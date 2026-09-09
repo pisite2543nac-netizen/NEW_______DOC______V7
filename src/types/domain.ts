@@ -1,0 +1,12 @@
+export type Role='admin'|'user';
+export type WorksheetMode='digital'|'paper';
+export type WorksheetStatus='draft'|'published'|'archived';
+export type SubmissionStatus='draft'|'submitted'|'confirmed'|'graded';
+export type Json=string|number|boolean|null|Json[]|{[k:string]:Json};
+export interface Profile {id:string; full_name:string|null; display_name:string|null; username:string|null; student_code:string|null; class_name:string|null; grade_level:string|null; room_label:string|null; seat_number:number|null; phone:string|null; avatar_path:string|null; role:Role; active:boolean; created_at:string; updated_at:string;}
+export interface Subject {id:string;code:string;name:string;description:string|null;color_hex:string;subject_type:string;semester:string|null;academic_year:string|null;active:boolean;created_at:string;updated_at:string;}
+export interface Classroom {id:string;name:string;level:string|null;academic_year:string|null;semester:string|null;description:string|null;active:boolean;created_at:string;updated_at:string;}
+export interface Question {id:string;type:'text'|'textarea'|'choice'|'number';text:string;points:number;options?:string[];required?:boolean;}
+export interface Worksheet {id:string;title:string;description:string|null;instructions:string|null;subject_id:string|null;classroom_id:string|null;mode:WorksheetMode;status:WorksheetStatus;open_at:string|null;due_at:string|null;published_at:string|null;closed_at:string|null;questions:Question[]|Json;settings:Json;allow_draft:boolean;allow_late:boolean;allow_resubmit:boolean;max_attempts:number;copy_paste_allowed:boolean;paper_code_kind:string;reference_code:string|null;created_by:string|null;created_at:string;updated_at:string;subjects?:Pick<Subject,'code'|'name'>|null;classrooms?:Pick<Classroom,'name'>|null;}
+export interface Submission {id:string;worksheet_id:string;user_id:string;answers:Record<string,unknown>|Json;attachment_paths:string[];status:SubmissionStatus;attempt_count:number;is_late:boolean;submitted_at:string|null;confirmed_at:string|null;last_saved_at:string|null;created_at:string;updated_at:string;profiles?:Pick<Profile,'full_name'|'student_code'|'class_name'>|null;worksheets?:Worksheet|null;}
+export interface Grade {submission_id:string;score:number|null;max_score:number|null;grade:string|null;grading_status:string;rubric_result:Json;admin_comment:string|null;graded_by:string|null;graded_at:string;finalized_at:string|null;updated_at:string;submissions?:Submission|null;}

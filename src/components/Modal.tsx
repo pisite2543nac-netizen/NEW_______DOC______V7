@@ -1,0 +1,1 @@
+import {ReactNode} from 'react';export function Modal({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}){return <div className="modal-bg" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className="modal"><div className="section-head"><h3>{title}</h3><button className="btn" onClick={onClose}>ปิด</button></div>{children}</div></div>}

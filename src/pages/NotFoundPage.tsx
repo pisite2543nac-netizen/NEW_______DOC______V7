@@ -1,0 +1,1 @@
+import {Link} from 'react-router-dom';export function NotFoundPage(){return <div className="card"><h1>ไม่พบหน้า</h1><Link className="btn primary" to="/">กลับหน้าหลัก</Link></div>}
