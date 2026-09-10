@@ -2,12 +2,12 @@
 
 ระบบ Smart Worksheet สำหรับวิทยาลัยเทคนิคนางรอง ใช้โค้ดชุดเดียวบน PC / Android / iPhone / iPad / Tablet และติดตั้งเป็น PWA ได้
 
-## ๐“ฑ เธชเธณเธซเธฃเธฑเธเนเธเนเธเธฒเธเธเธเนเธ—เธฃเธจเธฑเธเธ—เน
+## 📱 สำหรับใช้งานบนโทรศัพท์
 
-**เธฃเธฐเธเธเนเธเธเธฒเธเธญเธญเธเนเธฅเธเน DOC-FULL-NR โ€“ เธงเธดเธ—เธขเธฒเธฅเธฑเธขเน€เธ—เธเธเธดเธเธเธฒเธเธฃเธญเธ**  
-[เน€เธเธดเธ”เธฃเธฐเธเธเธเธเนเธ—เธฃเธจเธฑเธเธ—เน](https://pisite2543nac-netizen.github.io/docnr/)
+**ระบบใบงานออนไลน์ DOC-FULL-NR – วิทยาลัยเทคนิคนางรอง**  
+[เปิดระบบใบงานออนไลน์บนโทรศัพท์](https://pisite2543nac-netizen.github.io/docnr/)
 
-> เนเธเธฐเธเธณเนเธซเนเน€เธเธดเธ”เธ”เนเธงเธข Google Chrome เธเธ Android เธซเธฃเธทเธญ Safari เธเธ iPhone / iPad
+> แนะนำให้เปิดด้วย Google Chrome บน Android หรือ Safari บน iPhone / iPad
 
 ## Stack
 React 18 + TypeScript + Vite + Supabase Auth/PostgreSQL/Storage/Edge Functions + GitHub Pages + PWA
