@@ -5,6 +5,7 @@ const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
 const FEATURE_VERSION="V11-SUBJECT-BUNDLES";
+document.documentElement.dataset.subjectBundles="v11";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -77,10 +78,20 @@ async function enhanceNav(){
   const p=await profile();
   if(p?.role!=="admin")return;
   const btn=$('#sidebar .nav [data-route="worksheets"]');
-  if(btn)btn.textContent="รายวิชา / ชุดใบงานและสไลด์";
+  if(btn&&btn.textContent!=="รายวิชา / ชุดใบงานและสไลด์"){
+    btn.textContent="รายวิชา / ชุดใบงานและสไลด์";
+  }
 }
-new MutationObserver(()=>enhanceNav()).observe(document.documentElement,{childList:true,subtree:true});
-setTimeout(enhanceNav,500);
+let v11NavTimer=null;
+const v11NavObserver=new MutationObserver(()=>{
+  if(v11NavTimer)return;
+  v11NavTimer=setTimeout(()=>{
+    v11NavTimer=null;
+    enhanceNav().catch(()=>{});
+  },40);
+});
+v11NavObserver.observe(document.body||document.documentElement,{childList:true,subtree:true});
+setTimeout(()=>enhanceNav().catch(()=>{}),500);
 
 async function renderSubjectLibrary(){
   currentSubjectId=null;
