@@ -48,3 +48,5 @@ textarea.code{min-height:120px;font-family:ui-monospace,SFMono-Regular,Consolas,
   body.printing .modal{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;border-radius:0!important;padding:0!important}
   body.printing .no-print{display:none!important}
 }
+
+.health-good{border-left:4px solid #16a34a}.health-bad{border-left:4px solid #dc2626}

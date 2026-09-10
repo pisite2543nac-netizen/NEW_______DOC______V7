@@ -7,7 +7,7 @@ const sb=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoR
 const S={
   session:null, profile:null, route:"dashboard", installPrompt:null,
   editor:null, pendingWorksheet:new URLSearchParams(location.search).get("worksheet"),
-  autosaveTimer:null
+  autosaveTimer:null, serverOffsetMs:0
 };
 
 const $=(s,r=document)=>r.querySelector(s);
@@ -19,6 +19,16 @@ const isAdmin=()=>S.profile?.role==="admin";
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const safeName=s=>String(s||"file").replace(/[^a-zA-Z0-9._-]/g,"_").slice(-120);
 const dtLocal=d=>d?new Date(new Date(d).getTime()-new Date(d).getTimezoneOffset()*60000).toISOString().slice(0,16):"";
+const OWNER_USERNAME="Pisit2000";
+const OWNER_EMAIL="pisite.2543nac@gmail.com";
+const REGISTRATION_CODE_DEFAULT="NRTECH2569";
+const authEmailFor=v=>{const s=String(v||"").trim();if(s.includes("@"))return s.toLowerCase();if(s.toLowerCase()===OWNER_USERNAME.toLowerCase())return OWNER_EMAIL;return `${s.toLowerCase()}@docfullnr.local`};
+const serverMs=()=>Date.now()+S.serverOffsetMs;
+const serverDate=()=>new Date(serverMs());
+async function syncServerClock(){if(!S.session)return;try{const {data,error}=await sb.rpc("server_now");if(!error&&data)S.serverOffsetMs=new Date(data).getTime()-Date.now()}catch{}}
+function randomPassword(){const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";const x=new Uint32Array(14);crypto.getRandomValues(x);return [...x].map(n=>a[n%a.length]).join("")}
+async function adminOp(body){const {data,error}=await sb.functions.invoke("admin-operations",{body});if(error||data?.error)throw new Error(data?.error||error?.message||"Admin operation failed");return data}
+function downloadText(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 
 function toast(msg,type=""){
   const e=$("#toast"); if(!e)return;
@@ -40,7 +50,13 @@ function friendlyError(err){
     ATTEMPT_LIMIT:"ส่งงานครบจำนวนครั้งที่กำหนดแล้ว",
     WRONG_MODE:"รูปแบบใบงานไม่ตรงกับวิธีส่ง",
     INVALID_CODE:"รหัสงานกระดาษไม่ถูกต้อง",
-    ROLE_CHANGE_NOT_ALLOWED:"ไม่อนุญาตให้เปลี่ยนสิทธิ์ด้วยบัญชีผู้ใช้ทั่วไป"
+    ROLE_CHANGE_NOT_ALLOWED:"ไม่อนุญาตให้เปลี่ยนสิทธิ์ด้วยบัญชีผู้ใช้ทั่วไป",
+    USERNAME_EXISTS:"ชื่อผู้ใช้นี้ถูกใช้แล้ว",
+    INVALID_REGISTRATION_CODE:"รหัสลงทะเบียนไม่ถูกต้อง",
+    REGISTRATION_DISABLED:"ระบบลงทะเบียนถูกปิด",
+    INVALID_REGISTRATION_DATA:"ข้อมูลลงทะเบียนไม่ครบหรือไม่ถูกต้อง",
+    OWNER_CLAIM_DISABLED:"การตั้งค่า Admin ครั้งแรกถูกใช้ไปแล้ว",
+    INVALID_SETUP_TOKEN:"ลิงก์ตั้งค่า Admin ไม่ถูกต้องหรือหมดอายุ"
   };
   for(const [k,v] of Object.entries(map))if(m.includes(k))return v;
   return m;
@@ -69,7 +85,7 @@ async function loadProfile(retries=8){
 async function init(){
   const {data}=await sb.auth.getSession();
   S.session=data.session;
-  if(S.session)await loadProfile();
+  if(S.session){await loadProfile();await syncServerClock();}
 
   sb.auth.onAuthStateChange((_event,session)=>{
     S.session=session;
@@ -82,58 +98,37 @@ async function init(){
 }
 function render(){S.session?renderShell():renderAuth()}
 
-function renderAuth(){
+function ownerSetupToken(){const h=location.hash||"";const m=h.match(/owner-setup=([^&]+)/);return m?decodeURIComponent(m[1]):null}
+function renderOwnerSetup(token){
   $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card">
-    <div class="brand"><div class="logo">NR</div><div><h2>DOC-FULL-NR</h2><div class="muted">Smart Worksheet • Universal PWA</div></div></div>
-    <div class="alert" style="margin-top:18px"><b>ระบบจริงเชื่อม Supabase แล้ว</b><div class="smalltext">ฐานข้อมูล • Auth • Storage • Security RLS</div></div>
+    <div class="brand"><div class="logo">NR</div><div><h2>ตั้งค่า Admin ครั้งแรก</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
+    <div class="alert warn"><b>ขั้นตอนเดียว</b><div class="smalltext">กำหนดรหัสผ่าน Admin แล้วระบบจะเข้าสู่ระบบและเตรียมข้อมูลทดสอบให้อัตโนมัติ</div></div>
     <div id="authmsg"></div>
-    <form id="login">
-      <div class="field"><label>อีเมล</label><input name="email" type="email" autocomplete="email" required></div>
-      <div class="field"><label>รหัสผ่าน</label><input name="password" type="password" autocomplete="current-password" required minlength="8"></div>
-      <button class="btn primary w100" id="loginbtn">เข้าสู่ระบบ</button>
-    </form>
-    <div class="row center" style="margin-top:14px"><button id="show-signup" class="btn sm ghost">สมัครผู้ใช้ใหม่</button><button id="forgot" class="btn sm ghost">ลืมรหัสผ่าน</button></div>
+    <form id="ownerclaim"><div class="field"><label>ชื่อผู้ใช้ Admin</label><input value="${OWNER_USERNAME}" disabled></div><div class="field"><label>รหัสผ่าน Admin ใหม่</label><input name="password" type="password" minlength="8" required autocomplete="new-password"></div><div class="field"><label>ยืนยันรหัสผ่าน</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"></div><button class="btn primary w100" id="ownerbtn">ตั้งค่าและเข้าใช้งาน</button></form>
   </div></div>`;
-
-  $("#login").onsubmit=async e=>{
-    e.preventDefault();
-    const f=new FormData(e.target), btn=$("#loginbtn");
-    btn.disabled=true; btn.textContent="กำลังเข้าสู่ระบบ...";
-    const {error}=await sb.auth.signInWithPassword({email:String(f.get("email")).trim(),password:String(f.get("password"))});
-    if(error){$("#authmsg").innerHTML=`<div class="alert error">${esc(friendlyError(error))}</div>`;btn.disabled=false;btn.textContent="เข้าสู่ระบบ"}
-  };
+  $("#ownerclaim").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),p=String(f.get("password")),c=String(f.get("confirm")),btn=$("#ownerbtn");if(p!==c){$("#authmsg").innerHTML='<div class="alert error">รหัสผ่านทั้งสองช่องไม่ตรงกัน</div>';return}btn.disabled=true;btn.textContent="กำลังตั้งค่าระบบ...";const {error}=await sb.rpc("claim_owner_account",{p_username:OWNER_USERNAME,p_setup_token:token,p_new_password:p});if(error){$("#authmsg").innerHTML=`<div class="alert error">${esc(friendlyError(error))}</div>`;btn.disabled=false;btn.textContent="ตั้งค่าและเข้าใช้งาน";return}history.replaceState(null,"",location.pathname+location.search);const login=await sb.auth.signInWithPassword({email:OWNER_EMAIL,password:p});if(login.error){$("#authmsg").innerHTML=`<div class="alert error">ตั้งรหัสสำเร็จ แต่ Login ไม่สำเร็จ: ${esc(login.error.message)}</div>`;btn.disabled=false;return}btn.textContent="กำลังเตรียมชุดทดสอบอัตโนมัติ...";try{const testPassword=randomPassword();const setup=await adminOp({action:"initialize_system",test_username:"User2000",test_user_password:testPassword,room_name:"ห้องทดสอบระบบ"});sessionStorage.setItem("docnr_test_credentials",JSON.stringify({username:setup.test_username,password:testPassword,worksheet:setup.worksheet_title||"ใบงานทดสอบระบบ DOC-FULL-NR"}))}catch(err){sessionStorage.setItem("docnr_setup_warning",friendlyError(err))}location.reload()};
+}
+function renderAuth(){
+  const claim=ownerSetupToken();if(claim){renderOwnerSetup(claim);return}
+  $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card">
+    <div class="brand"><div class="logo">NR</div><div><h2>DOC-FULL-NR</h2><div class="muted">Smart Worksheet • วิทยาลัยเทคนิคนางรอง</div></div></div>
+    <div class="alert" style="margin-top:18px"><b>ระบบพร้อมใช้งาน</b><div class="smalltext">Supabase Auth • Database • Private Storage • RLS • Server Time</div></div>
+    <div id="authmsg"></div>
+    <form id="login"><div class="field"><label>ชื่อผู้ใช้หรืออีเมล</label><input name="login" type="text" autocomplete="username" placeholder="เช่น Pisit2000 หรือรหัสนักศึกษา" required></div><div class="field"><label>รหัสผ่าน</label><input name="password" type="password" autocomplete="current-password" required minlength="8"></div><button class="btn primary w100" id="loginbtn">เข้าสู่ระบบ</button></form>
+    <div class="row center" style="margin-top:14px"><button id="show-signup" class="btn sm ghost">ลงทะเบียนผู้ใช้ใหม่</button><button id="forgot" class="btn sm ghost">ลืมรหัสผ่าน</button></div>
+  </div></div>`;
+  $("#login").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),btn=$("#loginbtn"),loginId=String(f.get("login")).trim();btn.disabled=true;btn.textContent="กำลังเข้าสู่ระบบ...";const {error}=await sb.auth.signInWithPassword({email:authEmailFor(loginId),password:String(f.get("password"))});if(error){$("#authmsg").innerHTML='<div class="alert error">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>';btn.disabled=false;btn.textContent="เข้าสู่ระบบ"}};
   $("#show-signup").onclick=signupDialog;
-  $("#forgot").onclick=async()=>{
-    const email=prompt("กรอกอีเมลสำหรับรีเซ็ตรหัสผ่าน");
-    if(!email)return;
-    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href.split("?")[0]});
-    toast(error?friendlyError(error):"ส่งอีเมลรีเซ็ตรหัสผ่านแล้ว",error?"error":"");
-  };
+  $("#forgot").onclick=()=>{modal(`<div class="modal-header"><div><h3>ลืมรหัสผ่าน</h3></div><button class="btn sm" data-close>✕</button></div><p>หากเป็นบัญชีนักเรียนที่ใช้ชื่อผู้ใช้ ให้ติดต่อ Admin เพื่อกำหนดรหัสผ่านใหม่</p><p class="muted">หากเป็นบัญชี Admin ที่มีอีเมลจริง สามารถกรอกอีเมลเพื่อรับลิงก์รีเซ็ตได้</p><form id="forgotform"><div class="field"><label>อีเมล</label><input name="email" type="email" required></div><div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn primary">ส่งลิงก์</button></div></form>`);$("#forgotform").onsubmit=async e=>{e.preventDefault();const email=String(new FormData(e.target).get("email")).trim();const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href.split("#")[0]});closeModal();toast(error?friendlyError(error):"หากอีเมลนี้ลงทะเบียนไว้ ระบบจะส่งคำแนะนำให้",error?"error":"")}};
 }
 function signupDialog(){
-  modal(`<div class="modal-header"><div><h3>สมัครผู้ใช้</h3><div class="muted">บัญชีแรกสามารถตั้งเป็น Admin คนแรกได้หลัง Login</div></div><button class="btn sm" data-close>✕</button></div>
-  <form id="signup">
-    <div class="field"><label>ชื่อ-สกุล</label><input name="full_name" required></div>
-    <div class="field"><label>อีเมล</label><input name="email" type="email" required></div>
-    <div class="field"><label>รหัสผ่าน (อย่างน้อย 8 ตัว)</label><input name="password" type="password" minlength="8" required></div>
-    <div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn primary">สมัคร</button></div>
-  </form>`);
-  $("#signup").onsubmit=async e=>{
-    e.preventDefault(); const f=new FormData(e.target);
-    const {data,error}=await sb.auth.signUp({
-      email:String(f.get("email")).trim(),
-      password:String(f.get("password")),
-      options:{data:{full_name:String(f.get("full_name")).trim()}}
-    });
-    if(error)return toast(friendlyError(error),"error");
-    closeModal();
-    toast(data.session?"สมัครและเข้าสู่ระบบแล้ว":"สมัครแล้ว กรุณาตรวจอีเมลเพื่อยืนยันบัญชี");
-  };
+  modal(`<div class="modal-header"><div><h3>ลงทะเบียนผู้ใช้ใหม่</h3><div class="muted">สำหรับนักเรียน/นักศึกษา • อีเมลไม่บังคับ</div></div><button class="btn sm" data-close>✕</button></div><form id="signup"><div class="field"><label>ชื่อผู้ใช้</label><input name="username" minlength="4" required placeholder="เช่น 66309010001"></div><div class="field"><label>ชื่อ-สกุล</label><input name="full_name" required></div><div class="field"><label>รหัสนักศึกษา (ถ้ามี)</label><input name="student_code"></div><div class="field"><label>ห้อง/กลุ่ม (ถ้ามี)</label><input name="class_name"></div><div class="field"><label>อีเมลติดต่อ (ไม่บังคับ)</label><input name="email" type="email"></div><div class="field"><label>รหัสลงทะเบียน</label><input name="registration_code" required></div><div class="field"><label>รหัสผ่าน อย่างน้อย 8 ตัว</label><input name="password" type="password" minlength="8" required></div><div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn primary" id="signupbtn">ลงทะเบียน</button></div></form>`);
+  $("#signup").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),btn=$("#signupbtn");btn.disabled=true;btn.textContent="กำลังลงทะเบียน...";const body={username:String(f.get("username")).trim(),full_name:String(f.get("full_name")).trim(),student_code:String(f.get("student_code")||"").trim()||null,class_name:String(f.get("class_name")||"").trim()||null,email:String(f.get("email")||"").trim()||null,registration_code:String(f.get("registration_code")).trim(),password:String(f.get("password"))};const {data,error}=await sb.functions.invoke("register-user",{body});if(error||data?.error){btn.disabled=false;btn.textContent="ลงทะเบียน";return toast(friendlyError(data?.error||error),"error")}const login=await sb.auth.signInWithPassword({email:authEmailFor(body.username),password:body.password});if(login.error){closeModal();return toast("ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบด้วยชื่อผู้ใช้ที่สมัคร")};closeModal();toast("ลงทะเบียนและเข้าสู่ระบบสำเร็จ")};
 }
 
 function navItems(){
   return isAdmin()
-    ? [["dashboard","แดชบอร์ด"],["users","ผู้ใช้งาน"],["classrooms","ห้องเรียน"],["subjects","รายวิชา"],["worksheets","ใบงาน"],["grading","ตรวจงาน"],["reports","รายงาน"],["audit","Audit log"],["profile","โปรไฟล์"]]
+    ? [["dashboard","แดชบอร์ด"],["users","ผู้ใช้งาน"],["classrooms","ห้องเรียน"],["subjects","รายวิชา"],["worksheets","ใบงาน"],["grading","ตรวจงาน"],["overrides","สิทธิ์ส่งเพิ่ม"],["reports","รายงาน"],["audit","Audit log"],["system","ตั้งค่าระบบ"],["profile","โปรไฟล์"]]
     : [["dashboard","หน้าหลัก"],["myworks","ใบงานของฉัน"],["scan","ยืนยันงานกระดาษ"],["profile","โปรไฟล์"]];
 }
 function installGuide(){
@@ -151,6 +146,7 @@ function installGuide(){
     </div>`);
 }
 function renderShell(){
+  if(S.profile?.active===false){$("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card"><h2>บัญชีถูกระงับ</h2><div class="alert error">บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ</div><button class="btn w100" id="suspendedlogout">ออกจากระบบ</button></div></div>`;$("#suspendedlogout").onclick=()=>sb.auth.signOut();return}
   const items=navItems();
   if(!items.some(x=>x[0]===S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
@@ -177,15 +173,21 @@ function renderShell(){
   $("#install").onclick=installGuide;
   route();
 
+  const autoCred=sessionStorage.getItem("docnr_test_credentials");
+  const autoWarn=sessionStorage.getItem("docnr_setup_warning");
+  if(autoCred){sessionStorage.removeItem("docnr_test_credentials");setTimeout(()=>{try{const c=JSON.parse(autoCred);modal(`<div class="modal-header"><div><h3>ระบบพร้อมสำหรับทดสอบจริง</h3></div><button class="btn sm" data-close>✕</button></div><div class="alert success">Admin พร้อมใช้งาน และสร้างชุดทดสอบอัตโนมัติแล้ว</div><div class="field"><label>Username ผู้ใช้ทดสอบ</label><input value="${esc(c.username)}" readonly></div><div class="field"><label>Password ผู้ใช้ทดสอบ</label><input value="${esc(c.password)}" readonly></div><div class="field"><label>ใบงานทดสอบ</label><input value="${esc(c.worksheet)}" readonly></div><div class="row end"><button class="btn" id="autosavecred">บันทึกข้อมูลทดสอบ TXT</button><button class="btn primary" data-close>เริ่มใช้งาน</button></div>`);$("#autosavecred").onclick=()=>downloadText("DOC-FULL-NR-TEST-ACCOUNT.txt",`Username: ${c.username}\nPassword: ${c.password}\nบัญชีทดสอบเท่านั้น\n`) }catch{}},350)}
+  if(autoWarn){sessionStorage.removeItem("docnr_setup_warning");setTimeout(()=>toast("Admin พร้อมแล้ว แต่สร้างชุดทดสอบอัตโนมัติไม่สำเร็จ: "+autoWarn,"error"),350)}
+
   if(S.pendingWorksheet&&!isAdmin()){
     const id=S.pendingWorksheet; S.pendingWorksheet=null;
     setTimeout(()=>openWorksheet(id),250);
   }
 }
 async function route(){
+  await syncServerClock();
   const title=Object.fromEntries(navItems())[S.route]||"";
   $("#pagetitle").textContent=title;
-  const f={dashboard,users,classrooms,subjects,worksheets,grading,reports,audit,profile,myworks,scan}[S.route]||dashboard;
+  const f={dashboard,users,classrooms,subjects,worksheets,grading,overrides,reports,audit,system,profile,myworks,scan}[S.route]||dashboard;
   try{await f()}catch(e){
     console.error(e);
     $("#content").innerHTML=`<div class="alert error"><b>เกิดข้อผิดพลาด</b><div>${esc(friendlyError(e))}</div></div>`;
@@ -288,37 +290,20 @@ async function users(){
     $("#userbody").innerHTML=(items||[]).filter(x=>!z||[x.full_name,x.username,x.student_code,x.class_name].some(v=>String(v||"").toLowerCase().includes(z))).map(x=>`<tr>
       <td><b>${esc(x.full_name||"-")}</b></td><td>${esc(x.username||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td>
       <td><span class="badge ${x.role==="admin"?"warn":""}">${esc(x.role)}</span></td><td><span class="badge ${x.active?"green":"red"}">${x.active?"ใช้งาน":"ปิด"}</span></td>
-      <td><div class="row"><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.id!==uid()?`<button class="btn sm ${x.active?"red":"green"}" data-user-toggle="${x.id}" data-active="${x.active}">${x.active?"ปิดบัญชี":"เปิดบัญชี"}</button>`:""}</div></td>
+      <td><div class="row"><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.id!==uid()?`<button class="btn sm ${x.active?"red":"green"}" data-user-toggle="${x.id}" data-active="${x.active}">${x.active?"ปิดบัญชี":"เปิดบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
     </tr>`).join("")||`<tr><td colspan="7" class="empty">ไม่พบผู้ใช้</td></tr>`;
     $$("[data-room-user]").forEach(b=>b.onclick=()=>assignUserRoom(b.dataset.roomUser,items.find(x=>x.id===b.dataset.roomUser),rooms||[]));
     $$("[data-user-toggle]").forEach(b=>b.onclick=async()=>{const active=b.dataset.active!=="true";const {error}=await sb.from("profiles").update({active}).eq("id",b.dataset.userToggle);if(error)return toast(friendlyError(error),"error");toast("อัปเดตบัญชีแล้ว");users()});
+    $$('[data-reset-pass]').forEach(b=>b.onclick=async()=>{const p=prompt("กำหนดรหัสผ่านใหม่ อย่างน้อย 8 ตัว");if(!p)return;if(p.length<8)return toast("รหัสผ่านต้องอย่างน้อย 8 ตัว","error");try{await adminOp({action:"reset_password",user_id:b.dataset.resetPass,password:p});toast("ตั้งรหัสผ่านใหม่แล้ว")}catch(err){toast(friendlyError(err),"error")}});
   };
   renderRows();$("#usersearch").oninput=e=>renderRows(e.target.value);
   $("#createuser").onclick=()=>createUserDialog(rooms||[]);
 }
 function createUserDialog(rooms){
-  modal(`<div class="modal-header"><div><h3>สร้างผู้ใช้</h3><div class="muted">ระบบจะสร้าง Supabase Auth และ Profile พร้อมกัน</div></div><button class="btn sm" data-close>✕</button></div>
-    <form id="cu"><div class="form-grid">
-      <div class="field"><label>ชื่อ-สกุล</label><input name="full_name" required></div>
-      <div class="field"><label>ชื่อผู้ใช้</label><input name="username" required></div>
-      <div class="field"><label>อีเมล (ไม่บังคับ)</label><input name="email" type="email" placeholder="เว้นว่างได้"></div>
-      <div class="field"><label>รหัสนักศึกษา</label><input name="student_code"></div>
-      <div class="field"><label>ห้องเรียน</label><select name="classroom_id"><option value="">ยังไม่กำหนด</option>${rooms.map(r=>`<option value="${r.id}" data-name="${esc(r.name)}">${esc(r.name)}</option>`).join("")}</select></div>
-      <div class="field"><label>รหัสผ่านเริ่มต้น</label><input name="password" type="password" minlength="8" required></div>
-      <div class="field"><label>สิทธิ์</label><select name="role"><option value="user">user</option><option value="admin">admin</option></select></div>
-    </div><div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn primary">สร้างบัญชี</button></div></form>`,{wide:true});
-  $("#cu").onsubmit=async e=>{
-    e.preventDefault();const f=new FormData(e.target);const roomId=String(f.get("classroom_id")||"");const room=rooms.find(r=>r.id===roomId);
-    const body={full_name:f.get("full_name"),username:f.get("username"),email:f.get("email"),student_code:f.get("student_code"),class_name:room?.name||null,password:f.get("password"),role:f.get("role")};
-    const {data,error}=await sb.functions.invoke("admin-create-user",{body});
-    if(error||data?.error)return toast(friendlyError(data?.error||error),"error");
-    if(roomId&&data?.id){
-      const m=await sb.from("classroom_memberships").upsert({classroom_id:roomId,user_id:data.id,active:true},{onConflict:"classroom_id,user_id"});
-      if(m.error)toast("สร้างผู้ใช้แล้ว แต่กำหนดห้องไม่สำเร็จ: "+friendlyError(m.error),"error");
-    }
-    closeModal();toast("สร้างผู้ใช้สำเร็จ");users();
-  };
+  modal(`<div class="modal-header"><div><h3>สร้างผู้ใช้</h3><div class="muted">Admin สร้างบัญชีด้วย Username + Password • อีเมลไม่บังคับ</div></div><button class="btn sm" data-close>✕</button></div><form id="cu"><div class="form-grid"><div class="field"><label>ชื่อ-สกุล</label><input name="full_name" required></div><div class="field"><label>ชื่อผู้ใช้</label><input name="username" minlength="4" required></div><div class="field"><label>อีเมลติดต่อ (ไม่บังคับ)</label><input name="email" type="email"></div><div class="field"><label>รหัสนักศึกษา</label><input name="student_code"></div><div class="field"><label>ห้องเรียน</label><select name="classroom_id"><option value="">ยังไม่กำหนด</option>${rooms.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select></div><div class="field"><label>รหัสผ่านเริ่มต้น</label><input name="password" type="password" minlength="8" required></div><div class="field"><label>สิทธิ์</label><select name="role"><option value="user">User</option><option value="admin">Admin</option></select></div></div><div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn primary" id="cubtn">สร้างบัญชี</button></div></form>`,{wide:true});
+  $("#cu").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),btn=$("#cubtn");btn.disabled=true;btn.textContent="กำลังสร้าง...";const body={username:String(f.get("username")).trim(),password:String(f.get("password")),full_name:String(f.get("full_name")).trim(),email:String(f.get("email")||"").trim()||null,student_code:String(f.get("student_code")||"").trim()||null,classroom_id:String(f.get("classroom_id")||"")||null,role:String(f.get("role")||"user")};const {data,error}=await sb.functions.invoke("admin-create-user",{body});if(error||data?.error){btn.disabled=false;btn.textContent="สร้างบัญชี";return toast(friendlyError(data?.error||error),"error")}closeModal();toast("สร้างบัญชีสำเร็จ");users()};
 }
+
 async function assignUserRoom(userId,user,rooms){
   const {data:memberships}=await sb.from("classroom_memberships").select("*").eq("user_id",userId).eq("active",true);
   const current=memberships?.[0]?.classroom_id||"";
@@ -518,9 +503,11 @@ async function openWorksheet(id){
 }
 
 async function scan(){
-  $("#content").innerHTML=`<div class="section-head"><div><h1>ยืนยันงานกระดาษ</h1><div class="muted">กรอกรหัส Token ที่ได้รับจากครู</div></div></div>
-    <div class="card" style="max-width:650px"><form id="scanform"><div class="field"><label>รหัสงานกระดาษ</label><input name="token" placeholder="วางรหัส Token" required></div><button class="btn green">ยืนยันการส่งงานกระดาษ</button></form><div id="scanmsg"></div></div>`;
-  $("#scanform").onsubmit=async e=>{e.preventDefault();const token=String(new FormData(e.target).get("token")).trim();const {data,error}=await sb.rpc("confirm_paper_submission",{p_token:token});$("#scanmsg").innerHTML=error?`<div class="alert error">${esc(friendlyError(error))}</div>`:`<div class="alert success">ยืนยันสำเร็จ เวลา ${fmt(data?.confirmed_at||new Date())}</div>`};
+  $("#content").innerHTML=`<div class="section-head"><div><h1>ยืนยันงานกระดาษ</h1><div class="muted">สแกน QR/Barcode หรือกรอกรหัสด้วยตนเอง</div></div></div><div class="grid two"><div class="card"><h3>สแกนด้วยกล้อง</h3><video id="scanvideo" playsinline style="width:100%;border-radius:12px;background:#0f172a;min-height:180px"></video><div class="row" style="margin-top:10px"><button class="btn primary" id="startscan">เปิดกล้อง</button><button class="btn" id="stopscan">หยุดกล้อง</button></div><div id="cammsg" class="muted smalltext" style="margin-top:8px">หากเครื่องไม่รองรับ ให้ใช้ช่องกรอกรหัสด้านขวา</div></div><div class="card"><h3>กรอกรหัสด้วยตนเอง</h3><form id="scanform"><div class="field"><label>Token</label><input name="token" required></div><button class="btn green">ยืนยันส่งงาน</button></form><div id="scanmsg"></div></div></div>`;
+  const confirmToken=async token=>{const {data,error}=await sb.rpc("confirm_paper_submission",{p_token:String(token).trim()});$("#scanmsg").innerHTML=error?`<div class="alert error">${esc(friendlyError(error))}</div>`:`<div class="alert success">ยืนยันสำเร็จ เวลา ${fmt(data?.confirmed_at||serverDate())}</div>`;return !error};
+  $("#scanform").onsubmit=async e=>{e.preventDefault();await confirmToken(new FormData(e.target).get("token"))};
+  let stream=null,scanning=false;const stop=()=>{scanning=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};$("#stopscan").onclick=stop;
+  $("#startscan").onclick=async()=>{if(!navigator.mediaDevices?.getUserMedia||!("BarcodeDetector" in window)){return toast("เบราว์เซอร์นี้ยังไม่รองรับการสแกนอัตโนมัติ ใช้การกรอกรหัสแทน","error")}try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}});$("#scanvideo").srcObject=stream;await $("#scanvideo").play();scanning=true;const detector=new BarcodeDetector({formats:["qr_code","code_128","code_39","ean_13"]});const loop=async()=>{if(!scanning)return;try{const codes=await detector.detect($("#scanvideo"));if(codes?.[0]?.rawValue){stop();const raw=codes[0].rawValue;const token=raw.includes("token=")?new URL(raw).searchParams.get("token"):raw;await confirmToken(token);return}}catch{}requestAnimationFrame(loop)};loop()}catch(err){toast("เปิดกล้องไม่สำเร็จ กรุณาอนุญาตสิทธิ์กล้องหรือกรอกรหัสด้วยตนเอง","error")}};
 }
 
 async function grading(){
@@ -548,19 +535,17 @@ async function gradeDialog(id){
     </div><div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn green">บันทึกผล</button></div></form>`,{wide:true});
   $("#gf").onsubmit=async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
-    const r=await sb.from("submission_grades").upsert({submission_id:id,score:Number(f.score),max_score:Number(f.max_score),grade:f.grade||null,admin_comment:f.admin_comment||null,graded_by:uid(),graded_at:new Date().toISOString(),grading_status:"finalized",finalized_at:new Date().toISOString()});
-    if(r.error)return toast(friendlyError(r.error),"error");
-    await sb.from("submissions").update({status:"graded"}).eq("id",id);
-    closeModal();toast("บันทึกผลแล้ว");grading();
+    try{await adminOp({action:"grade_submission",submission_id:id,score:Number(f.score),max_score:Number(f.max_score),grade:f.grade||null,admin_comment:f.admin_comment||null,rubric_result:{}})}catch(err){return toast(friendlyError(err),"error")}
+    closeModal();toast("บันทึกผลผ่าน Server แล้ว");grading();
   };
 }
 
 async function reports(){
   const {data,error}=await sb.from("submission_grades").select("*,submissions(submitted_at,profiles(full_name,student_code,class_name),worksheets(title,subjects(code,name)))").order("graded_at",{ascending:false});if(error)throw error;
-  $("#content").innerHTML=`<div class="section-head"><div><h1>รายงานผล</h1><div class="muted">เฉพาะ Admin เท่านั้น</div></div><button class="btn green" id="csv">Export CSV</button></div>
-    <div class="table-wrap"><table><thead><tr><th>ผู้เรียน</th><th>รหัส/ห้อง</th><th>ใบงาน</th><th>คะแนน</th><th>เกรด</th><th>ตรวจเมื่อ</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.submissions?.profiles?.full_name||"-")}</td><td>${esc(x.submissions?.profiles?.student_code||"-")} / ${esc(x.submissions?.profiles?.class_name||"-")}</td><td>${esc(x.submissions?.worksheets?.title||"-")}</td><td><b>${x.score??"-"}/${x.max_score??"-"}</b></td><td>${esc(x.grade||"-")}</td><td>${fmt(x.graded_at)}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">ยังไม่มีผลการตรวจ</td></tr>`}</tbody></table></div>`;
-  $("#csv").onclick=()=>downloadCSV([["ชื่อ","รหัส","ห้อง","วิชา","ใบงาน","คะแนน","คะแนนเต็ม","เกรด","ตรวจเมื่อ"],...(data||[]).map(x=>[x.submissions?.profiles?.full_name,x.submissions?.profiles?.student_code,x.submissions?.profiles?.class_name,x.submissions?.worksheets?.subjects?.code,x.submissions?.worksheets?.title,x.score,x.max_score,x.grade,fmt(x.graded_at)])]);
+  $("#content").innerHTML=`<div class="section-head"><div><h1>รายงานผล</h1><div class="muted">ข้อมูลคะแนนสำหรับ Admin เท่านั้น • Export ทำที่ Server และบันทึก Audit</div></div><button class="btn green" id="csv">Export CSV</button></div><div class="table-wrap"><table><thead><tr><th>ผู้เรียน</th><th>รหัส/ห้อง</th><th>ใบงาน</th><th>คะแนน</th><th>เกรด</th><th>ตรวจเมื่อ</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.submissions?.profiles?.full_name||"-")}</td><td>${esc(x.submissions?.profiles?.student_code||"-")} / ${esc(x.submissions?.profiles?.class_name||"-")}</td><td>${esc(x.submissions?.worksheets?.title||"-")}</td><td><b>${x.score??"-"}/${x.max_score??"-"}</b></td><td>${esc(x.grade||"-")}</td><td>${fmt(x.graded_at)}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">ยังไม่มีผลการตรวจ</td></tr>`}</tbody></table></div>`;
+  $("#csv").onclick=async()=>{try{const r=await adminOp({action:"export_report"});const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([r.csv],{type:"text/csv;charset=utf-8"}));a.download=r.filename||`DOC-FULL-NR-${Date.now()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast("Export รายงานสำเร็จ")}catch(err){toast(friendlyError(err),"error")}};
 }
+
 function downloadCSV(rows,filename=`DOC-FULL-NR-report-${Date.now()}.csv`){
   const csv="\ufeff"+rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
@@ -571,24 +556,23 @@ async function audit(){
   $("#content").innerHTML=`<div class="section-head"><div><h1>Audit log</h1><div class="muted">กิจกรรมสำคัญฝั่ง Admin/Server</div></div></div><div class="table-wrap"><table><thead><tr><th>เวลา</th><th>ผู้ทำ</th><th>Action</th><th>Entity</th><th>รายละเอียด</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${fmt(x.created_at)}</td><td>${esc(x.profiles?.full_name||"-")}</td><td><b>${esc(x.action)}</b></td><td>${esc(x.entity_type||"")} ${esc(x.entity_id||"")}</td><td class="smalltext">${esc(JSON.stringify(x.metadata||{}))}</td></tr>`).join("")||`<tr><td colspan="5" class="empty">ยังไม่มี Audit log</td></tr>`}</tbody></table></div>`;
 }
 
+async function overrides(){
+  const [{data:rows,error},{data:usersData},{data:wsData}]=await Promise.all([sb.from("submission_overrides").select("*,profiles:user_id(full_name,username,student_code),worksheets(title,due_at)").order("created_at",{ascending:false}),sb.from("profiles").select("id,full_name,username,student_code").eq("role","user").eq("active",true).order("full_name"),sb.from("worksheets").select("id,title,due_at,status").order("created_at",{ascending:false})]);if(error)throw error;
+  $("#content").innerHTML=`<div class="section-head"><div><h1>สิทธิ์ส่งงานเพิ่ม</h1><div class="muted">อนุญาตรายบุคคลเมื่อเลยกำหนด • บันทึก Audit ทุกครั้ง</div></div><button class="btn primary" id="addoverride">+ อนุญาตส่งเพิ่ม</button></div><div class="table-wrap"><table><thead><tr><th>ผู้เรียน</th><th>ใบงาน</th><th>หมดอายุสิทธิ์</th><th>เหตุผล</th><th>สถานะ</th><th></th></tr></thead><tbody>${(rows||[]).map(x=>`<tr><td>${esc(x.profiles?.full_name||x.profiles?.username||"-")}</td><td>${esc(x.worksheets?.title||"-")}</td><td>${fmt(x.expires_at)}</td><td>${esc(x.reason)}</td><td><span class="badge ${x.active?"green":"gray"}">${x.active?"ใช้งาน":"ยกเลิก"}</span></td><td>${x.active?`<button class="btn sm red" data-revoke="${x.id}">ยกเลิกสิทธิ์</button>`:""}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">ยังไม่มีสิทธิ์พิเศษ</td></tr>`}</tbody></table></div>`;
+  $("#addoverride").onclick=()=>{modal(`<div class="modal-header"><div><h3>อนุญาตส่งงานเพิ่ม</h3></div><button class="btn sm" data-close>✕</button></div><form id="ovform"><div class="field"><label>ผู้เรียน</label><select name="user_id" required><option value="">เลือก</option>${(usersData||[]).map(u=>`<option value="${u.id}">${esc(u.full_name||u.username)} ${esc(u.student_code||"")}</option>`).join("")}</select></div><div class="field"><label>ใบงาน</label><select name="worksheet_id" required><option value="">เลือก</option>${(wsData||[]).map(w=>`<option value="${w.id}">${esc(w.title)}</option>`).join("")}</select></div><div class="field"><label>หมดอายุสิทธิ์</label><input name="expires_at" type="datetime-local" required></div><div class="field"><label>เหตุผล</label><textarea name="reason" required></textarea></div><div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn green">ยืนยัน</button></div></form>`);$("#ovform").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await adminOp({action:"create_override",user_id:f.get("user_id"),worksheet_id:f.get("worksheet_id"),expires_at:new Date(String(f.get("expires_at"))).toISOString(),reason:String(f.get("reason"))});closeModal();toast("อนุญาตสิทธิ์แล้ว");overrides()}catch(err){toast(friendlyError(err),"error")}}};
+  $$('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!ask("ยกเลิกสิทธิ์นี้?"))return;try{await adminOp({action:"revoke_override",override_id:b.dataset.revoke});toast("ยกเลิกสิทธิ์แล้ว");overrides()}catch(err){toast(friendlyError(err),"error")}});
+}
+async function system(){
+  let health=null;try{health=await adminOp({action:"health"})}catch{}
+  const {data:cfg}=await sb.from("system_settings").select("key,value").in("key",["registration","school"]);const reg=cfg?.find(x=>x.key==="registration")?.value||{};const school=cfg?.find(x=>x.key==="school")?.value||{};
+  $("#content").innerHTML=`<div class="section-head"><div><h1>ตั้งค่าระบบ</h1><div class="muted">ศูนย์ควบคุมก่อนใช้งานจริง</div></div></div><div class="grid two"><div class="card"><h3>สถานะระบบ</h3><div class="alert ${health?.ok?"success":"error"}">${health?.ok?"Backend พร้อมใช้งาน":"ตรวจ Backend อีกครั้ง"}</div><div class="smalltext">Server time: ${esc(health?.server_time||"-")}</div><div class="smalltext">Profiles: ${health?.counts?.profiles??"-"} • Subjects: ${health?.counts?.subjects??"-"} • Worksheets: ${health?.counts?.worksheets??"-"}</div><button class="btn primary" id="initdemo" style="margin-top:14px">เตรียมชุดทดสอบอัตโนมัติ</button><p class="muted smalltext">สร้างห้องทดสอบ + User2000 + ใบงานทดสอบที่ Publish แล้ว โดยไม่ลบข้อมูลเดิม</p></div><div class="card"><h3>การลงทะเบียน</h3><div class="alert ${reg.enabled?"success":"warn"}">${reg.enabled?"เปิดรับลงทะเบียน":"ปิดรับลงทะเบียน"}</div><form id="regsettings"><div class="checks"><label><input type="checkbox" name="enabled" ${reg.enabled?"checked":""}> เปิดรับลงทะเบียน</label></div><div class="field"><label>เปลี่ยนรหัสลงทะเบียน (เว้นว่าง = ใช้เดิม)</label><input name="registration_code" minlength="6"></div><button class="btn primary">บันทึก</button></form></div></div><div class="card" style="margin-top:14px"><h3>ข้อมูลระบบ</h3><div><b>${esc(school.system_name||"DOC-FULL-NR Smart Worksheet")}</b></div><div class="muted">${esc(school.name||"วิทยาลัยเทคนิคนางรอง")} • ${esc(school.timezone||"Asia/Bangkok")}</div></div>`;
+  $("#regsettings").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await adminOp({action:"set_registration",enabled:f.get("enabled")==="on",registration_code:String(f.get("registration_code")||"")});toast("บันทึกการลงทะเบียนแล้ว");system()}catch(err){toast(friendlyError(err),"error")}};
+  $("#initdemo").onclick=async()=>{const testPassword=randomPassword();try{const r=await adminOp({action:"initialize_system",test_username:"User2000",test_user_password:testPassword,room_name:"ห้องทดสอบระบบ"});modal(`<div class="modal-header"><div><h3>ชุดทดสอบพร้อมแล้ว</h3></div><button class="btn sm" data-close>✕</button></div><div class="alert success">สร้าง/อัปเดตห้อง ผู้ใช้ และใบงานทดสอบสำเร็จ</div><div class="field"><label>Username ทดสอบ</label><input value="${esc(r.test_username)}" readonly></div><div class="field"><label>Password ทดสอบ</label><input value="${esc(testPassword)}" readonly></div><div class="field"><label>ใบงาน</label><input value="${esc(r.worksheet_title||"")}" readonly></div><div class="row end"><button class="btn" id="savecred">บันทึกข้อมูลทดสอบเป็น TXT</button><button class="btn primary" data-close>พร้อมทดสอบ</button></div>`);$("#savecred").onclick=()=>downloadText("DOC-FULL-NR-TEST-ACCOUNT.txt",`Username: ${r.test_username}\nPassword: ${testPassword}\nใช้สำหรับทดสอบระบบเท่านั้น\n`) }catch(err){toast(friendlyError(err),"error")}};
+}
 async function profile(){
-  $("#content").innerHTML=`<div class="card" style="max-width:760px"><h1>โปรไฟล์</h1>
-    <div class="alert"><b>สิทธิ์ปัจจุบัน:</b> ${esc(S.profile?.role||"user")} • ${S.profile?.active===false?"ปิดใช้งาน":"ใช้งาน"}</div>
-    <form id="pf"><div class="form-grid">
-      <div class="field"><label>ชื่อ-สกุล</label><input name="full_name" value="${esc(S.profile?.full_name||"")}"></div>
-      <div class="field"><label>ชื่อผู้ใช้</label><input name="username" value="${esc(S.profile?.username||"")}"></div>
-      <div class="field"><label>รหัสนักศึกษา</label><input name="student_code" value="${esc(S.profile?.student_code||"")}"></div>
-      <div class="field"><label>ห้องเรียน</label><input name="class_name" value="${esc(S.profile?.class_name||"")}"></div>
-    </div><button class="btn primary">บันทึกโปรไฟล์</button></form>
-    ${S.profile?.role!=="admin"?`<div class="divider"></div><h3>ตั้งค่าระบบครั้งแรก</h3><p class="muted">ถ้ายังไม่มี Admin ระบบจะเลื่อนบัญชีนี้เป็น Admin คนแรก ฟังก์ชันฝั่ง Server จะปฏิเสธทันทีหากมี Admin อยู่แล้ว</p><button class="btn warn" id="bootstrap">ตั้งบัญชีนี้เป็น Admin คนแรก</button>`:""}
-  </div>`;
-  $("#pf").onsubmit=async e=>{e.preventDefault();const v=Object.fromEntries(new FormData(e.target));const {error}=await sb.from("profiles").update(v).eq("id",uid());if(error)return toast(friendlyError(error),"error");await loadProfile();toast("บันทึกโปรไฟล์แล้ว");renderShell()};
-  if($("#bootstrap"))$("#bootstrap").onclick=async()=>{
-    if(!ask("ยืนยันตั้งบัญชีนี้เป็น Admin คนแรก?"))return;
-    const {data,error}=await sb.functions.invoke("bootstrap-admin",{body:{}});
-    if(error||data?.error)return toast(friendlyError(data?.error||error),"error");
-    await loadProfile();S.route="dashboard";toast("ตั้งค่า Admin สำเร็จ");renderShell();
-  };
+  $("#content").innerHTML=`<div class="card" style="max-width:780px"><h1>โปรไฟล์</h1><div class="alert"><b>ชื่อผู้ใช้:</b> ${esc(S.profile?.username||"-")} • <b>สิทธิ์:</b> ${esc(S.profile?.role||"user")} • ${S.profile?.active===false?"ปิดใช้งาน":"ใช้งาน"}</div><form id="pf"><div class="form-grid"><div class="field"><label>ชื่อแสดงผล</label><input name="full_name" value="${esc(S.profile?.full_name||"")}"></div><div class="field"><label>อีเมลติดต่อ</label><input name="contact_email" type="email" value="${esc(S.profile?.contact_email||"")}"></div><div class="field"><label>รหัสนักศึกษา</label><input value="${esc(S.profile?.student_code||"")}" disabled></div><div class="field"><label>ห้องเรียน</label><input value="${esc(S.profile?.class_name||"")}" disabled></div></div><button class="btn primary">บันทึกโปรไฟล์</button></form><div class="divider"></div><h3>เปลี่ยนรหัสผ่าน</h3><form id="changepass"><div class="field"><label>รหัสผ่านใหม่ อย่างน้อย 8 ตัว</label><input name="password" type="password" minlength="8" required></div><button class="btn warn">เปลี่ยนรหัสผ่าน</button></form></div>`;
+  $("#pf").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const {error}=await sb.from("profiles").update({full_name:String(f.get("full_name")),display_name:String(f.get("full_name")),contact_email:String(f.get("contact_email")||"")||null}).eq("id",uid());if(error)return toast(friendlyError(error),"error");await loadProfile();toast("บันทึกโปรไฟล์แล้ว")};
+  $("#changepass").onsubmit=async e=>{e.preventDefault();const p=String(new FormData(e.target).get("password"));try{if(isAdmin())await adminOp({action:"reset_password",user_id:uid(),password:p});else{const {error}=await sb.auth.updateUser({password:p});if(error)throw error}toast("เปลี่ยนรหัสผ่านแล้ว") }catch(err){toast(friendlyError(err),"error")}};
 }
 
 async function printWorksheet(id){
