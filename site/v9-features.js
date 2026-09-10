@@ -102,21 +102,35 @@ async function enhanceNav(){
   if(!nav)return;
   const p=await getProfile();
   if(!p)return;
+  // V11/V12 Subject Bundles owns the worksheet label. Never fight another
+  // observer over textContent: that previously caused a MutationObserver loop
+  // and could freeze the whole UI on mobile and desktop.
   const worksheetBtn=q('[data-route="worksheets"]',nav);
-  if(worksheetBtn&&p.role==="admin")worksheetBtn.textContent="ใบงานตามรายวิชา";
+  if(worksheetBtn&&p.role==="admin"&&document.documentElement.dataset.subjectBundles!=="v11"&&worksheetBtn.textContent!=="ใบงานตามรายวิชา"){
+    worksheetBtn.textContent="ใบงานตามรายวิชา";
+  }
   const subjectBtn=q('[data-route="subjects"]',nav);
   if(subjectBtn&&p.role==="admin"&&!subjectBtn.dataset.v9OriginalLabel)subjectBtn.dataset.v9OriginalLabel="1";
   const myworksBtn=q('[data-route="myworks"]',nav);
-  if(myworksBtn&&p.role!=="admin")myworksBtn.textContent="รายวิชา / ใบงานของฉัน";
+  if(myworksBtn&&p.role!=="admin"&&myworksBtn.textContent!=="รายวิชา / ใบงานของฉัน"){
+    myworksBtn.textContent="รายวิชา / ใบงานของฉัน";
+  }
   if(p.role==="admin"&&!q("[data-v8-report]",nav)){
     const b=document.createElement("button");
     b.type="button";b.dataset.v8Report="1";b.textContent="ตรวจงานรายห้อง";
     nav.appendChild(b);
   }
 }
-const observer=new MutationObserver(()=>enhanceNav());
-observer.observe(document.documentElement,{childList:true,subtree:true});
-setTimeout(enhanceNav,350);
+let navEnhanceTimer=null;
+const observer=new MutationObserver(()=>{
+  if(navEnhanceTimer)return;
+  navEnhanceTimer=setTimeout(()=>{
+    navEnhanceTimer=null;
+    enhanceNav().catch(()=>{});
+  },40);
+});
+observer.observe(document.body||document.documentElement,{childList:true,subtree:true});
+setTimeout(()=>enhanceNav().catch(()=>{}),350);
 
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,a");
