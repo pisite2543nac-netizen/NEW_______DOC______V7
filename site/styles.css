@@ -50,3 +50,65 @@ textarea.code{min-height:120px;font-family:ui-monospace,SFMono-Regular,Consolas,
 }
 
 .health-good{border-left:4px solid #16a34a}.health-bad{border-left:4px solid #dc2626}
+
+
+/* === Registration redesign === */
+.registration-form{margin-top:8px}
+.registration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
+.registration-grid .field{margin:9px 0 14px}
+.field-help{font-size:11px;color:#64748b;margin-top:2px}
+.password-row{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:stretch}
+.password-row .btn{min-width:82px}
+
+/* === Admin dashboard search / filters === */
+.dashboard-search{background:#0d2438;border:1px solid #214762;border-radius:18px;padding:20px;color:#fff;box-shadow:0 8px 22px #0f172a12}
+.dashboard-search-note{color:#c7d9ea;margin-bottom:14px;font-size:14px}
+.dashboard-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 16px}
+.dashboard-search .field{margin:6px 0}
+.dashboard-search .field label{color:#fff;font-weight:800}
+.dashboard-search .input{max-width:none;background:#0a1d2d;color:#fff;border-color:#315873;padding:13px 15px}
+.dashboard-search .input::placeholder{color:#8ca4b8}
+.dashboard-search select.input option{background:#fff;color:#0f172a}
+
+/* === Subject color identity === */
+.worksheet-color-card{border-left:6px solid var(--subject-color,#2563eb);background:linear-gradient(90deg,color-mix(in srgb,var(--subject-color,#2563eb) 6%,white),#fff 28%)}
+.subject-chip{display:inline-flex;align-items:center;gap:6px;border-left:5px solid var(--subject-color,#2563eb);background:color-mix(in srgb,var(--subject-color,#2563eb) 10%,white);padding:5px 9px;border-radius:5px;font-weight:800;color:#0f172a}
+
+/* === Formal Nang Rong Technical College worksheet === */
+.formal-actions{margin-bottom:12px}
+.formal-sheet{--subject-color:#9A2F42;background:#fff;color:#111;width:min(210mm,100%);min-height:280mm;margin:0 auto;padding:9mm 11mm 8mm;font-family:"Sarabun","TH Sarabun New","Noto Sans Thai",sans-serif;box-shadow:0 4px 20px #0f172a14}
+.formal-topline{height:5px;background:var(--subject-color);margin-bottom:12px}
+.formal-header{display:grid;grid-template-columns:1.6fr .95fr;gap:18px;align-items:start}
+.formal-school{text-align:center;display:flex;align-items:center;justify-content:center;gap:14px;padding:5px}
+.formal-logo{width:74px;height:74px;object-fit:contain}
+.formal-school-name{font-size:23px;font-weight:900;line-height:1.2}
+.formal-dept{font-size:15px;font-weight:800;margin-top:3px}
+.formal-title{font-size:20px;font-weight:900;color:var(--subject-color);margin-top:4px}
+.formal-title span{font-size:15px;font-weight:500;color:#64748b}
+.formal-docbox{border:1.5px solid var(--subject-color);padding:8px 10px;font-size:13px;min-height:118px}
+.formal-docbox>div{margin-bottom:3px}.formal-docbox b{font-size:15px}.formal-page{margin-left:16px}.formal-expire{background:color-mix(in srgb,var(--subject-color) 12%,white);padding:3px 5px;margin:5px -3px}.formal-docbox svg{width:100%;max-height:48px}.formal-ref{text-align:center;color:#64748b;font-size:11px}
+.formal-subject-band{display:grid;grid-template-columns:1.65fr .7fr;margin-top:16px;border:1.5px solid var(--subject-color);background:color-mix(in srgb,var(--subject-color) 11%,white)}
+.formal-subject-info{padding:10px 12px;font-size:16px}.formal-subject-info b{color:var(--subject-color);font-size:18px}.formal-score{border-left:1.5px solid var(--subject-color);padding:8px 12px;font-size:12px}.formal-score>b{display:block;color:var(--subject-color);font-size:15px;text-align:center;margin-bottom:3px}
+.formal-student-grid{display:grid;grid-template-columns:1.25fr 1fr;border:1px solid #cbd5e1;margin-top:16px;font-size:13px}.formal-student-grid>div{padding:7px 10px;border-bottom:1px solid #cbd5e1}.formal-student-grid>div:nth-child(odd){border-right:1px solid #cbd5e1}.formal-student-grid>div:nth-last-child(-n+2){border-bottom:0}
+.formal-line{display:inline-block;border-bottom:1px solid #475569;min-width:190px;height:14px;vertical-align:bottom}.formal-line.short{min-width:120px}
+.formal-instruction{margin-top:16px;padding:8px 12px;border-left:4px solid var(--subject-color);background:#f8fafc;font-size:13px;line-height:1.55}.formal-instruction b{color:var(--subject-color);margin-right:7px}
+.formal-questions{margin-top:18px}.formal-question{display:grid;grid-template-columns:40px 1fr;gap:12px;margin-bottom:18px}.formal-qnum{background:var(--subject-color);color:#fff;font-weight:900;text-align:center;padding:7px 3px;height:34px}.formal-qbody{font-size:14px;line-height:1.55}.formal-answer-space{height:110px;border-bottom:1px solid #cbd5e1;position:relative}.formal-answer-space:after{content:"";position:absolute;left:0;right:0;bottom:42px;border-bottom:1px solid #e2e8f0}
+.formal-code-row{display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:8px}.formal-footer{margin-top:10px;background:color-mix(in srgb,var(--subject-color) 13%,white);color:var(--subject-color);padding:6px;text-align:center;font-size:10px;font-weight:700}
+
+@media(max-width:900px){
+  .dashboard-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .formal-header{grid-template-columns:1fr}.formal-school{justify-content:flex-start;text-align:left}.formal-docbox{min-height:auto}
+}
+@media(max-width:780px){
+  .registration-grid,.dashboard-filter-grid{grid-template-columns:1fr}
+  .formal-sheet{padding:16px;min-height:auto}.formal-subject-band,.formal-student-grid{grid-template-columns:1fr}
+  .formal-score{border-left:0;border-top:1.5px solid var(--subject-color)}.formal-student-grid>div{border-right:0!important;border-bottom:1px solid #cbd5e1!important}
+  .formal-school-name{font-size:19px}.formal-logo{width:58px;height:58px}
+}
+@media print{
+  @page{size:A4 portrait;margin:7mm}
+  body.printing .formal-sheet{width:100%!important;min-height:auto!important;padding:0!important;box-shadow:none!important}
+  body.printing .formal-topline{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.printing .formal-subject-band,body.printing .formal-qnum,body.printing .formal-footer,body.printing .subject-chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.printing .formal-answer-space{height:94px}
+}
