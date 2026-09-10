@@ -1,9 +1,18 @@
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v10-camera-register-20260910";
+const CACHE="doc-full-nr-v12-tech-academic-20260910";
 const SHELL=[
-  "./","./index.html",
-  "./styles.css?v=20260910-v10","./mobile.css?v=20260910-v10","./v9-features.css?v=20260910-v10",
-  "./camera-registration.js?v=20260910-v10","./app.js?v=20260910-v10","./mobile.js?v=20260910-v10","./v9-features.js?v=20260910-v10",
+  "./","./index.html","./exam.html",
+  "./styles.css?v=20260910-v10",
+  "./mobile.css?v=20260910-v10",
+  "./v9-features.css?v=20260910-v10",
+  "./subject-bundles.css?v=20260910-v12",
+  "./v12-tech.css?v=20260910-v12",
+  "./camera-registration.js?v=20260910-v10",
+  "./app.js?v=20260910-v10",
+  "./mobile.js?v=20260910-v10",
+  "./subject-bundles.js?v=20260910-v12",
+  "./v9-features.js?v=20260910-v12",
+  "./v12-system.js?v=20260910-v12",
   "./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png"
 ];
 self.addEventListener("install",event=>{
