@@ -1,0 +1,128 @@
+/* DOC-FULL-NR mobile compatibility layer.
+   Additive only: keeps existing desktop styles and application logic unchanged. */
+
+html,body{max-width:100%;overflow-x:hidden}
+img,svg,canvas,video{max-width:100%}
+.table-wrap{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.modal{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.mobile-nav-backdrop{display:none}
+
+@media(max-width:780px){
+  body{min-width:0}
+  body.nav-open{overflow:hidden;touch-action:none}
+  .app,.main,.content,.card,.section-head,.toolbar{min-width:0;max-width:100%}
+
+  .sidebar{
+    display:block;
+    position:fixed;
+    inset:0 auto 0 0;
+    width:min(84vw,300px);
+    height:100vh;
+    height:100dvh;
+    overflow-y:auto;
+    padding:calc(16px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-105%);
+    visibility:hidden;
+    pointer-events:none;
+    transition:transform .2s ease,visibility .2s step-end;
+    box-shadow:18px 0 45px rgba(2,6,23,.28);
+  }
+  .sidebar.open{
+    display:block;
+    transform:translateX(0);
+    visibility:visible;
+    pointer-events:auto;
+    transition:transform .2s ease,visibility 0s;
+  }
+  .mobile-nav-backdrop{
+    display:block;
+    position:fixed;
+    inset:0;
+    z-index:35;
+    border:0;
+    padding:0;
+    background:rgba(2,6,23,.48);
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .topbar{
+    min-height:60px;
+    padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left));
+    gap:8px;
+  }
+  .topbar>.row:first-child{min-width:0;flex:1;flex-wrap:nowrap;gap:8px}
+  .topbar>.row:last-child{flex:0 0 auto;flex-wrap:nowrap;gap:6px}
+  #pagetitle{min-width:0;max-width:42vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mobile-menu{min-width:44px;min-height:44px;padding:8px 12px;font-size:20px}
+
+  .content{padding:12px max(10px,env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+  .card{padding:15px;border-radius:15px}
+  .section-head{align-items:flex-start;flex-wrap:wrap}
+  .section-head>*{min-width:0}
+  .toolbar{align-items:stretch}
+  .toolbar .input{width:100%;max-width:none}
+
+  .modal-bg{
+    place-items:end center;
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  }
+  .modal{
+    width:100%;
+    max-width:100%;
+    max-height:calc(100vh - 16px);
+    max-height:calc(100dvh - 16px);
+    padding:16px;
+    border-radius:18px 18px 12px 12px;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  .modal-header{position:sticky;top:-16px;z-index:2;background:#fff;padding:4px 0 8px}
+  .modal-header>div{min-width:0}
+  .modal-header h2,.modal-header h3{overflow-wrap:anywhere}
+
+  .grid,.grid.two,.form-grid,.registration-grid,.dashboard-filter-grid,.question-row{grid-template-columns:minmax(0,1fr)}
+  .span2{grid-column:auto}
+  .registration-grid{gap:0}
+  .password-row{grid-template-columns:minmax(0,1fr) auto}
+
+  .field input,.field select,.field textarea,.input{min-width:0;font-size:16px}
+  .btn{min-height:44px}
+  .btn.sm{min-height:40px}
+  .nav button{min-height:44px}
+
+  .table-wrap{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden}
+  .table-wrap table{min-width:680px}
+  th,td{overflow-wrap:anywhere}
+
+  .formal-sheet{width:100%;max-width:100%;min-height:auto;padding:14px;overflow:hidden}
+  .formal-header,.formal-subject-band,.formal-student-grid{grid-template-columns:minmax(0,1fr)}
+  .formal-school{justify-content:flex-start;text-align:left;min-width:0}
+  .formal-score{border-left:0;border-top:1.5px solid var(--subject-color)}
+  .formal-student-grid>div{border-right:0!important;border-bottom:1px solid #cbd5e1!important;min-width:0}
+  .formal-question{grid-template-columns:34px minmax(0,1fr);gap:9px}
+  .formal-qbody{min-width:0;overflow-wrap:anywhere}
+  .formal-line,.formal-line.short{min-width:0;max-width:100%}
+  .file-chip{align-items:flex-start;flex-wrap:wrap}
+}
+
+@media(max-width:520px){
+  .auth-wrap{padding:12px;align-items:start;padding-top:max(16px,env(safe-area-inset-top))}
+  .auth-card{padding:20px 16px;border-radius:18px}
+  .auth-card .brand{align-items:flex-start}
+  .auth-card h2{font-size:22px}
+  .topbar .install{display:inline-flex!important;min-width:44px;min-height:44px;padding-left:8px;padding-right:8px;white-space:nowrap}
+  #pagetitle{display:none}
+  .section-head{flex-direction:column}
+  .section-head>.row,.section-head>.btn{width:100%}
+  .section-head>.row .btn{flex:1}
+  .row.end{justify-content:stretch}
+  .modal .row.end>.btn{flex:1}
+  .formal-school-name{font-size:18px}
+  .formal-logo{width:54px;height:54px}
+}
+
+@media(max-width:380px){
+  .topbar{padding-left:8px;padding-right:8px}
+  #pagetitle{display:none}
+  .password-row .btn{min-width:68px;padding-left:10px;padding-right:10px}
+}
