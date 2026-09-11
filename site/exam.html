@@ -1,47 +1,25 @@
 <!doctype html>
-<html lang="th">
+<html lang="th" class="v14-tech">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#06111f">
-  <title>ระบบสอบออนไลน์ • DOC-FULL-NR</title>
+  <meta name="description" content="DOC-FULL-NR Exam Center - วิทยาลัยเทคนิคนางรอง">
+  <title>Exam Center • DOC-FULL-NR</title>
+  <link rel="stylesheet" href="./styles.css?v=20260911-v14-1">
+  <link rel="stylesheet" href="./v14-tech.css?v=20260911-v14-1">
   <style>
-    :root{font-family:"Sarabun","Prompt",system-ui,-apple-system,"Segoe UI",sans-serif;color:#eaf6ff;background:#06111f}
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:
-      radial-gradient(circle at 10% 0%,rgba(34,211,238,.12),transparent 32%),
-      radial-gradient(circle at 90% 8%,rgba(139,92,246,.12),transparent 34%),
-      linear-gradient(135deg,#04101d,#081b30 58%,#10173b);padding:20px}
-    .shell{max-width:1100px;margin:auto}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:20px}
-    .brand{display:flex;gap:12px;align-items:center}.logo{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-weight:900;background:linear-gradient(135deg,#0891b2,#2563eb 55%,#7c3aed);box-shadow:0 0 30px rgba(34,211,238,.18)}
-    .muted{color:#9bb3c9}.btn{border:1px solid #28506f;border-radius:12px;padding:10px 15px;background:#102a43;color:#eaf6ff;text-decoration:none;font-weight:800;cursor:pointer}
-    .hero{position:relative;overflow:hidden;padding:28px;border-radius:22px;border:1px solid rgba(34,211,238,.22);background:linear-gradient(135deg,rgba(8,145,178,.16),rgba(37,99,235,.10) 45%,rgba(139,92,246,.12)),rgba(7,24,42,.94);box-shadow:0 24px 70px rgba(0,0,0,.25)}
-    .kicker{font-size:12px;letter-spacing:.16em;color:#67e8f9;font-weight:900}.hero h1{font-size:36px;margin:8px 0}.hero p{max-width:720px;line-height:1.7;color:#bcd0e2}
-    .status{display:inline-flex;gap:8px;align-items:center;margin-top:8px;padding:8px 11px;border-radius:999px;background:rgba(245,158,11,.1);border:1px solid rgba(251,191,36,.2);color:#fde68a;font-weight:800;font-size:13px}
-    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}.card{padding:18px;border:1px solid #1d4565;border-radius:18px;background:linear-gradient(180deg,#0d233c,#091b2f);min-height:150px;display:grid;align-content:start;gap:8px}.card .icon{font-size:28px}.card h3{margin:0}.card small{color:#7895ad}.card button{margin-top:8px;border:0;border-radius:10px;padding:9px;background:#17324a;color:#7895ad;font-weight:800;cursor:not-allowed}
-    .note{margin-top:18px;padding:16px;border-radius:16px;background:rgba(59,130,246,.09);border:1px solid rgba(96,165,250,.18);color:#bfdbfe;line-height:1.6}
-    @media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:28px}}
-    @media(max-width:500px){body{padding:12px}.top{align-items:flex-start}.grid{grid-template-columns:1fr}.hero{padding:20px}.hero h1{font-size:24px}}
+    body{min-height:100vh}.exam-shell{max-width:1500px;margin:auto;padding:18px}.exam-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.exam-brand{display:flex;align-items:center;gap:10px}.exam-logo{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#06b6d4,#2563eb 55%,#7c3aed);font-weight:900;color:#fff}.exam-main{display:grid;gap:14px}.exam-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.exam-card{border:1px solid #1e4c6d;border-radius:17px;padding:16px;background:linear-gradient(180deg,#0b2139,#07192b);display:grid;gap:8px}.exam-card h3{margin:2px 0}.exam-card small{color:#8ca9be}.exam-builder-q{border:1px solid #244f6c;border-radius:14px;padding:12px;background:#081b2e;display:grid;gap:9px}.exam-builder-q .grid{display:grid;grid-template-columns:1fr 160px 110px;gap:8px}.exam-attempt{max-width:1100px;margin:auto}.exam-workbar{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:1px solid #255675;border-radius:14px;background:rgba(5,20,34,.96);backdrop-filter:blur(12px)}.exam-timer{font-size:19px;font-weight:900;color:#67e8f9}.exam-timer.danger{color:#fb7185}.exam-question{border:1px solid #1d4b6b;border-radius:16px;padding:16px;background:#081d32;display:grid;gap:12px}.exam-question h3{margin:0}.exam-options{display:grid;gap:8px}.exam-option{display:flex;gap:9px;align-items:flex-start;border:1px solid #204b68;border-radius:11px;padding:10px;background:#0a2239;cursor:pointer}.exam-option:has(input:checked){border-color:#22d3ee;background:#0d3048}.exam-nav{display:flex;flex-wrap:wrap;gap:6px}.exam-nav button{width:38px;height:38px;padding:0}.exam-nav button.answered{background:#14532d;border-color:#22c55e}.exam-nav button.flagged{outline:2px solid #f59e0b}.exam-flag{justify-self:start}.exam-result{display:grid;place-items:center;text-align:center;min-height:360px}.exam-result strong{font-size:46px;color:#67e8f9}.exam-fullscreen-note{font-size:11px;color:#8ba8bc}.exam-admin-toolbar{display:flex;gap:8px;flex-wrap:wrap}.exam-answer-key{color:#86efac;font-size:12px}.exam-autosave{font-size:11px;color:#8ba8bc}.exam-hidden{display:none!important}@media(max-width:900px){.exam-grid{grid-template-columns:1fr 1fr}.exam-builder-q .grid{grid-template-columns:1fr}.exam-workbar{align-items:flex-start}.exam-top{align-items:flex-start}}@media(max-width:560px){.exam-shell{padding:9px}.exam-grid{grid-template-columns:1fr}.exam-top{display:grid}.exam-workbar{display:grid}.exam-timer{font-size:17px}.exam-question{padding:12px}}
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="top">
-      <div class="brand"><div class="logo">NR</div><div><b>DOC-FULL-NR</b><div class="muted">Online Examination Module</div></div></div>
-      <a class="btn" href="./">← กลับระบบใบงาน</a>
-    </div>
-    <section class="hero">
-      <div class="kicker">FUTURE EXAM PLATFORM</div>
-      <h1>ระบบสอบออนไลน์</h1>
-      <p>หน้าต่างนี้ถูกแยกจากระบบใบงานไว้แล้ว เพื่อพัฒนาระบบสอบโดยไม่กระทบฐานข้อมูลใบงาน คะแนน และประวัติการส่งงานเดิม</p>
-      <div class="status">● โครงสร้างหน้าเตรียมพร้อม • ยังไม่เปิดการสอบจริง</div>
-    </section>
-    <div class="grid">
-      <div class="card"><div class="icon">🧠</div><h3>คลังข้อสอบ</h3><small>จัดหมวดข้อสอบตามรายวิชาและผลลัพธ์การเรียนรู้</small><button disabled>เตรียมพัฒนา</button></div>
-      <div class="card"><div class="icon">🛠️</div><h3>สร้างชุดข้อสอบ</h3><small>กำหนดข้อสอบ เวลา จำนวนครั้ง และเงื่อนไขการสอบ</small><button disabled>เตรียมพัฒนา</button></div>
-      <div class="card"><div class="icon">🖥️</div><h3>เข้าสอบ</h3><small>หน้าสอบแบบเต็มจอ พร้อมระบบบันทึกคำตอบ</small><button disabled>เตรียมพัฒนา</button></div>
-      <div class="card"><div class="icon">📊</div><h3>ผลสอบ</h3><small>คะแนน สถิติ และรายงานหลังสอบ</small><button disabled>เตรียมพัฒนา</button></div>
-    </div>
-    <div class="note"><b>หมายเหตุ:</b> เวอร์ชันนี้สร้างเฉพาะปุ่มและหน้าต่างระบบสอบแยกไว้ก่อน ยังไม่สร้างตารางฐานข้อมูลข้อสอบ เพื่อไม่ให้โครงสร้างระบบใบงานปัจจุบันปะปนกับระบบสอบในอนาคต</div>
+  <div class="exam-shell">
+    <header class="exam-top">
+      <div class="exam-brand"><div class="exam-logo">NR</div><div><b>DOC-FULL-NR Exam Center</b><div class="muted smalltext">ระบบสอบออนไลน์ • วิทยาลัยเทคนิคนางรอง</div></div></div>
+      <div class="row"><span id="exam-user" class="muted"></span><a class="btn" href="./">← กลับระบบการเรียน</a></div>
+    </header>
+    <main id="exam-app" class="exam-main"><div class="v14-loading"><div class="v14-spinner"></div><b>กำลังเปิด Exam Center...</b></div></main>
   </div>
+  <script type="module" src="./v14-exam.js?v=20260911-v14-1"></script>
 </body>
 </html>

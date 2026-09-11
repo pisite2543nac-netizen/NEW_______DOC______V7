@@ -50,10 +50,20 @@ function friendlyError(err){
     NO_TARGETS:"ยังไม่มีผู้เรียนเป้าหมาย กรุณาสร้างผู้เรียน/กำหนดห้องก่อน Publish",
     NOT_ASSIGNED:"ใบงานนี้ไม่ได้มอบหมายให้บัญชีนี้",
     WORKSHEET_UNAVAILABLE:"ใบงานนี้ยังไม่เปิดให้ใช้งาน",
+    WORKSHEET_NOT_AVAILABLE:"ใบงานนี้ยังไม่เปิดให้ใช้งาน",
+    WORKSHEET_NOT_OPEN:"ยังไม่ถึงเวลาเปิดทำใบงาน",
+    WORKSHEET_DUE_PASSED:"พ้นกำหนดส่งแล้ว",
+    WORKSHEET_CLOSED:"ปิดรับใบงานนี้แล้ว",
+    DRAFT_DISABLED:"ใบงานนี้ไม่อนุญาตให้บันทึกร่าง",
+    DIGITAL_WORKSHEET_REQUIRED:"รายการนี้ไม่ใช่ใบงานอิเล็กทรอนิกส์",
+    PAPER_WORKSHEET_REQUIRED:"รายการนี้ไม่ใช่ใบงานกระดาษ",
     NOT_OPEN:"ยังไม่ถึงเวลาเปิดทำใบงาน",
     DEADLINE_PASSED:"พ้นกำหนดส่งแล้ว",
     ALREADY_SUBMITTED:"งานนี้ส่งแล้ว",
     ATTEMPT_LIMIT:"ส่งงานครบจำนวนครั้งที่กำหนดแล้ว",
+    ATTEMPT_LIMIT_REACHED:"ส่งงานครบจำนวนครั้งที่กำหนดแล้ว",
+    ALREADY_SUBMITTED:"งานนี้ส่งแล้วและไม่อนุญาตให้ส่งซ้ำ",
+    PHONE_NOT_VERIFIED:"เบอร์โทรศัพท์ยังไม่ได้รับการยืนยัน",
     WRONG_MODE:"รูปแบบใบงานไม่ตรงกับวิธีส่ง",
     INVALID_CODE:"รหัสงานกระดาษไม่ถูกต้อง",
     ROLE_CHANGE_NOT_ALLOWED:"ไม่อนุญาตให้เปลี่ยนสิทธิ์ด้วยบัญชีผู้ใช้ทั่วไป",
@@ -67,12 +77,16 @@ function friendlyError(err){
   for(const [k,v] of Object.entries(map))if(m.includes(k))return v;
   return m;
 }
-function modal(html,{wide=false}={}){
+function modal(html,{wide=false,focus=false}={}){
   closeModal();
-  document.body.insertAdjacentHTML("beforeend",`<div class="modal-bg" id="modalbg"><div class="modal ${wide?"wide":""}">${html}</div></div>`);
-  $$("[data-close]",$("#modalbg")).forEach(b=>b.onclick=closeModal);
+  document.body.insertAdjacentHTML("beforeend",`<div class="modal-bg ${focus?"focus-bg":""}" id="modalbg"><div class="modal ${wide?"wide":""} ${focus?"focus-mode":""}">${html}</div></div>`);
+  $$('[data-close]',$("#modalbg")).forEach(b=>b.onclick=closeModal);
 }
-function closeModal(){ clearTimeout(S.autosaveTimer); $("#modalbg")?.remove(); }
+function closeModal(){
+  clearTimeout(S.autosaveTimer);
+  $("#modalbg")?.remove();
+  if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
+}
 function ask(msg){return confirm(msg)}
 
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();S.installPrompt=e;if(S.session)renderShell()});
@@ -563,47 +577,97 @@ function questionInput(q,i,val=""){
   return`<div class="q-card"><div class="q-title">${i+1}. ${esc(q.text)} <span class="muted">(${Number(q.points||0)} คะแนน)</span></div><input name="${name}" class="input" value="${esc(val)}" ${req}></div>`;
 }
 async function openWorksheet(id){
+  await syncServerClock();
   const [{data:w,error},{data:old}]=await Promise.all([
     sb.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single(),
     sb.from("submissions").select("*").eq("worksheet_id",id).eq("user_id",uid()).maybeSingle()
   ]);if(error)return toast(friendlyError(error),"error");
-  const locked=old&&["submitted","confirmed","graded"].includes(old.status);
+
+  // Paper worksheets use the dedicated one-page A4 preview/print flow.
+  if(w.mode==="paper"){printWorksheet(id);return}
+
   const files=await signedLinks("worksheet-files",w.attachment_paths||[]);
-  const now=Date.now(),openAt=w.open_at?new Date(w.open_at).getTime():null,dueAt=w.due_at?new Date(w.due_at).getTime():null;
-  const notOpen=openAt&&now<openAt;
-  modal(`<div class="modal-header"><div><h2>${esc(w.title)}</h2><div class="muted">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")} • ${esc(w.mode)} • กำหนด ${fmt(w.due_at)}</div></div><button class="btn sm" data-close>✕</button></div>
+  const now=serverMs(),openAt=w.open_at?new Date(w.open_at).getTime():null,dueAt=w.due_at?new Date(w.due_at).getTime():null;
+  const notOpen=!!(openAt&&now<openAt),pastDue=!!(dueAt&&now>dueAt),deadlineBlocked=pastDue&&!w.allow_late;
+  const finalStatus=old&&["submitted","confirmed","graded"].includes(old.status);
+  const attempts=Math.max(Number(old?.attempt_count||0),finalStatus?1:0);
+  const canResubmit=!!(finalStatus&&w.allow_resubmit&&attempts<Number(w.max_attempts||1));
+  const locked=!!(finalStatus&&!canResubmit);
+  const manualOnly=w.copy_paste_allowed===false||w.settings?.manual_typing_only===true;
+  const focusRequired=w.settings?.fullscreen_required===true;
+  const previewRequired=w.settings?.preview_before_submit!==false;
+  const canWork=!notOpen&&!deadlineBlocked&&!locked;
+  const statusText=finalStatus?`${old.status}${canResubmit?` • ส่งซ้ำได้อีก ${Math.max(0,Number(w.max_attempts||1)-attempts)} ครั้ง`:""}`:old?.status||"ยังไม่ส่ง";
+
+  modal(`<div class="modal-header worksheet-focus-head"><div><h2>${esc(w.title)}</h2><div class="muted">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")} • ใบงานอิเล็กทรอนิกส์ • กำหนด ${fmt(w.due_at)}</div></div><div class="row"><button class="btn sm" id="worksheet-focus-toggle">⛶ เต็มจอ</button><button class="btn sm" data-close>✕</button></div></div>
     ${notOpen?`<div class="alert warn">ยังไม่ถึงเวลาเปิดทำ: ${fmt(w.open_at)}</div>`:""}
-    ${locked?`<div class="alert success">สถานะ: ${esc(old.status)} ${old.submitted_at?`• ส่ง ${fmt(old.submitted_at)}`:""}</div>`:""}
+    ${deadlineBlocked?`<div class="alert error">พ้นกำหนดส่ง ${fmt(w.due_at)} และใบงานนี้ไม่อนุญาตให้ส่งช้า</div>`:pastDue?`<div class="alert warn">เลยกำหนดส่งแล้ว แต่ Admin อนุญาตให้ส่งช้าได้</div>`:""}
+    ${finalStatus?`<div class="alert ${canResubmit?"warn":"success"}">สถานะล่าสุด: ${esc(statusText)} ${old.submitted_at?`• ส่ง ${fmt(old.submitted_at)}`:""}</div>`:""}
+    ${manualOnly?`<div class="alert"><b>⌨️ พิมพ์คำตอบด้วยตนเอง</b> • ช่องคำตอบปิด Copy / Paste / Cut / Drop ตามเงื่อนไขใบงาน</div>`:""}
+    ${focusRequired?`<div class="alert"><b>Focus Mode</b> • หน้านี้แสดงเต็มพื้นที่หน้าจอ และสามารถกด “เต็มจอ” เพื่อซ่อนส่วนของเบราว์เซอร์ที่อุปกรณ์รองรับ</div>`:""}
     <p>${esc(w.instructions||"")}</p>
     ${files.length?`<div class="file-list"><b>ไฟล์ประกอบ</b>${files.map((f,i)=>`<div class="file-chip"><span>ไฟล์ ${i+1}</span><a class="btn sm" href="${f.url}" target="_blank" rel="noopener">เปิดไฟล์</a></div>`).join("")}</div>`:""}
+    <div id="submissionpreview" hidden></div>
     <form id="ans">${(w.questions||[]).map((q,i)=>questionInput(q,i,old?.answers?.[q.id])).join("")}
-      ${w.mode==="digital"?`<div class="field"><label>แนบไฟล์คำตอบ (ไม่บังคับ, สูงสุด 20MB)</label><input id="attach" type="file" ${locked||notOpen?"disabled":""}></div>
-      <div class="autosave" id="autosave">${w.allow_draft&&!locked?"ระบบจะบันทึกร่างอัตโนมัติเมื่อพิมพ์":" "}</div>
-      <div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn" name="action" value="draft" ${locked||notOpen||!w.allow_draft?"disabled":""}>บันทึกร่าง</button><button class="btn green" name="action" value="submit" ${locked||notOpen?"disabled":""}>ส่งงาน</button></div>`:
-      `<div class="alert">ใบงานนี้เป็นแบบกระดาษ ให้ใช้เมนู “ยืนยันงานกระดาษ” และกรอกรหัสบนเอกสาร</div><div class="row end"><button type="button" class="btn" data-close>ปิด</button></div>`}
-    </form>`,{wide:true});
-  if(w.mode!=="digital"||locked||notOpen)return;
+      <div class="field"><label>แนบไฟล์คำตอบ (ไม่บังคับ, สูงสุด 20MB)</label><input id="attach" type="file" ${canWork?"":"disabled"}></div>
+      <div class="autosave" id="autosave">${w.allow_draft&&canWork&&!canResubmit?"ระบบจะบันทึกร่างอัตโนมัติเมื่อพิมพ์":canResubmit?"โหมดส่งซ้ำ: ระบบจะยังไม่แก้คำตอบเดิมจนกดยืนยันส่งใหม่":" "}</div>
+      <div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn" name="action" value="draft" ${canWork&&w.allow_draft&&!canResubmit?"":"disabled"}>บันทึกร่าง</button><button class="btn green" name="action" value="submit" ${canWork?"":"disabled"}>${canResubmit?"ตรวจทานและส่งซ้ำ":"ตรวจทานก่อนส่ง"}</button></div>
+    </form>`,{wide:true,focus:focusRequired});
+
+  const focusToggle=$("#worksheet-focus-toggle");
+  if(focusToggle)focusToggle.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else throw new Error("UNSUPPORTED")}catch{toast("อุปกรณ์นี้ใช้โหมดเต็มจอของเบราว์เซอร์ไม่ได้ แต่ระบบยังคงแสดงแบบเต็มพื้นที่หน้าจอ","")}};
+  if(!canWork)return;
+
   const form=$("#ans");
   const collect=()=>{const f=new FormData(form),answers={};for(const q of w.questions||[])answers[q.id]=f.get("q_"+q.id)??"";return answers};
+  const answerTargets=()=>$$('input[name^="q_"],textarea[name^="q_"],select[name^="q_"]',form);
+  if(manualOnly){
+    const deny=e=>{e.preventDefault();toast("ใบงานนี้กำหนดให้พิมพ์คำตอบด้วยตนเอง ไม่อนุญาตคัดลอก/วางข้อความ","error")};
+    for(const el of answerTargets()){el.addEventListener("paste",deny);el.addEventListener("drop",deny);el.addEventListener("cut",deny);el.addEventListener("copy",deny)}
+  }
+
   const autosave=async()=>{
-    if(!w.allow_draft)return;
+    if(!w.allow_draft||canResubmit)return;
     const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:collect(),p_attachment_paths:old?.attachment_paths||[]});
-    const st=$("#autosave");if(st)st.textContent=r.error?"บันทึกร่างอัตโนมัติไม่สำเร็จ":"บันทึกร่างล่าสุด "+new Date().toLocaleTimeString("th-TH");
+    const st=$("#autosave");if(st)st.textContent=r.error?`บันทึกร่างอัตโนมัติไม่สำเร็จ: ${friendlyError(r.error)}`:"บันทึกร่างล่าสุด "+new Date().toLocaleTimeString("th-TH");
   };
-  form.oninput=()=>{if(!w.allow_draft)return;clearTimeout(S.autosaveTimer);S.autosaveTimer=setTimeout(autosave,1400)};
+  form.oninput=()=>{if(!w.allow_draft||canResubmit)return;clearTimeout(S.autosaveTimer);S.autosaveTimer=setTimeout(autosave,1400)};
+
+  async function finalizeAfterPreview(answers,file){
+    let paths=[...(old?.attachment_paths||[])];
+    const btn=$("#confirm-final-submit");if(btn){btn.disabled=true;btn.textContent="กำลังส่งงาน..."}
+    if(file){
+      if(file.size>20*1024*1024){if(btn){btn.disabled=false;btn.textContent="ยืนยันส่งงาน"}return toast("ไฟล์เกิน 20MB","error")}
+      const path=`${uid()}/${id}/${Date.now()}-${safeName(file.name)}`;
+      const up=await sb.storage.from("submissions").upload(path,file,{upsert:false});
+      if(up.error){if(btn){btn.disabled=false;btn.textContent="ยืนยันส่งงาน"}return toast(friendlyError(up.error),"error")}
+      paths.push(path);
+    }
+    const r=await sb.rpc("finalize_digital_submission",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:paths});
+    if(r.error){if(btn){btn.disabled=false;btn.textContent="ยืนยันส่งงาน"}return toast(friendlyError(r.error),"error")}
+    toast(canResubmit?"ส่งงานซ้ำสำเร็จ":"ส่งงานสำเร็จ");closeModal();
+    if(window.DOCNR_V14?.navigate)window.DOCNR_V14.navigate("work");else myworks();
+  }
+
+  function showPreview(answers,file){
+    clearTimeout(S.autosaveTimer);
+    const box=$("#submissionpreview");
+    const rows=(w.questions||[]).map((q,i)=>`<article class="submission-preview-item"><b>${i+1}. ${esc(q.text||"")}</b><div>${esc(answers[q.id]||"—").replace(/\n/g,"<br>")}</div></article>`).join("");
+    box.innerHTML=`<div class="submission-preview-card"><div class="modal-header"><div><h3>ตรวจทานคำตอบก่อนส่งจริง</h3><div class="muted">การกด “ยืนยันส่งงาน” เท่านั้นจึงถือว่าส่งงานเสร็จสมบูรณ์</div></div></div>${rows}<div class="file-chip"><b>ไฟล์แนบ:</b> ${file?esc(file.name):"ไม่มีไฟล์แนบใหม่"}</div><div class="row end"><button type="button" class="btn" id="back-to-edit">← กลับไปแก้ไข</button><button type="button" class="btn green" id="confirm-final-submit">✓ ยืนยันส่งงาน</button></div></div>`;
+    form.hidden=true;box.hidden=false;box.scrollIntoView({block:"start"});
+    $("#back-to-edit").onclick=()=>{box.hidden=true;form.hidden=false;form.scrollIntoView({block:"start"})};
+    $("#confirm-final-submit").onclick=()=>finalizeAfterPreview(answers,file);
+  }
+
   form.onsubmit=async e=>{
     e.preventDefault();clearTimeout(S.autosaveTimer);
-    const action=e.submitter?.value||"draft",answers=collect();
-    let paths=[...(old?.attachment_paths||[])],file=$("#attach")?.files?.[0];
-    if(file){
-      if(file.size>20*1024*1024)return toast("ไฟล์เกิน 20MB","error");
-      const path=`${uid()}/${id}/${Date.now()}-${safeName(file.name)}`;
-      const up=await sb.storage.from("submissions").upload(path,file,{upsert:false});if(up.error)return toast(friendlyError(up.error),"error");paths.push(path);
+    const action=e.submitter?.value||"draft",answers=collect(),file=$("#attach")?.files?.[0]||null;
+    if(action==="draft"){
+      const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:old?.attachment_paths||[]});
+      if(r.error)return toast(friendlyError(r.error),"error");
+      toast("บันทึกร่างแล้ว");const st=$("#autosave");if(st)st.textContent="บันทึกร่างล่าสุด "+new Date().toLocaleTimeString("th-TH");return;
     }
-    const rpc=action==="submit"?"finalize_digital_submission":"save_worksheet_draft";
-    const r=await sb.rpc(rpc,{p_worksheet_id:id,p_answers:answers,p_attachment_paths:paths});
-    if(r.error)return toast(friendlyError(r.error),"error");
-    toast(action==="submit"?"ส่งงานสำเร็จ":"บันทึกร่างแล้ว");closeModal();myworks();
+    if(previewRequired)showPreview(answers,file);else if(confirm("ยืนยันส่งงาน? หลังส่งแล้วอาจแก้ไขไม่ได้"))await finalizeAfterPreview(answers,file);
   };
 }
 
@@ -745,5 +809,13 @@ async function paperTokensDialog(wid){
     <div class="table-wrap"><table><thead><tr><th>ชื่อ</th><th>รหัส</th><th>ห้อง</th><th>Token</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.full_name||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td><td><code>${esc(x.token)}</code></td></tr>`).join("")}</tbody></table></div>`,{wide:true});
   $("#tokencsv").onclick=()=>downloadCSV([["ชื่อ","รหัสนักศึกษา","ห้อง","Token"],...rows.map(x=>[x.full_name,x.student_code,x.class_name,x.token])],`paper-tokens-${wid}.csv`);
 }
+
+// Stable extension bridge for DOC-FULL-NR V14. Only deliberately exposed UI actions
+// are placed on window; Supabase secrets and internal state remain module-scoped.
+window.DOCNR_BASE = Object.freeze({
+  openWorksheet,
+  printWorksheet,
+  paperTokensDialog
+});
 
 init();

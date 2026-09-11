@@ -1,9 +1,13 @@
 {
-  "release": "V7 FINAL ZERO-BUILD",
-  "date": "2026-09-09",
+  "release": "V14.1 FINAL STABLE LEARNING PLATFORM",
+  "date": "2026-09-11",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
   "pages": "https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/",
+  "mobile_link": "https://pisite2543nac-netizen.github.io/smartworksheet/",
   "supabase_project": "DOC-FULL-NR-UNIVERSAL",
   "supabase_ref": "thjscmfqunlaqxlievna",
-  "deployment": "static PWA /site via GitHub Actions (no npm build)"
+  "deployment": "static PWA /site via GitHub Actions (no build)",
+  "frontend_owner": "app.js + v14-platform.js + v14-exam.js",
+  "installer_version": "V14.1-FINAL-ATOMIC",
+  "installer_note": "Atomic Git Trees API deployment; one commit, one staging ref, safe fast-forward to main."
 }
