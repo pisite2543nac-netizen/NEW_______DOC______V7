@@ -50,10 +50,20 @@ function friendlyError(err){
     NO_TARGETS:"ยังไม่มีผู้เรียนเป้าหมาย กรุณาสร้างผู้เรียน/กำหนดห้องก่อน Publish",
     NOT_ASSIGNED:"ใบงานนี้ไม่ได้มอบหมายให้บัญชีนี้",
     WORKSHEET_UNAVAILABLE:"ใบงานนี้ยังไม่เปิดให้ใช้งาน",
+    WORKSHEET_NOT_AVAILABLE:"ใบงานนี้ยังไม่เปิดให้ใช้งาน",
+    WORKSHEET_NOT_OPEN:"ยังไม่ถึงเวลาเปิดทำใบงาน",
+    WORKSHEET_DUE_PASSED:"พ้นกำหนดส่งแล้ว",
+    WORKSHEET_CLOSED:"ปิดรับใบงานนี้แล้ว",
+    DRAFT_DISABLED:"ใบงานนี้ไม่อนุญาตให้บันทึกร่าง",
+    DIGITAL_WORKSHEET_REQUIRED:"รายการนี้ไม่ใช่ใบงานอิเล็กทรอนิกส์",
+    PAPER_WORKSHEET_REQUIRED:"รายการนี้ไม่ใช่ใบงานกระดาษ",
     NOT_OPEN:"ยังไม่ถึงเวลาเปิดทำใบงาน",
     DEADLINE_PASSED:"พ้นกำหนดส่งแล้ว",
     ALREADY_SUBMITTED:"งานนี้ส่งแล้ว",
     ATTEMPT_LIMIT:"ส่งงานครบจำนวนครั้งที่กำหนดแล้ว",
+    ATTEMPT_LIMIT_REACHED:"ส่งงานครบจำนวนครั้งที่กำหนดแล้ว",
+    ALREADY_SUBMITTED:"งานนี้ส่งแล้วและไม่อนุญาตให้ส่งซ้ำ",
+    PHONE_NOT_VERIFIED:"เบอร์โทรศัพท์ยังไม่ได้รับการยืนยัน",
     WRONG_MODE:"รูปแบบใบงานไม่ตรงกับวิธีส่ง",
     INVALID_CODE:"รหัสงานกระดาษไม่ถูกต้อง",
     ROLE_CHANGE_NOT_ALLOWED:"ไม่อนุญาตให้เปลี่ยนสิทธิ์ด้วยบัญชีผู้ใช้ทั่วไป",
@@ -67,12 +77,16 @@ function friendlyError(err){
   for(const [k,v] of Object.entries(map))if(m.includes(k))return v;
   return m;
 }
-function modal(html,{wide=false}={}){
+function modal(html,{wide=false,focus=false}={}){
   closeModal();
-  document.body.insertAdjacentHTML("beforeend",`<div class="modal-bg" id="modalbg"><div class="modal ${wide?"wide":""}">${html}</div></div>`);
-  $$("[data-close]",$("#modalbg")).forEach(b=>b.onclick=closeModal);
+  document.body.insertAdjacentHTML("beforeend",`<div class="modal-bg ${focus?"focus-bg":""}" id="modalbg"><div class="modal ${wide?"wide":""} ${focus?"focus-mode":""}">${html}</div></div>`);
+  $$('[data-close]',$("#modalbg")).forEach(b=>b.onclick=closeModal);
 }
-function closeModal(){ clearTimeout(S.autosaveTimer); $("#modalbg")?.remove(); }
+function closeModal(){
+  clearTimeout(S.autosaveTimer);
+  $("#modalbg")?.remove();
+  if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
+}
 function ask(msg){return confirm(msg)}
 
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();S.installPrompt=e;if(S.session)renderShell()});
@@ -107,7 +121,7 @@ function render(){S.session?renderShell():renderAuth()}
 function ownerSetupToken(){const h=location.hash||"";const m=h.match(/owner-setup=([^&]+)/);return m?decodeURIComponent(m[1]):null}
 function renderOwnerSetup(token){
   $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card">
-    <div class="brand"><div class="logo">NR</div><div><h2>ตั้งค่า Admin ครั้งแรก</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
+    <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><h2>ตั้งค่า Admin ครั้งแรก</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
     <div class="alert warn"><b>ขั้นตอนเดียว</b><div class="smalltext">กำหนดรหัสผ่าน Admin แล้วระบบจะเข้าสู่ระบบและเตรียมข้อมูลทดสอบให้อัตโนมัติ</div></div>
     <div id="authmsg"></div>
     <form id="ownerclaim"><div class="field"><label>ชื่อผู้ใช้ Admin</label><input value="${OWNER_USERNAME}" disabled></div><div class="field"><label>รหัสผ่าน Admin ใหม่</label><input name="password" type="password" minlength="8" required autocomplete="new-password"></div><div class="field"><label>ยืนยันรหัสผ่าน</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"></div><button class="btn primary w100" id="ownerbtn">ตั้งค่าและเข้าใช้งาน</button></form>
@@ -117,7 +131,7 @@ function renderOwnerSetup(token){
 function renderAuth(){
   const claim=ownerSetupToken();if(claim){renderOwnerSetup(claim);return}
   $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card">
-    <div class="brand"><div class="logo">NR</div><div><h2>DOC-FULL-NR</h2><div class="muted">Smart Worksheet • วิทยาลัยเทคนิคนางรอง</div></div></div>
+    <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><h2>DOC-FULL-NR</h2><div class="muted">Smart Worksheet • วิทยาลัยเทคนิคนางรอง</div></div></div>
     <div class="alert" style="margin-top:18px"><b>ระบบพร้อมใช้งาน</b><div class="smalltext">Supabase Auth • Database • Private Storage • RLS • Server Time</div></div>
     <div id="authmsg"></div>
     <form id="login"><div class="field"><label>ชื่อผู้ใช้หรืออีเมล</label><input name="login" type="text" autocomplete="username" placeholder="หรือรหัสนักศึกษา" required></div><div class="field"><label>รหัสผ่าน</label><input name="password" type="password" autocomplete="current-password" required minlength="8"></div><button class="btn primary w100" id="loginbtn">เข้าสู่ระบบ</button></form>
@@ -133,6 +147,7 @@ function signupDialog(){
       <div class="registration-grid">
         <div class="field"><label>เลขประจำตัวนักศึกษา</label><input name="student_code" inputmode="numeric" pattern="[0-9]{1,15}" maxlength="15" placeholder="เลขประจำตัวนักศึกษา สูงสุด 15 หลัก" required><div class="field-help">กรอกตัวเลขเท่านั้น สูงสุด 15 หลัก</div></div>
         <div class="field"><label>ชื่อ-นามสกุล</label><input name="full_name" placeholder="ชื่อ-นามสกุล" required></div>
+        <div class="field"><label>อีเมลติดต่อ / กู้คืนบัญชี (ไม่บังคับ)</label><input name="email" type="email" autocomplete="email" placeholder="student@example.com"></div>
         <div class="field"><label>ระดับชั้น</label><select name="grade_level" required>${optionHtml(REG_LEVELS,"เลือกระดับชั้น")}</select></div>
         <div class="field"><label>ห้อง / กลุ่ม</label><select name="room_label" required>${optionHtml(REG_ROOMS,"เลือกห้อง")}</select></div>
         <div class="field"><label>แผนกวิชา</label><select name="department" required>${optionHtml(REG_DEPARTMENTS,"เลือกแผนก")}</select></div>
@@ -140,7 +155,8 @@ function signupDialog(){
         <div class="field"><label>สร้างรหัสผ่าน</label><div class="password-row"><input name="password" type="password" minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร" required><button type="button" class="btn ghost password-toggle" data-pass-toggle="password">แสดง</button></div></div>
         <div class="field"><label>ยืนยันรหัสผ่าน</label><div class="password-row"><input name="confirm_password" type="password" minlength="8" placeholder="กรอกรหัสผ่านอีกครั้ง" required><button type="button" class="btn ghost password-toggle" data-pass-toggle="confirm_password">แสดง</button></div></div>
       </div>
-      <div class="alert">เลขประจำตัวนักศึกษาจะใช้เป็นชื่อผู้ใช้สำหรับ Login หลังลงทะเบียน</div>
+      <div class="alert">เลขประจำตัวนักศึกษาจะใช้เป็นชื่อผู้ใช้สำหรับ Login หลังลงทะเบียน • หลังส่งคำขอ ต้องรอ Admin อนุมัติบัญชีก่อนเข้าใช้ระบบการเรียน</div>
+      <div class="checks registration-consent"><label><input type="checkbox" name="accept_terms" required> ยอมรับเงื่อนไขการใช้งาน</label><label><input type="checkbox" name="accept_privacy" required> ยอมรับนโยบายความเป็นส่วนตัวและการจัดเก็บรูปโปรไฟล์</label></div>
       <div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn primary" id="signupbtn">ลงทะเบียน</button></div>
     </form>`,{wide:true});
 
@@ -167,13 +183,14 @@ function signupDialog(){
       room_label:String(f.get("room_label")||""),
       department:String(f.get("department")||""),
       major:String(f.get("major")||""),
-      registration_code:REGISTRATION_CODE_DEFAULT,password
+      registration_code:REGISTRATION_CODE_DEFAULT,password,
+      email:String(f.get("email")||"").trim()||null
     };
     const {data,error}=await sb.functions.invoke("register-user",{body});
     if(error||data?.error){btn.disabled=false;btn.textContent="ลงทะเบียน";return toast(friendlyError(data?.error||error),"error")}
     const login=await sb.auth.signInWithPassword({email:authEmailFor(studentCode),password});
     if(login.error){closeModal();return toast("ลงทะเบียนสำเร็จ กรุณาเข้าสู่ระบบด้วยเลขประจำตัวนักศึกษา")}
-    closeModal();toast("ลงทะเบียนและเข้าสู่ระบบสำเร็จ");
+    closeModal();toast("ส่งคำขอลงทะเบียนแล้ว • กรุณารอ Admin อนุมัติบัญชี");
   };
 }
 
@@ -197,12 +214,23 @@ function installGuide(){
     </div>`);
 }
 function renderShell(){
-  if(S.profile?.active===false){$("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card"><h2>บัญชีถูกระงับ</h2><div class="alert error">บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ</div><button class="btn w100" id="suspendedlogout">ออกจากระบบ</button></div></div>`;$("#suspendedlogout").onclick=()=>sb.auth.signOut();return}
+  const approval=S.profile?.approval_status||"approved";
+  if(!isAdmin()&&(approval!=="approved"||S.profile?.active===false)){
+    const pending=approval==="pending",rejected=approval==="rejected",suspended=approval==="suspended"||(!pending&&!rejected&&S.profile?.active===false);
+    $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card account-state-card">
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><h2>${pending?"บัญชีของคุณกำลังรอการอนุมัติ":rejected?"คำขอบัญชียังไม่ได้รับอนุมัติ":"บัญชีถูกระงับ"}</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
+      <div class="alert ${pending?"warn":"error"}" style="margin-top:16px">${pending?"ส่งคำขอลงทะเบียนเรียบร้อยแล้ว Admin ต้องอนุมัติก่อนจึงจะเข้าถึงรายวิชา ใบงาน การสอบ และข้อมูลภายในระบบได้":rejected?`Admin ไม่อนุมัติคำขอบัญชี${S.profile?.rejection_reason?`: ${esc(S.profile.rejection_reason)}`:""}`:`บัญชีนี้ถูกระงับการใช้งาน${S.profile?.rejection_reason?`: ${esc(S.profile.rejection_reason)}`:""}`}</div>
+      <div class="account-state-info"><div><span>ชื่อ</span><b>${esc(S.profile?.full_name||"-")}</b></div><div><span>รหัสผู้เรียน</span><b>${esc(S.profile?.student_code||S.profile?.username||"-")}</b></div><div><span>อีเมลติดต่อ</span><b>${esc(S.profile?.contact_email||"-")}</b></div><div><span>สถานะ</span><b>${esc(approval)}</b></div></div>
+      <p class="muted smalltext">หากรอนานเกินกำหนด กรุณาติดต่อ Admin ของวิทยาลัย</p>
+      <button class="btn w100" id="suspendedlogout">ออกจากระบบ</button>
+    </div></div>`;
+    $("#suspendedlogout").onclick=()=>sb.auth.signOut();return
+  }
   const items=navItems();
   if(!items.some(x=>x[0]===S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><div class="logo">NR</div><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V7 FINAL</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V15 FINAL</div></div></div>
       <nav class="nav">${items.map(x=>`<button data-route="${x[0]}" class="${S.route===x[0]?"active":""}">${x[1]}</button>`).join("")}</nav>
     </aside>
     <main class="main">
@@ -394,11 +422,11 @@ async function users(){
     const z=q.trim().toLowerCase();
     $("#userbody").innerHTML=(items||[]).filter(x=>!z||[x.full_name,x.username,x.student_code,x.class_name,x.grade_level,x.room_label,x.department,x.major].some(v=>String(v||"").toLowerCase().includes(z))).map(x=>`<tr>
       <td><b>${esc(x.full_name||"-")}</b></td><td>${esc(x.username||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td><td>${esc(x.department||"-")}<div class="smalltext muted">${esc(x.major||"")}</div></td>
-      <td><span class="badge ${x.role==="admin"?"warn":""}">${esc(x.role)}</span></td><td><span class="badge ${x.active?"green":"red"}">${x.active?"ใช้งาน":"ปิด"}</span></td>
-      <td><div class="row"><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.id!==uid()?`<button class="btn sm ${x.active?"red":"green"}" data-user-toggle="${x.id}" data-active="${x.active}">${x.active?"ปิดบัญชี":"เปิดบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
+      <td><span class="badge ${x.role==="admin"?"warn":""}">${esc(x.role)}</span></td><td><span class="badge ${x.approval_status==="approved"&&x.active?"green":x.approval_status==="pending"?"warn":"red"}">${x.approval_status==="approved"&&x.active?"อนุมัติแล้ว":x.approval_status==="pending"?"รออนุมัติ":x.approval_status==="rejected"?"ไม่อนุมัติ":"ระงับ"}</span></td>
+      <td><div class="row"><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.id!==uid()?`<button class="btn sm ${x.approval_status==="approved"&&x.active?"red":"green"}" data-user-toggle="${x.id}" data-status="${esc(x.approval_status||"pending")}">${x.approval_status==="approved"&&x.active?"ระงับบัญชี":"อนุมัติบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
     </tr>`).join("")||`<tr><td colspan="8" class="empty">ไม่พบผู้ใช้</td></tr>`;
     $$("[data-room-user]").forEach(b=>b.onclick=()=>assignUserRoom(b.dataset.roomUser,items.find(x=>x.id===b.dataset.roomUser),rooms||[]));
-    $$("[data-user-toggle]").forEach(b=>b.onclick=async()=>{const active=b.dataset.active!=="true";const {error}=await sb.from("profiles").update({active}).eq("id",b.dataset.userToggle);if(error)return toast(friendlyError(error),"error");toast("อัปเดตบัญชีแล้ว");users()});
+    $$("[data-user-toggle]").forEach(b=>b.onclick=async()=>{const approved=b.dataset.status==="approved";const status=approved?"suspended":"approved";const reason=approved?(prompt("เหตุผลการระงับบัญชี (ไม่บังคับ)","")||null):null;const {error}=await sb.rpc("decide_account_approval",{p_user_id:b.dataset.userToggle,p_status:status,p_reason:reason});if(error)return toast(friendlyError(error),"error");toast(status==="approved"?"อนุมัติบัญชีแล้ว":"ระงับบัญชีแล้ว");users()});
     $$('[data-reset-pass]').forEach(b=>b.onclick=async()=>{const p=prompt("กำหนดรหัสผ่านใหม่ อย่างน้อย 8 ตัว");if(!p)return;if(p.length<8)return toast("รหัสผ่านต้องอย่างน้อย 8 ตัว","error");try{await adminOp({action:"reset_password",user_id:b.dataset.resetPass,password:p});toast("ตั้งรหัสผ่านใหม่แล้ว")}catch(err){toast(friendlyError(err),"error")}});
   };
   renderRows();$("#usersearch").oninput=e=>renderRows(e.target.value);
@@ -457,8 +485,23 @@ async function togglePublish(id,w){
   toast("Publish และมอบหมายใบงานสำเร็จ");worksheets();
 }
 
-function newQuestion(type="text"){
-  return {id:"q"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,text:"",points:1,required:true,options:type==="choice"?["ตัวเลือก 1","ตัวเลือก 2"]:[]};
+function normalizeQuestionType(type){
+  const t=String(type||"shortAnswer");
+  const map={text:"shortAnswer",short:"shortAnswer",shortAnswer:"shortAnswer",textarea:"paragraph",essay:"paragraph",paragraph:"paragraph",
+    choice:"singleChoice",mcq:"singleChoice",truefalse:"singleChoice",singleChoice:"singleChoice",multipleChoice:"multipleChoice",
+    matching:"matching",codeEditor:"codeEditor",fileUpload:"fileUpload",drawingArea:"drawingArea"};
+  return map[t]||"shortAnswer";
+}
+function newQuestion(type="shortAnswer"){
+  const t=normalizeQuestionType(type);
+  const q={id:"q"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type:t,text:"",points:1,required:true,options:[]};
+  if(t==="singleChoice"||t==="multipleChoice")q.options=["ตัวเลือก 1","ตัวเลือก 2"];
+  if(t==="matching")q.pairs=[{left:"รายการ A",right:"คำตอบ A"},{left:"รายการ B",right:"คำตอบ B"}];
+  if(t==="shortAnswer")q.max_length=250;
+  if(t==="paragraph")q.max_length=3000;
+  if(t==="codeEditor")q.language="javascript";
+  if(t==="fileUpload"){q.accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip,.html,.css,.js";q.max_mb=20}
+  return q;
 }
 async function worksheetEditor(id=null){
   const [{data:subs},{data:rooms}]=await Promise.all([sb.from("subjects").select("*").eq("active",true).order("code"),sb.from("classrooms").select("*").eq("active",true).order("name")]);
@@ -496,23 +539,43 @@ async function worksheetEditor(id=null){
 }
 function renderQuestionBuilder(){
   const root=$("#questionbuilder");if(!root||!S.editor)return;
-  root.innerHTML=S.editor.questions.map((q,i)=>`<div class="q-card" data-qcard="${q.id}">
-    <div class="row between"><b>ข้อ ${i+1}</b><button type="button" class="btn sm red" data-qdel="${q.id}">ลบ</button></div>
-    <div class="question-row">
-      <div class="field"><label>คำถาม</label><input data-qtext="${q.id}" value="${esc(q.text||"")}" placeholder="พิมพ์คำถาม"></div>
-      <div class="field"><label>ชนิด</label><select data-qtype="${q.id}"><option value="text" ${q.type==="text"?"selected":""}>คำตอบสั้น</option><option value="textarea" ${q.type==="textarea"?"selected":""}>คำตอบยาว</option><option value="choice" ${q.type==="choice"?"selected":""}>ตัวเลือก</option></select></div>
-      <div class="field"><label>คะแนน</label><input data-qpoints="${q.id}" type="number" min="0" step="0.5" value="${Number(q.points||0)}"></div>
-    </div>
-    ${q.type==="choice"?`<div class="field"><label>ตัวเลือก (1 บรรทัดต่อ 1 ตัวเลือก)</label><textarea data-qopts="${q.id}">${esc((q.options||[]).join("\n"))}</textarea></div>`:""}
-    <div class="form-grid"><div class="field"><label>เฉลย (Admin เท่านั้น)</label><input data-qanswer="${q.id}" value="${esc(S.editor.answer_key[q.id]??"")}"></div><div class="field"><label>การตอบ</label><select data-qrequired="${q.id}"><option value="1" ${q.required!==false?"selected":""}>บังคับตอบ</option><option value="0" ${q.required===false?"selected":""}>ไม่บังคับ</option></select></div></div>
-  </div>`).join("");
+  const types=[
+    ["singleChoice","ตัวเลือกเดียว"],["multipleChoice","หลายตัวเลือก"],["matching","จับคู่"],
+    ["shortAnswer","คำตอบสั้น"],["paragraph","คำตอบยาว"],["codeEditor","เขียนโค้ด"],
+    ["fileUpload","อัปโหลดไฟล์"],["drawingArea","พื้นที่วาดภาพ"]
+  ];
+  S.editor.questions=S.editor.questions.map(q=>({...q,type:normalizeQuestionType(q.type)}));
+  root.innerHTML=S.editor.questions.map((q,i)=>{
+    const type=normalizeQuestionType(q.type);
+    const opts=(q.options||[]).join("\n");
+    const pairs=(q.pairs||[]).map(x=>`${x.left||""} | ${x.right||""}`).join("\n");
+    return `<div class="q-card" data-qcard="${q.id}">
+      <div class="row between"><b>ข้อ ${i+1}</b><button type="button" class="btn sm red" data-qdel="${q.id}">ลบ</button></div>
+      <div class="question-row">
+        <div class="field"><label>คำถาม</label><input data-qtext="${q.id}" value="${esc(q.text||"")}" placeholder="พิมพ์คำถาม"></div>
+        <div class="field"><label>ชนิด</label><select data-qtype="${q.id}">${types.map(([v,l])=>`<option value="${v}" ${type===v?"selected":""}>${l}</option>`).join("")}</select></div>
+        <div class="field"><label>คะแนน (Admin เท่านั้น)</label><input data-qpoints="${q.id}" type="number" min="0" step="0.5" value="${Number(q.points||0)}"></div>
+      </div>
+      ${(type==="singleChoice"||type==="multipleChoice")?`<div class="field"><label>ตัวเลือก (1 บรรทัดต่อ 1 ตัวเลือก)</label><textarea data-qopts="${q.id}">${esc(opts)}</textarea></div>`:""}
+      ${type==="matching"?`<div class="field"><label>คู่จับคู่ รูปแบบ “ฝั่งซ้าย | คำตอบ” 1 คู่ต่อบรรทัด</label><textarea data-qpairs="${q.id}">${esc(pairs)}</textarea></div>`:""}
+      ${type==="codeEditor"?`<div class="field"><label>ภาษาโค้ด</label><select data-qlang="${q.id}"><option value="javascript" ${q.language==="javascript"?"selected":""}>JavaScript</option><option value="html" ${q.language==="html"?"selected":""}>HTML</option><option value="css" ${q.language==="css"?"selected":""}>CSS</option><option value="python" ${q.language==="python"?"selected":""}>Python</option><option value="text" ${q.language==="text"?"selected":""}>Text</option></select></div>`:""}
+      ${type==="fileUpload"?`<div class="form-grid"><div class="field"><label>ชนิดไฟล์ที่อนุญาต</label><input data-qaccept="${q.id}" value="${esc(q.accept||".pdf,.png,.jpg,.jpeg,.zip")}"></div><div class="field"><label>ขนาดสูงสุด MB</label><input data-qmaxmb="${q.id}" type="number" min="1" max="50" value="${Number(q.max_mb||20)}"></div></div>`:""}
+      ${(type==="shortAnswer"||type==="paragraph")?`<div class="field"><label>จำนวนตัวอักษรสูงสุด</label><input data-qmaxlength="${q.id}" type="number" min="1" max="20000" value="${Number(q.max_length||(type==="shortAnswer"?250:3000))}"></div>`:""}
+      <div class="form-grid"><div class="field"><label>เฉลย / แนวคำตอบ (Admin เท่านั้น)</label><input data-qanswer="${q.id}" value="${esc(typeof S.editor.answer_key[q.id]==="string"?S.editor.answer_key[q.id]:JSON.stringify(S.editor.answer_key[q.id]??""))}"></div><div class="field"><label>การตอบ</label><select data-qrequired="${q.id}"><option value="1" ${q.required!==false?"selected":""}>บังคับตอบ</option><option value="0" ${q.required===false?"selected":""}>ไม่บังคับ</option></select></div></div>
+    </div>`;
+  }).join("");
   $$("[data-qdel]",root).forEach(b=>b.onclick=()=>{if(S.editor.questions.length<=1)return toast("ต้องมีอย่างน้อย 1 คำถาม","error");S.editor.questions=S.editor.questions.filter(q=>q.id!==b.dataset.qdel);delete S.editor.answer_key[b.dataset.qdel];renderQuestionBuilder()});
   $$("[data-qtext]",root).forEach(x=>x.oninput=e=>S.editor.questions.find(q=>q.id===x.dataset.qtext).text=e.target.value);
   $$("[data-qpoints]",root).forEach(x=>x.oninput=e=>S.editor.questions.find(q=>q.id===x.dataset.qpoints).points=Number(e.target.value||0));
   $$("[data-qrequired]",root).forEach(x=>x.onchange=e=>S.editor.questions.find(q=>q.id===x.dataset.qrequired).required=e.target.value==="1");
-  $$("[data-qanswer]",root).forEach(x=>x.oninput=e=>S.editor.answer_key[x.dataset.qanswer]=e.target.value);
+  $$("[data-qanswer]",root).forEach(x=>x.oninput=e=>{const raw=e.target.value;let val=raw;try{if(raw.trim().startsWith("[")||raw.trim().startsWith("{"))val=JSON.parse(raw)}catch{}S.editor.answer_key[x.dataset.qanswer]=val});
   $$("[data-qopts]",root).forEach(x=>x.oninput=e=>S.editor.questions.find(q=>q.id===x.dataset.qopts).options=e.target.value.split("\n").map(s=>s.trim()).filter(Boolean));
-  $$("[data-qtype]",root).forEach(x=>x.onchange=e=>{const q=S.editor.questions.find(q=>q.id===x.dataset.qtype);q.type=e.target.value;if(q.type==="choice"&&(!q.options||!q.options.length))q.options=["ตัวเลือก 1","ตัวเลือก 2"];renderQuestionBuilder()});
+  $$("[data-qpairs]",root).forEach(x=>x.oninput=e=>S.editor.questions.find(q=>q.id===x.dataset.qpairs).pairs=e.target.value.split("\n").map(line=>{const [left,...rest]=line.split("|");return {left:(left||"").trim(),right:rest.join("|").trim()}}).filter(x=>x.left&&x.right));
+  $$("[data-qlang]",root).forEach(x=>x.onchange=e=>S.editor.questions.find(q=>q.id===x.dataset.qlang).language=e.target.value);
+  $$("[data-qaccept]",root).forEach(x=>x.oninput=e=>S.editor.questions.find(q=>q.id===x.dataset.qaccept).accept=e.target.value);
+  $$("[data-qmaxmb]",root).forEach(x=>x.oninput=e=>S.editor.questions.find(q=>q.id===x.dataset.qmaxmb).max_mb=Math.max(1,Number(e.target.value||20)));
+  $$("[data-qmaxlength]",root).forEach(x=>x.oninput=e=>S.editor.questions.find(q=>q.id===x.dataset.qmaxlength).max_length=Math.max(1,Number(e.target.value||1)));
+  $$("[data-qtype]",root).forEach(x=>x.onchange=e=>{const q=S.editor.questions.find(q=>q.id===x.dataset.qtype);const next=newQuestion(e.target.value);q.type=next.type;if(next.options?.length&&!q.options?.length)q.options=next.options;if(next.pairs&&!q.pairs)q.pairs=next.pairs;if(next.language&&!q.language)q.language=next.language;if(next.accept&&!q.accept)q.accept=next.accept;if(next.max_mb&&!q.max_mb)q.max_mb=next.max_mb;if(next.max_length&&!q.max_length)q.max_length=next.max_length;renderQuestionBuilder()});
 }
 async function saveWorksheetEditor(e){
   e.preventDefault();const f=new FormData(e.target),ed=S.editor;
@@ -556,57 +619,206 @@ async function myworks(){
 async function signedLinks(bucket,paths){
   const out=[];for(const p of paths||[]){const r=await sb.storage.from(bucket).createSignedUrl(p,3600);if(!r.error&&r.data?.signedUrl)out.push({path:p,url:r.data.signedUrl})}return out;
 }
+function formatAnswerPreview(v){
+  if(v===null||v===undefined||v==="")return "—";
+  if(Array.isArray(v))return v.join(", ");
+  if(typeof v==="object"){
+    if(v.name)return v.name;
+    return Object.entries(v).map(([k,x])=>`${k}: ${typeof x==="object"?JSON.stringify(x):x}`).join(" • ");
+  }
+  return String(v);
+}
 function questionInput(q,i,val=""){
-  const name=`q_${q.id}`,req=q.required!==false?"required":"";
-  if(q.type==="choice")return`<div class="q-card"><div class="q-title">${i+1}. ${esc(q.text)} <span class="muted">(${Number(q.points||0)} คะแนน)</span></div><div class="choice-list">${(q.options||[]).map(o=>`<label><input type="radio" name="${name}" value="${esc(o)}" ${String(val)===String(o)?"checked":""} ${req}> ${esc(o)}</label>`).join("")}</div></div>`;
-  if(q.type==="textarea")return`<div class="q-card"><div class="q-title">${i+1}. ${esc(q.text)} <span class="muted">(${Number(q.points||0)} คะแนน)</span></div><textarea name="${name}" class="input" style="min-height:110px" ${req}>${esc(val)}</textarea></div>`;
-  return`<div class="q-card"><div class="q-title">${i+1}. ${esc(q.text)} <span class="muted">(${Number(q.points||0)} คะแนน)</span></div><input name="${name}" class="input" value="${esc(val)}" ${req}></div>`;
+  const type=normalizeQuestionType(q.type),name="q_"+q.id,req=q.required!==false?"required":"";
+  const title=`<div class="q-title">${i+1}. ${esc(q.text)}</div>`;
+  if(type==="singleChoice")return`<div class="q-card" data-qid="${q.id}">${title}<div class="choice-list">${(q.options||[]).map(o=>`<label><input type="radio" name="${name}" value="${esc(o)}" ${String(val)===String(o)?"checked":""} ${req}> ${esc(o)}</label>`).join("")}</div></div>`;
+  if(type==="multipleChoice"){const arr=Array.isArray(val)?val:val?[val]:[];return`<div class="q-card" data-qid="${q.id}">${title}<div class="muted smalltext">เลือกได้มากกว่า 1 ข้อ</div><div class="choice-list">${(q.options||[]).map(o=>`<label><input type="checkbox" name="${name}" value="${esc(o)}" ${arr.includes(o)?"checked":""}> ${esc(o)}</label>`).join("")}</div><button type="button" class="btn sm ghost" data-clear-multi="${q.id}">ล้างคำตอบ</button></div>`}
+  if(type==="matching"){const pairs=q.pairs||[];const answers=val&&typeof val==="object"&&!Array.isArray(val)?val:{};const rights=[...new Set(pairs.map(x=>x.right))];return`<div class="q-card" data-qid="${q.id}">${title}<div class="matching-list">${pairs.map((pair,idx)=>`<label class="matching-row"><span>${esc(pair.left)}</span><select name="${name}__match__${idx}" ${req}><option value="">เลือกคำตอบ</option>${rights.map(r=>`<option value="${esc(r)}" ${answers[pair.left]===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label>`).join("")}</div></div>`}
+  if(type==="paragraph")return`<div class="q-card" data-qid="${q.id}">${title}<textarea name="${name}" class="input" style="min-height:130px" maxlength="${Number(q.max_length||3000)}" ${req}>${esc(typeof val==="string"?val:"")}</textarea><div class="answer-counter" data-counter-for="${q.id}"></div></div>`;
+  if(type==="codeEditor")return`<div class="q-card" data-qid="${q.id}">${title}<div class="code-editor-head"><span>${esc(q.language||"text")}</span><button type="button" class="btn sm ghost" data-expand-code="${q.id}">ขยายพื้นที่</button></div><textarea name="${name}" class="input code answer-code" spellcheck="false" style="min-height:220px" ${req}>${esc(typeof val==="string"?val:"")}</textarea></div>`;
+  if(type==="fileUpload")return`<div class="q-card" data-qid="${q.id}">${title}${val?.name?`<div class="file-chip">ไฟล์เดิม: ${esc(val.name)}</div>`:""}<input type="file" data-question-file="${q.id}" accept="${esc(q.accept||"")}" ${val?.path?"":req}><div class="muted smalltext">สูงสุด ${Number(q.max_mb||20)} MB • ไฟล์จะอัปโหลดเมื่อยืนยันส่งงาน</div></div>`;
+  if(type==="drawingArea")return`<div class="q-card" data-qid="${q.id}">${title}<div class="drawing-tools"><button type="button" class="btn sm" data-drawing-clear="${q.id}">ล้างภาพ</button></div><canvas class="drawing-canvas" data-drawing="${q.id}" width="900" height="420"></canvas><input type="hidden" name="${name}" value="${typeof val==="string"&&val.startsWith("data:image/")?esc(val):""}"></div>`;
+  return`<div class="q-card" data-qid="${q.id}">${title}<input name="${name}" class="input" maxlength="${Number(q.max_length||250)}" value="${esc(typeof val==="string"?val:"")}" ${req}><div class="answer-counter" data-counter-for="${q.id}"></div></div>`;
+}
+function initQuestionWidgets(form,questions){
+  $$("[data-clear-multi]",form).forEach(b=>b.onclick=()=>$$(`input[name="q_${CSS.escape(b.dataset.clearMulti)}"]`,form).forEach(x=>x.checked=false));
+  $$("[data-expand-code]",form).forEach(b=>b.onclick=()=>{const ta=form.querySelector(`textarea[name="q_${CSS.escape(b.dataset.expandCode)}"]`);if(ta){ta.classList.toggle("expanded-code");ta.focus()}});
+  const updateCounters=()=>{for(const q of questions||[]){const el=form.querySelector(`[data-counter-for="${CSS.escape(q.id)}"]`),input=form.querySelector(`[name="q_${CSS.escape(q.id)}"]`);if(el&&input){const n=String(input.value||"").length;el.textContent=`${n}${input.maxLength>0?` / ${input.maxLength}`:""} ตัวอักษร`}}};form.addEventListener("input",updateCounters);updateCounters();
+  $$("[data-drawing]",form).forEach(canvas=>{
+    const id=canvas.dataset.drawing,hidden=form.querySelector(`[name="q_${CSS.escape(id)}"]`),ctx=canvas.getContext("2d");
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.lineWidth=3;ctx.lineCap="round";ctx.strokeStyle="#111827";
+    if(hidden?.value){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=hidden.value}
+    let drawing=false;
+    const pos=e=>{const r=canvas.getBoundingClientRect(),pt=e.touches?.[0]||e;return {x:(pt.clientX-r.left)*canvas.width/r.width,y:(pt.clientY-r.top)*canvas.height/r.height}};
+    const start=e=>{e.preventDefault();drawing=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)};
+    const move=e=>{if(!drawing)return;e.preventDefault();const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke()};
+    const end=e=>{if(!drawing)return;drawing=false;if(hidden)hidden.value=canvas.toDataURL("image/png");form.dispatchEvent(new Event("input",{bubbles:true}))};
+    canvas.addEventListener("pointerdown",start);canvas.addEventListener("pointermove",move);window.addEventListener("pointerup",end);
+    canvas.addEventListener("touchstart",start,{passive:false});canvas.addEventListener("touchmove",move,{passive:false});canvas.addEventListener("touchend",end,{passive:false});
+  });
+  $$("[data-drawing-clear]",form).forEach(b=>b.onclick=()=>{const canvas=form.querySelector(`[data-drawing="${CSS.escape(b.dataset.drawingClear)}"]`),hidden=form.querySelector(`[name="q_${CSS.escape(b.dataset.drawingClear)}"]`);if(canvas){const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height)}if(hidden)hidden.value="";form.dispatchEvent(new Event("input",{bubbles:true}))});
+}
+function collectWorksheetAnswers(form,questions,previous={}){
+  const fd=new FormData(form),answers={};
+  for(const q of questions||[]){
+    const type=normalizeQuestionType(q.type),name="q_"+q.id;
+    if(type==="multipleChoice")answers[q.id]=fd.getAll(name);
+    else if(type==="matching"){const obj={};(q.pairs||[]).forEach((pair,idx)=>obj[pair.left]=fd.get(`${name}__match__${idx}`)||"");answers[q.id]=obj}
+    else if(type==="fileUpload")answers[q.id]=previous?.[q.id]||null;
+    else answers[q.id]=fd.get(name)??"";
+  }
+  return answers;
+}
+function validateRequiredAnswers(questions,answers){
+  const missing=[];
+  for(let i=0;i<(questions||[]).length;i++){
+    const q=questions[i];if(q.required===false)continue;
+    const type=normalizeQuestionType(q.type),v=answers[q.id];
+    let ok=true;
+    if(type==="multipleChoice")ok=Array.isArray(v)&&v.length>0;
+    else if(type==="matching")ok=v&&Object.values(v).length>0&&Object.values(v).every(Boolean);
+    else if(type==="fileUpload")ok=!!v;
+    else ok=String(v||"").trim()!=="";
+    if(!ok)missing.push(i+1);
+  }
+  return missing;
 }
 async function openWorksheet(id){
-  const [{data:w,error},{data:old}]=await Promise.all([
+  await syncServerClock();
+  const [wr,sr,orr]=await Promise.all([
     sb.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single(),
-    sb.from("submissions").select("*").eq("worksheet_id",id).eq("user_id",uid()).maybeSingle()
-  ]);if(error)return toast(friendlyError(error),"error");
-  const locked=old&&["submitted","confirmed","graded"].includes(old.status);
+    sb.from("submissions").select("*").eq("worksheet_id",id).eq("user_id",uid()).maybeSingle(),
+    sb.rpc("my_submission_override_v15",{p_worksheet_id:id})
+  ]);
+  if(wr.error)return toast(friendlyError(wr.error),"error");
+  const w=wr.data,old=sr.data;
+  const ov=Array.isArray(orr.data)?orr.data[0]:(orr.data||{});
+  if(w.mode==="paper"){printWorksheet(id);return}
+
   const files=await signedLinks("worksheet-files",w.attachment_paths||[]);
-  const now=Date.now(),openAt=w.open_at?new Date(w.open_at).getTime():null,dueAt=w.due_at?new Date(w.due_at).getTime():null;
-  const notOpen=openAt&&now<openAt;
-  modal(`<div class="modal-header"><div><h2>${esc(w.title)}</h2><div class="muted">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")} • ${esc(w.mode)} • กำหนด ${fmt(w.due_at)}</div></div><button class="btn sm" data-close>✕</button></div>
+  const now=serverMs(),openAt=w.open_at?new Date(w.open_at).getTime():null,dueAt=w.due_at?new Date(w.due_at).getTime():null;
+  const notOpen=!!(openAt&&now<openAt),pastDue=!!(dueAt&&now>dueAt);
+  const allowLate=!!(w.allow_late||ov?.allow_late),allowResubmit=!!(w.allow_resubmit||ov?.allow_resubmit);
+  const extra=Math.max(0,Number(ov?.extra_attempts||0)),attemptLimit=Math.max(1,Number(w.max_attempts||1))+extra;
+  const deadlineBlocked=pastDue&&!allowLate;
+  const finalStatus=old&&["submitted","confirmed","graded"].includes(old.status);
+  const attempts=Math.max(Number(old?.attempt_count||0),finalStatus?1:0);
+  const canResubmit=!!(finalStatus&&allowResubmit&&attempts<attemptLimit);
+  const locked=!!(finalStatus&&!canResubmit);
+  const manualOnly=w.copy_paste_allowed===false||w.settings?.manual_typing_only===true;
+  const focusRequired=w.settings?.fullscreen_required===true;
+  const previewRequired=w.settings?.preview_before_submit!==false;
+  const canWork=!notOpen&&!deadlineBlocked&&!locked;
+  const statusText=finalStatus?`${old.status}${canResubmit?` • ส่งซ้ำได้อีก ${Math.max(0,attemptLimit-attempts)} ครั้ง`:""}`:old?.status||"ยังไม่ส่ง";
+
+  modal(`<div class="modal-header worksheet-focus-head"><div><h2>${esc(w.title)}</h2><div class="muted">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")} • ใบงานอิเล็กทรอนิกส์ • กำหนด ${fmt(w.due_at)}</div></div><div class="row"><button class="btn sm" id="worksheet-focus-toggle">⛶ เต็มจอ</button><button class="btn sm" data-close>✕</button></div></div>
     ${notOpen?`<div class="alert warn">ยังไม่ถึงเวลาเปิดทำ: ${fmt(w.open_at)}</div>`:""}
-    ${locked?`<div class="alert success">สถานะ: ${esc(old.status)} ${old.submitted_at?`• ส่ง ${fmt(old.submitted_at)}`:""}</div>`:""}
+    ${deadlineBlocked?`<div class="alert error">พ้นกำหนดส่ง ${fmt(w.due_at)} และไม่มีสิทธิ์ส่งเพิ่ม</div>`:pastDue?`<div class="alert warn">เลยกำหนดส่งแล้ว แต่ระบบอนุญาตให้ส่งช้า${ov?.has_override?"จากสิทธิ์รายบุคคล":""}</div>`:""}
+    ${ov?.has_override?`<div class="alert success"><b>ได้รับสิทธิ์ส่งเพิ่ม</b>${ov.expires_at?` • ใช้ได้ถึง ${fmt(ov.expires_at)}`:""}${extra?` • เพิ่ม ${extra} ครั้ง`:""}</div>`:""}
+    ${finalStatus?`<div class="alert ${canResubmit?"warn":"success"}">สถานะล่าสุด: ${esc(statusText)} ${old.submitted_at?`• ส่ง ${fmt(old.submitted_at)}`:""}</div>`:""}
+    ${manualOnly?`<div class="alert"><b>⌨️ พิมพ์คำตอบด้วยตนเอง</b> • ปิด Copy / Paste / Cut / Drop เฉพาะพื้นที่คำตอบ เป็นมาตรการช่วยลดการคัดลอกและไม่สามารถป้องกันได้ 100%</div>`:""}
+    ${focusRequired?`<div class="alert"><b>Focus Mode</b> • สามารถเข้าสู่เต็มหน้าจอเพื่อโฟกัสกับงาน และออกจากเต็มหน้าจอได้ทุกเมื่อ</div>`:""}
     <p>${esc(w.instructions||"")}</p>
     ${files.length?`<div class="file-list"><b>ไฟล์ประกอบ</b>${files.map((f,i)=>`<div class="file-chip"><span>ไฟล์ ${i+1}</span><a class="btn sm" href="${f.url}" target="_blank" rel="noopener">เปิดไฟล์</a></div>`).join("")}</div>`:""}
-    <form id="ans">${(w.questions||[]).map((q,i)=>questionInput(q,i,old?.answers?.[q.id])).join("")}
-      ${w.mode==="digital"?`<div class="field"><label>แนบไฟล์คำตอบ (ไม่บังคับ, สูงสุด 20MB)</label><input id="attach" type="file" ${locked||notOpen?"disabled":""}></div>
-      <div class="autosave" id="autosave">${w.allow_draft&&!locked?"ระบบจะบันทึกร่างอัตโนมัติเมื่อพิมพ์":" "}</div>
-      <div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn" name="action" value="draft" ${locked||notOpen||!w.allow_draft?"disabled":""}>บันทึกร่าง</button><button class="btn green" name="action" value="submit" ${locked||notOpen?"disabled":""}>ส่งงาน</button></div>`:
-      `<div class="alert">ใบงานนี้เป็นแบบกระดาษ ให้ใช้เมนู “ยืนยันงานกระดาษ” และกรอกรหัสบนเอกสาร</div><div class="row end"><button type="button" class="btn" data-close>ปิด</button></div>`}
-    </form>`,{wide:true});
-  if(w.mode!=="digital"||locked||notOpen)return;
-  const form=$("#ans");
-  const collect=()=>{const f=new FormData(form),answers={};for(const q of w.questions||[])answers[q.id]=f.get("q_"+q.id)??"";return answers};
+    <div id="submissionpreview" hidden></div>
+    <form id="ans" novalidate>${(w.questions||[]).map((q,i)=>questionInput(q,i,old?.answers?.[q.id])).join("")}
+      <div class="field"><label>แนบไฟล์ประกอบเพิ่มเติม (ไม่บังคับ, สูงสุด 20MB)</label><input id="attach" type="file" ${canWork?"":"disabled"}></div>
+      <div class="autosave" id="autosave">${w.allow_draft&&canWork&&!canResubmit?"ระบบจะบันทึกร่างอัตโนมัติเมื่อมีการแก้คำตอบ":canResubmit?"โหมดส่งซ้ำ: คำตอบเดิมจะไม่ถูกแทนที่จนกดยืนยันส่งใหม่":" "}</div>
+      <div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn" name="action" value="draft" ${canWork&&w.allow_draft&&!canResubmit?"":"disabled"}>บันทึกร่าง</button><button class="btn green" name="action" value="submit" ${canWork?"":"disabled"}>${canResubmit?"ตรวจทานและส่งซ้ำ":"ตรวจทานก่อนส่ง"}</button></div>
+    </form>`,{wide:true,focus:focusRequired});
+
+  const focusToggle=$("#worksheet-focus-toggle");
+  if(focusToggle)focusToggle.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else throw new Error("UNSUPPORTED")}catch{toast("อุปกรณ์นี้ใช้โหมดเต็มจอของเบราว์เซอร์ไม่ได้ แต่ยังทำใบงานต่อได้")}};
+  if(!canWork)return;
+
+  const form=$("#ans");initQuestionWidgets(form,w.questions||[]);
+  const collect=()=>collectWorksheetAnswers(form,w.questions||[],old?.answers||{});
+  const answerTargets=()=>$$('input[name^="q_"],textarea[name^="q_"],select[name^="q_"]',form);
+  if(manualOnly){
+    const deny=e=>{e.preventDefault();toast("พื้นที่คำตอบนี้ไม่รองรับการวางข้อความ กรุณาพิมพ์คำตอบด้วยตนเอง","error")};
+    for(const el of answerTargets()){if(el.type==="file"||el.type==="checkbox"||el.type==="radio")continue;el.addEventListener("paste",deny);el.addEventListener("drop",deny);el.addEventListener("cut",deny);el.addEventListener("copy",deny)}
+  }
+
+  async function uploadQuestionFiles(answers,paths){
+    for(const q of w.questions||[]){
+      if(normalizeQuestionType(q.type)!=="fileUpload")continue;
+      const input=form.querySelector(`[data-question-file="${CSS.escape(q.id)}"]`),file=input?.files?.[0];
+      if(!file)continue;
+      const maxMb=Math.max(1,Number(q.max_mb||20));
+      if(file.size>maxMb*1024*1024)throw new Error(`ไฟล์ในข้อ “${q.text}” เกิน ${maxMb} MB`);
+      const path=`${uid()}/${id}/q-${q.id}-${Date.now()}-${safeName(file.name)}`;
+      const up=await sb.storage.from("submissions").upload(path,file,{upsert:false});if(up.error)throw up.error;
+      paths.push(path);answers[q.id]={path,name:file.name,size:file.size,type:file.type||null};
+    }
+    return {answers,paths};
+  }
+
   const autosave=async()=>{
-    if(!w.allow_draft)return;
-    const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:collect(),p_attachment_paths:old?.attachment_paths||[]});
-    const st=$("#autosave");if(st)st.textContent=r.error?"บันทึกร่างอัตโนมัติไม่สำเร็จ":"บันทึกร่างล่าสุด "+new Date().toLocaleTimeString("th-TH");
+    if(!w.allow_draft||canResubmit)return;
+    const answers=collect();
+    const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:old?.attachment_paths||[]});
+    const st=$("#autosave");
+    if(st)st.innerHTML=r.error?`<span class="bad">บันทึกร่างไม่สำเร็จ: ${esc(friendlyError(r.error))}</span>`:`บันทึกแล้ว ${new Date().toLocaleTimeString("th-TH")}`;
   };
-  form.oninput=()=>{if(!w.allow_draft)return;clearTimeout(S.autosaveTimer);S.autosaveTimer=setTimeout(autosave,1400)};
+  form.addEventListener("input",()=>{if(!w.allow_draft||canResubmit)return;const st=$("#autosave");if(st)st.textContent=navigator.onLine?"กำลังรอบันทึก...":"ไม่มีอินเทอร์เน็ต • รอเชื่อมต่อ";clearTimeout(S.autosaveTimer);S.autosaveTimer=setTimeout(autosave,1200)});
+  window.addEventListener("online",()=>{const st=$("#autosave");if(st)st.textContent="กลับมาออนไลน์แล้ว • กำลังบันทึก";autosave()},{once:true});
+
+  async function finalizeAfterPreview(answers,file){
+    let paths=[...(old?.attachment_paths||[])];
+    const btn=$("#confirm-final-submit");if(btn){btn.disabled=true;btn.textContent="กำลังอัปโหลดและส่งงาน..."}
+    try{
+      const qf=await uploadQuestionFiles({...answers},paths);answers=qf.answers;paths=qf.paths;
+      if(file){
+        if(file.size>20*1024*1024)throw new Error("ไฟล์แนบเพิ่มเติมเกิน 20MB");
+        const path=`${uid()}/${id}/${Date.now()}-${safeName(file.name)}`;
+        const up=await sb.storage.from("submissions").upload(path,file,{upsert:false});if(up.error)throw up.error;
+        paths.push(path);
+      }
+      const r=await sb.rpc("finalize_digital_submission",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:paths});
+      if(r.error)throw r.error;
+      toast(canResubmit?"ส่งงานซ้ำสำเร็จ":"ส่งงานสำเร็จ");closeModal();
+      if(window.DOCNR_V15?.navigate)window.DOCNR_V15.navigate("work");else if(window.DOCNR_V14?.navigate)window.DOCNR_V14.navigate("work");else myworks();
+    }catch(err){
+      if(btn){btn.disabled=false;btn.textContent="ยืนยันส่งงาน"}
+      toast(friendlyError(err),"error");
+    }
+  }
+
+  function missingRequiredWithSelectedFiles(answers){
+    const base=validateRequiredAnswers(w.questions||[],answers);
+    return base.filter(n=>{
+      const q=(w.questions||[])[n-1];
+      if(!q||normalizeQuestionType(q.type)!=="fileUpload")return true;
+      return !form.querySelector(`[data-question-file="${CSS.escape(q.id)}"]`)?.files?.length;
+    });
+  }
+
+  function showPreview(answers,file){
+    clearTimeout(S.autosaveTimer);
+    const allMissing=missingRequiredWithSelectedFiles(answers);
+    if(allMissing.length){toast(`กรุณาตอบคำถามบังคับให้ครบ: ข้อ ${allMissing.join(", ")}`,"error");return}
+    const box=$("#submissionpreview");
+    const rows=(w.questions||[]).map((q,i)=>`<article class="submission-preview-item"><b>${i+1}. ${esc(q.text||"")}</b><div>${esc(formatAnswerPreview(answers[q.id])).replace(/\n/g,"<br>")}</div></article>`).join("");
+    box.innerHTML=`<div class="submission-preview-card"><div class="modal-header"><div><h3>ตรวจทานคำตอบก่อนส่งจริง</h3><div class="muted">หลังยืนยัน ระบบจะใช้เวลา Server เป็นเวลาส่ง และอาจไม่สามารถแก้ไขได้ตามเงื่อนไขใบงาน</div></div></div>${rows}<div class="file-chip"><b>ไฟล์แนบเพิ่มเติม:</b> ${file?esc(file.name):"ไม่มี"}</div><div class="row end"><button type="button" class="btn" id="back-to-edit">← กลับไปแก้ไข</button><button type="button" class="btn green" id="confirm-final-submit">✓ ยืนยันส่งงาน</button></div></div>`;
+    form.hidden=true;box.hidden=false;box.scrollIntoView({block:"start"});
+    $("#back-to-edit").onclick=()=>{box.hidden=true;form.hidden=false;form.scrollIntoView({block:"start"})};
+    $("#confirm-final-submit").onclick=()=>finalizeAfterPreview(answers,file);
+  }
+
   form.onsubmit=async e=>{
     e.preventDefault();clearTimeout(S.autosaveTimer);
-    const action=e.submitter?.value||"draft",answers=collect();
-    let paths=[...(old?.attachment_paths||[])],file=$("#attach")?.files?.[0];
-    if(file){
-      if(file.size>20*1024*1024)return toast("ไฟล์เกิน 20MB","error");
-      const path=`${uid()}/${id}/${Date.now()}-${safeName(file.name)}`;
-      const up=await sb.storage.from("submissions").upload(path,file,{upsert:false});if(up.error)return toast(friendlyError(up.error),"error");paths.push(path);
+    const action=e.submitter?.value||"draft",answers=collect(),file=$("#attach")?.files?.[0]||null;
+    if(action==="draft"){
+      const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:old?.attachment_paths||[]});
+      if(r.error)return toast(friendlyError(r.error),"error");
+      toast("บันทึกร่างแล้ว");const st=$("#autosave");if(st)st.textContent="บันทึกแล้ว "+new Date().toLocaleTimeString("th-TH");return;
     }
-    const rpc=action==="submit"?"finalize_digital_submission":"save_worksheet_draft";
-    const r=await sb.rpc(rpc,{p_worksheet_id:id,p_answers:answers,p_attachment_paths:paths});
-    if(r.error)return toast(friendlyError(r.error),"error");
-    toast(action==="submit"?"ส่งงานสำเร็จ":"บันทึกร่างแล้ว");closeModal();myworks();
+    if(previewRequired)showPreview(answers,file);else{
+      const missing=missingRequiredWithSelectedFiles(answers);if(missing.length)return toast(`กรุณาตอบข้อ ${missing.join(", ")} ให้ครบ`,"error");
+      if(confirm("ยืนยันส่งงาน? หลังส่งแล้วอาจแก้ไขไม่ได้"))await finalizeAfterPreview(answers,file);
+    }
   };
 }
-
 async function scan(){
   $("#content").innerHTML=`<div class="section-head"><div><h1>ยืนยันงานกระดาษ</h1><div class="muted">สแกน QR/Barcode หรือกรอกรหัสด้วยตนเอง</div></div></div><div class="grid two"><div class="card"><h3>สแกนด้วยกล้อง</h3><video id="scanvideo" playsinline style="width:100%;border-radius:12px;background:#0f172a;min-height:180px"></video><div class="row" style="margin-top:10px"><button class="btn primary" id="startscan">เปิดกล้อง</button><button class="btn" id="stopscan">หยุดกล้อง</button></div><div id="cammsg" class="muted smalltext" style="margin-top:8px">หากเครื่องไม่รองรับ ให้ใช้ช่องกรอกรหัสด้านขวา</div></div><div class="card"><h3>กรอกรหัสด้วยตนเอง</h3><form id="scanform"><div class="field"><label>Token</label><input name="token" required></div><button class="btn green">ยืนยันส่งงาน</button></form><div id="scanmsg"></div></div></div>`;
   const confirmToken=async token=>{const {data,error}=await sb.rpc("confirm_paper_submission",{p_token:String(token).trim()});$("#scanmsg").innerHTML=error?`<div class="alert error">${esc(friendlyError(error))}</div>`:`<div class="alert success">ยืนยันสำเร็จ เวลา ${fmt(data?.confirmed_at||serverDate())}</div>`;return !error};
@@ -664,7 +876,7 @@ async function audit(){
 async function overrides(){
   const [{data:rows,error},{data:usersData},{data:wsData}]=await Promise.all([sb.from("submission_overrides").select("*,profiles:user_id(full_name,username,student_code),worksheets(title,due_at)").order("created_at",{ascending:false}),sb.from("profiles").select("id,full_name,username,student_code").eq("role","user").eq("active",true).order("full_name"),sb.from("worksheets").select("id,title,due_at,status").order("created_at",{ascending:false})]);if(error)throw error;
   $("#content").innerHTML=`<div class="section-head"><div><h1>สิทธิ์ส่งงานเพิ่ม</h1><div class="muted">อนุญาตรายบุคคลเมื่อเลยกำหนด • บันทึก Audit ทุกครั้ง</div></div><button class="btn primary" id="addoverride">+ อนุญาตส่งเพิ่ม</button></div><div class="table-wrap"><table><thead><tr><th>ผู้เรียน</th><th>ใบงาน</th><th>หมดอายุสิทธิ์</th><th>เหตุผล</th><th>สถานะ</th><th></th></tr></thead><tbody>${(rows||[]).map(x=>`<tr><td>${esc(x.profiles?.full_name||x.profiles?.username||"-")}</td><td>${esc(x.worksheets?.title||"-")}</td><td>${fmt(x.expires_at)}</td><td>${esc(x.reason)}</td><td><span class="badge ${x.active?"green":"gray"}">${x.active?"ใช้งาน":"ยกเลิก"}</span></td><td>${x.active?`<button class="btn sm red" data-revoke="${x.id}">ยกเลิกสิทธิ์</button>`:""}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">ยังไม่มีสิทธิ์พิเศษ</td></tr>`}</tbody></table></div>`;
-  $("#addoverride").onclick=()=>{modal(`<div class="modal-header"><div><h3>อนุญาตส่งงานเพิ่ม</h3></div><button class="btn sm" data-close>✕</button></div><form id="ovform"><div class="field"><label>ผู้เรียน</label><select name="user_id" required><option value="">เลือก</option>${(usersData||[]).map(u=>`<option value="${u.id}">${esc(u.full_name||u.username)} ${esc(u.student_code||"")}</option>`).join("")}</select></div><div class="field"><label>ใบงาน</label><select name="worksheet_id" required><option value="">เลือก</option>${(wsData||[]).map(w=>`<option value="${w.id}">${esc(w.title)}</option>`).join("")}</select></div><div class="field"><label>หมดอายุสิทธิ์</label><input name="expires_at" type="datetime-local" required></div><div class="field"><label>เหตุผล</label><textarea name="reason" required></textarea></div><div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn green">ยืนยัน</button></div></form>`);$("#ovform").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await adminOp({action:"create_override",user_id:f.get("user_id"),worksheet_id:f.get("worksheet_id"),expires_at:new Date(String(f.get("expires_at"))).toISOString(),reason:String(f.get("reason"))});closeModal();toast("อนุญาตสิทธิ์แล้ว");overrides()}catch(err){toast(friendlyError(err),"error")}}};
+  $("#addoverride").onclick=()=>{modal(`<div class="modal-header"><div><h3>อนุญาตส่งงานเพิ่ม</h3></div><button class="btn sm" data-close>✕</button></div><form id="ovform"><div class="field"><label>ผู้เรียน</label><select name="user_id" required><option value="">เลือก</option>${(usersData||[]).map(u=>`<option value="${u.id}">${esc(u.full_name||u.username)} ${esc(u.student_code||"")}</option>`).join("")}</select></div><div class="field"><label>ใบงาน</label><select name="worksheet_id" required><option value="">เลือก</option>${(wsData||[]).map(w=>`<option value="${w.id}">${esc(w.title)}</option>`).join("")}</select></div><div class="field"><label>หมดอายุสิทธิ์</label><input name="expires_at" type="datetime-local" required></div><div class="field"><label>จำนวนครั้งส่งเพิ่ม</label><input name="extra_attempts" type="number" min="0" max="20" value="1"></div><div class="checks"><label><input type="checkbox" name="allow_late" checked> อนุญาตส่งหลัง Due</label><label><input type="checkbox" name="allow_resubmit" checked> อนุญาตส่งซ้ำ</label></div><div class="field"><label>เหตุผล</label><textarea name="reason" required></textarea></div><div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn green">ยืนยัน</button></div></form>`);$("#ovform").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await adminOp({action:"create_override",user_id:f.get("user_id"),worksheet_id:f.get("worksheet_id"),expires_at:new Date(String(f.get("expires_at"))).toISOString(),reason:String(f.get("reason")),allow_late:f.get("allow_late")==="on",allow_resubmit:f.get("allow_resubmit")==="on",extra_attempts:Number(f.get("extra_attempts")||0)});closeModal();toast("อนุญาตสิทธิ์แล้ว");overrides()}catch(err){toast(friendlyError(err),"error")}}};
   $$('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!ask("ยกเลิกสิทธิ์นี้?"))return;try{await adminOp({action:"revoke_override",override_id:b.dataset.revoke});toast("ยกเลิกสิทธิ์แล้ว");overrides()}catch(err){toast(friendlyError(err),"error")}});
 }
 async function system(){
@@ -675,7 +887,7 @@ async function system(){
   $("#initdemo").onclick=async()=>{const testPassword=randomPassword();try{const r=await adminOp({action:"initialize_system",test_username:"User2000",test_user_password:testPassword,room_name:"ห้องทดสอบระบบ"});modal(`<div class="modal-header"><div><h3>ชุดทดสอบพร้อมแล้ว</h3></div><button class="btn sm" data-close>✕</button></div><div class="alert success">สร้าง/อัปเดตห้อง ผู้ใช้ และใบงานทดสอบสำเร็จ</div><div class="field"><label>Username ทดสอบ</label><input value="${esc(r.test_username)}" readonly></div><div class="field"><label>Password ทดสอบ</label><input value="${esc(testPassword)}" readonly></div><div class="field"><label>ใบงาน</label><input value="${esc(r.worksheet_title||"")}" readonly></div><div class="row end"><button class="btn" id="savecred">บันทึกข้อมูลทดสอบเป็น TXT</button><button class="btn primary" data-close>พร้อมทดสอบ</button></div>`);$("#savecred").onclick=()=>downloadText("DOC-FULL-NR-TEST-ACCOUNT.txt",`Username: ${r.test_username}\nPassword: ${testPassword}\nใช้สำหรับทดสอบระบบเท่านั้น\n`) }catch(err){toast(friendlyError(err),"error")}};
 }
 async function profile(){
-  $("#content").innerHTML=`<div class="card" style="max-width:780px"><h1>โปรไฟล์</h1><div class="alert"><b>ชื่อผู้ใช้:</b> ${esc(S.profile?.username||"-")} • <b>สิทธิ์:</b> ${esc(S.profile?.role||"user")} • ${S.profile?.active===false?"ปิดใช้งาน":"ใช้งาน"}</div><form id="pf"><div class="form-grid"><div class="field"><label>ชื่อแสดงผล</label><input name="full_name" value="${esc(S.profile?.full_name||"")}"></div><div class="field"><label>อีเมลติดต่อ</label><input name="contact_email" type="email" value="${esc(S.profile?.contact_email||"")}"></div><div class="field"><label>รหัสนักศึกษา</label><input value="${esc(S.profile?.student_code||"")}" disabled></div><div class="field"><label>ห้องเรียน</label><input value="${esc(S.profile?.class_name||"")}" disabled></div></div><button class="btn primary">บันทึกโปรไฟล์</button></form><div class="divider"></div><h3>เปลี่ยนรหัสผ่าน</h3><form id="changepass"><div class="field"><label>รหัสผ่านใหม่ อย่างน้อย 8 ตัว</label><input name="password" type="password" minlength="8" required></div><button class="btn warn">เปลี่ยนรหัสผ่าน</button></form></div>`;
+  $("#content").innerHTML=`<div class="card" style="max-width:780px"><h1>โปรไฟล์</h1><div class="alert"><b>ชื่อผู้ใช้:</b> ${esc(S.profile?.username||"-")} • <b>สิทธิ์:</b> ${esc(S.profile?.role||"user")} • ${S.profile?.approval_status==="approved"&&S.profile?.active!==false?"อนุมัติแล้ว":esc(S.profile?.approval_status||"ปิดใช้งาน")}</div><form id="pf"><div class="form-grid"><div class="field"><label>ชื่อแสดงผล</label><input name="full_name" value="${esc(S.profile?.full_name||"")}"></div><div class="field"><label>อีเมลติดต่อ</label><input name="contact_email" type="email" value="${esc(S.profile?.contact_email||"")}"></div><div class="field"><label>รหัสนักศึกษา</label><input value="${esc(S.profile?.student_code||"")}" disabled></div><div class="field"><label>ห้องเรียน</label><input value="${esc(S.profile?.class_name||"")}" disabled></div></div><button class="btn primary">บันทึกโปรไฟล์</button></form><div class="divider"></div><h3>เปลี่ยนรหัสผ่าน</h3><form id="changepass"><div class="field"><label>รหัสผ่านใหม่ อย่างน้อย 8 ตัว</label><input name="password" type="password" minlength="8" required></div><button class="btn warn">เปลี่ยนรหัสผ่าน</button></form></div>`;
   $("#pf").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const {error}=await sb.from("profiles").update({full_name:String(f.get("full_name")),display_name:String(f.get("full_name")),contact_email:String(f.get("contact_email")||"")||null}).eq("id",uid());if(error)return toast(friendlyError(error),"error");await loadProfile();toast("บันทึกโปรไฟล์แล้ว")};
   $("#changepass").onsubmit=async e=>{e.preventDefault();const p=String(new FormData(e.target).get("password"));try{if(isAdmin())await adminOp({action:"reset_password",user_id:uid(),password:p});else{const {error}=await sb.auth.updateUser({password:p});if(error)throw error}toast("เปลี่ยนรหัสผ่านแล้ว") }catch(err){toast(friendlyError(err),"error")}};
 }
@@ -687,6 +899,7 @@ async function printWorksheet(id){
   const docRef=w.reference_code||`FMAC01-${subjectCode.replace(/[^0-9A-Za-z]/g,"")}`;
   const dueText=w.due_at?new Date(w.due_at).toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}):"____________";
   const maxScore=(w.questions||[]).reduce((n,q)=>n+Number(q.points||0),0)||10;
+  const showScore=isAdmin();
   const link=`${location.origin}${location.pathname}?worksheet=${encodeURIComponent(w.id)}`;
   modal(`<div class="no-print row end formal-actions"><button class="btn primary" id="printnow">พิมพ์ / Save PDF</button><button class="btn" data-close>ปิด</button></div>
     <div class="formal-sheet" style="--subject-color:${color}">
@@ -707,7 +920,7 @@ async function printWorksheet(id){
 
       <div class="formal-subject-band">
         <div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(w.subjects?.name||"")}</div><div class="smalltext">${esc(w.title||"")}</div></div>
-        <div class="formal-score"><b>ผลการประเมิน</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>
+        ${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}
       </div>
 
       <div class="formal-student-grid">
@@ -745,5 +958,13 @@ async function paperTokensDialog(wid){
     <div class="table-wrap"><table><thead><tr><th>ชื่อ</th><th>รหัส</th><th>ห้อง</th><th>Token</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.full_name||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td><td><code>${esc(x.token)}</code></td></tr>`).join("")}</tbody></table></div>`,{wide:true});
   $("#tokencsv").onclick=()=>downloadCSV([["ชื่อ","รหัสนักศึกษา","ห้อง","Token"],...rows.map(x=>[x.full_name,x.student_code,x.class_name,x.token])],`paper-tokens-${wid}.csv`);
 }
+
+// Stable extension bridge for DOC-FULL-NR V14. Only deliberately exposed UI actions
+// are placed on window; Supabase secrets and internal state remain module-scoped.
+window.DOCNR_BASE = Object.freeze({
+  openWorksheet,
+  printWorksheet,
+  paperTokensDialog
+});
 
 init();

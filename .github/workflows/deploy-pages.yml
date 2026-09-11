@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  validate-and-deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -23,6 +23,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate release
+        run: |
+          python tests/static_validation.py
+          node --check site/app.js
+          node --check site/camera-registration.js
+          node --check site/mobile.js
+          node --check site/v15-platform.js
+          node --check site/v15-exam.js
+          node --check site/sw.js
+      - name: Decode PWA app icons
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d site/icons/icon-48.png.b64 > site/icons/icon-48.png
+          base64 -d site/icons/icon-180.png.b64 > site/icons/icon-180.png
+          base64 -d site/icons/icon-192.png.b64 > site/icons/icon-192.png
+          base64 -d site/icons/icon-512.png.b64 > site/icons/icon-512.png
+          base64 -d site/icons/icon-maskable-512.png.b64 > site/icons/icon-maskable-512.png
+          file site/icons/*.png
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload production PWA

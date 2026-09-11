@@ -1,4 +1,4 @@
-/* DOC-FULL-NR V10 - Camera-only registration profile photo
+/* DOC-FULL-NR V14 - Camera-only registration + phone capture
    Loaded BEFORE app.js. No file/gallery picker is created anywhere. */
 (() => {
   "use strict";
@@ -150,6 +150,12 @@
       <div class="camera-privacy">รูปจะเก็บใน Private Storage และใช้เป็นรูปโปรไฟล์ของบัญชีนี้</div>`;
 
     const grid = form.querySelector(".registration-grid");
+    if (grid && !form.querySelector('[name="phone"]')) {
+      const phoneField = document.createElement("div");
+      phoneField.className = "field";
+      phoneField.innerHTML = `<label>เบอร์โทรศัพท์ <span class="camera-required">*จำเป็น</span></label><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="เช่น 0812345678" pattern="(?:0[0-9]{9}|\+66[0-9]{9})" required><div class="field-help">ใช้สำหรับยืนยันตัวตนด้วย OTP เมื่อผู้ดูแลเปิดใช้งาน SMS OTP</div>`;
+      grid.appendChild(phoneField);
+    }
     if (grid?.parentNode) grid.insertAdjacentElement("afterend", cameraBlock);
     else form.prepend(cameraBlock);
 
@@ -194,6 +200,8 @@
       payload.profile_photo_jpeg = state.photoDataUrl;
       payload.profile_photo_source = "camera_live";
       payload.profile_photo_captured_at = new Date().toISOString();
+      const phoneInput = state.activeForm?.querySelector('[name="phone"]');
+      if (phoneInput) payload.phone = String(phoneInput.value || "").trim();
 
       const url = originalUrl.replace(REGISTER_PATH, CAMERA_REGISTER_PATH);
       if (input instanceof Request) {
@@ -230,16 +238,21 @@
     @media(max-width:640px){.camera-registration-card{padding:12px;margin:12px 0}.camera-title-row{display:block}.camera-live-badge{display:inline-block;margin-top:8px}.camera-stage{width:min(100%,300px)}}`;
   document.head.appendChild(style);
 
+  let observerTimer = null;
   const observer = new MutationObserver(() => {
-    const form = document.querySelector("#signup");
-    if (form) decorateSignup(form);
-    if (state.activeForm && !document.documentElement.contains(state.activeForm)) {
-      stopCamera();
-      clearPhoto();
-      state.activeForm = null;
-    }
+    if (observerTimer) return;
+    observerTimer = setTimeout(() => {
+      observerTimer = null;
+      const form = document.querySelector("#signup");
+      if (form) decorateSignup(form);
+      if (state.activeForm && !document.documentElement.contains(state.activeForm)) {
+        stopCamera();
+        clearPhoto();
+        state.activeForm = null;
+      }
+    }, 60);
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
   decorateSignup(document.querySelector("#signup"));
 
   window.addEventListener("pagehide", stopCamera);

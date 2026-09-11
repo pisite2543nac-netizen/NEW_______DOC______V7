@@ -1,9 +1,22 @@
 {
-  "release": "V7 FINAL ZERO-BUILD",
-  "date": "2026-09-09",
+  "release": "V15 FINAL PRODUCTION",
+  "date": "2026-09-11",
+  "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
   "pages": "https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/",
+  "mobile_link": "https://pisite2543nac-netizen.github.io/smartworksheet/",
   "supabase_project": "DOC-FULL-NR-UNIVERSAL",
   "supabase_ref": "thjscmfqunlaqxlievna",
-  "deployment": "static PWA /site via GitHub Actions (no npm build)"
+  "deployment": "Static PWA /site via GitHub Pages",
+  "frontend_owner": "app.js + v15-platform.js + v15-exam.js",
+  "base_roles": [
+    "admin",
+    "user"
+  ],
+  "ready_templates": 198,
+  "paper_templates": 55,
+  "digital_templates": 143,
+  "release_marker": "V15-FINAL-PRODUCTION-ALIGNED",
+  "spec_adaptation": "selective",
+  "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม"
 }

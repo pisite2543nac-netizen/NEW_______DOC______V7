@@ -1,26 +1,68 @@
 {
-  "name": "DOC-FULL-NR Smart Worksheet",
-  "short_name": "DOC-FULL-NR",
-  "description": "ระบบใบงานอัจฉริยะ วิทยาลัยเทคนิคนางรอง",
+  "id": "./",
+  "name": "Nangrong Smart Worksheet System",
+  "short_name": "Nangrong SW",
+  "description": "ระบบจัดการใบงานอัจฉริยะ รายวิชา ใบงาน เช็คชื่อ และสอบออนไลน์ วิทยาลัยเทคนิคนางรอง",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
-  "background_color": "#06111F",
-  "theme_color": "#06111F",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2563EB",
   "lang": "th",
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "เปิดระบบการเรียน",
+      "short_name": "การเรียน",
+      "url": "./",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Exam Center",
+      "short_name": "สอบ",
+      "url": "./exam.html",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
