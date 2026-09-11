@@ -1,5 +1,5 @@
 {
-  "release": "V15 FINAL PRODUCTION",
+  "release": "V15.1 SUBJECT ROOMS",
   "date": "2026-09-11",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -16,7 +16,9 @@
   "ready_templates": 198,
   "paper_templates": 55,
   "digital_templates": 143,
-  "release_marker": "V15-FINAL-PRODUCTION-ALIGNED",
+  "release_marker": "V15.1-SUBJECT-ROOMS-INTEGRATED",
   "spec_adaptation": "selective",
-  "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม"
+  "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
+  "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
+  "exam_room_integration": "exam button inside each subject room with subject-filtered Exam Center; ready for later old exam model adaptation"
 }

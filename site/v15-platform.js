@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V15-FINAL-PRODUCTION-ALIGNED";
+const V15_VERSION="V15.1-SUBJECT-ROOMS-INTEGRATED";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -124,11 +124,11 @@ async function ensureNav(){
   let wanted;
   if(p.role==="admin"){
     wanted=[
-      ["accounts","🧑‍🎓 คำขอบัญชี"],["courses","🎓 รายวิชา / ปล่อยงาน"],["enrollments","✅ อนุมัติรายวิชา"],["profiles","🪪 โปรไฟล์นักศึกษา"],
+      ["accounts","🧑‍🎓 คำขอบัญชี"],["courses","🏫 ห้องเรียนรายวิชา"],["enrollments","✅ อนุมัติรายวิชา"],["profiles","🪪 โปรไฟล์นักศึกษา"],
       ["attendance","📷 เช็คชื่อ / หัวหน้าห้อง"],["presence","📡 สถานะออนไลน์"],["promotion","📈 เลื่อนชั้น / ปีการศึกษา"],["exam","🧪 ระบบสอบ"]
     ];
   }else{
-    wanted=[["enroll","🎓 ลงทะเบียนรายวิชา"],["courses","📚 วิชาของฉัน"],["work","📋 ตารางสถานะงาน"],["history","🗓️ ประวัติการศึกษา"],["attendance","📷 QR / การเข้าเรียน"],["exam","🧪 ระบบสอบ"]];
+    wanted=[["enroll","🎓 ลงทะเบียนรายวิชา"],["courses","🏫 ห้องเรียนของฉัน"],["work","📋 ตารางสถานะงาน"],["history","🗓️ ประวัติการศึกษา"],["attendance","📷 QR / การเข้าเรียน"],["exam","🧪 ระบบสอบ"]];
     try{const {data}=await client().rpc("my_leader_classrooms");if((data||[]).length)wanted.splice(4,0,["presence","📡 สถานะห้องเรียน"])}catch{}
   }
   if(!nav.querySelector("[data-v14-divider]")){
@@ -343,29 +343,51 @@ async function renderEnrollmentAdmin(){
 // Admin subject-first bundle / release
 // ---------------------------------------------------------------------------
 async function renderAdminCourses(){
-  setTitle("รายวิชา / ปล่อยงาน");busy("กำลังโหลดรายวิชาและใบงานสำเร็จรูป...");const c=client();const [sr,wr,er]=await Promise.all([
+  setTitle("ห้องเรียนรายวิชา");busy("กำลังโหลดห้องเรียนรายวิชาและใบงานสำเร็จรูป...");const c=client();const [sr,wr,er,xr]=await Promise.all([
     c.from("subjects").select("id,code,name,color_hex,semester,academic_year,description").eq("active",true).eq("subject_type","subject").order("code"),
     c.from("worksheets").select("id,subject_id,mode,status,settings,open_at,due_at").order("created_at"),
-    c.from("subject_enrollments").select("subject_id,status")
+    c.from("subject_enrollments").select("subject_id,status"),
+    c.from("exams").select("id,subject_id,status")
   ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(er.error)throw er.error;const ready=(wr.data||[]).filter(w=>w.settings?.template_ready===true);
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">SUBJECT-FIRST CONTENT</span><h1>รายวิชา / ใบงาน / สไลด์</h1><p>เลือกวิชาก่อน ทุกใบงานและสื่อจะอยู่ในวิชาเดียวกัน</p></div><div class="v14-stat-pill">ใบงานสำเร็จรูป <b>${ready.length}</b></div></div><div class="card v14-filter"><input id="v14-course-q" class="input" placeholder="ค้นหารหัสวิชา / ชื่อวิชา"></div><div id="v14-admin-course-grid" class="v14-course-grid">${(sr.data||[]).map(s=>{const ws=ready.filter(w=>w.subject_id===s.id),paper=ws.filter(w=>w.mode==="paper").length,digital=ws.filter(w=>w.mode==="digital").length,learners=(er.data||[]).filter(e=>e.subject_id===s.id&&e.status==="approved").length;return `<button class="v14-course-card" data-v14-admin-course="${s.id}" data-search="${esc(`${s.code} ${s.name}`.toLowerCase())}" style="--course:${esc(s.color_hex||"#22d3ee")}"><span class="code">${esc(s.code)}</span><b>${esc(s.name)}</b><div class="v14-course-counts"><span>🖨️ ${paper}/5</span><span>💻 ${digital}/13</span><span>👥 ${learners}</span></div><small>เปิดเพื่อจัดใบงาน สไลด์ และปล่อยงาน</small></button>`}).join("")}</div></section>`;
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">SUBJECT = CLASSROOM</span><h1>ห้องเรียนรายวิชา</h1><p>แต่ละรายวิชาเป็นห้องเรียนหนึ่งห้อง ใช้ชื่อ/รหัสชุดเดียวกัน นักศึกษาที่อนุมัติคือสมาชิกห้อง และใบงานสำเร็จรูปของวิชานั้นจะแสดงอยู่ภายในห้องโดยตรง</p></div><div class="v14-stat-pill">ใบงานสำเร็จรูป <b>${ready.length}</b></div></div>
+  <div class="card v15-room-note"><b>โครงสร้างห้องเรียนรายวิชา</b><span>รายวิชา → สมาชิกนักศึกษา → ใบงานสำเร็จรูป → สไลด์/สื่อ → ปล่อยงาน → ระบบสอบ</span></div>
+  <div class="card v14-filter"><input id="v14-course-q" class="input" placeholder="ค้นหารหัสวิชา / ชื่อห้องเรียน"></div>
+  <div id="v14-admin-course-grid" class="v14-course-grid">${(sr.data||[]).map(s=>{const ws=ready.filter(w=>w.subject_id===s.id),paper=ws.filter(w=>w.mode==="paper").length,digital=ws.filter(w=>w.mode==="digital").length,learners=(er.data||[]).filter(e=>e.subject_id===s.id&&e.status==="approved").length,published=(wr.data||[]).filter(w=>w.subject_id===s.id&&w.status==="published").length,examCount=(xr.data||[]).filter(x=>x.subject_id===s.id).length;return `<button class="v14-course-card v15-room-card" data-v14-admin-course="${s.id}" data-search="${esc(`${s.code} ${s.name}`.toLowerCase())}" style="--course:${esc(s.color_hex||"#22d3ee")}"><span class="v15-room-label">🏫 ห้องเรียน</span><span class="code">${esc(s.code)}</span><b>${esc(s.name)}</b><div class="v14-course-counts"><span>👥 ${learners} คน</span><span>📚 ${paper+digital} ใบ</span><span>🚀 ${published} ปล่อยแล้ว</span><span>🧪 ${examCount} ชุดสอบ</span></div><small>เปิดห้อง → รายชื่อนักศึกษา • ใบงาน • สื่อ • ระบบสอบ</small></button>`}).join("")}</div></section>`;
   $("#v14-course-q").oninput=e=>{const q=e.target.value.trim().toLowerCase();$$('[data-v14-admin-course]').forEach(x=>x.hidden=q&&!x.dataset.search.includes(q))};
 }
 function wsSeq(w){const m=String(w.reference_code||"").match(/-([PD]\d{2})$/);return m?Number(m[1].slice(1)):Number(w.settings?.lesson_sequence||0)||0}
 function wsCode(w){const m=String(w.reference_code||"").match(/-([PD]\d{2})$/);return m?m[1]:(w.mode==="paper"?"P":"D")}
+function subjectRoomName(s){return `${s?.code||""} ${s?.name||""}`.trim()}
+function openSubjectExam(subjectId){window.open(`./exam.html?subject=${encodeURIComponent(subjectId||"")}&from=room`,"_blank","noopener")}
 async function renderAdminSubject(sid){
-  state.subjectId=sid;state.route="courses";heartbeat();setTitle("จัดการรายวิชา");busy("กำลังโหลดชุดการเรียน...");const c=client();
-  const [sr,wr,fr,er]=await Promise.all([
+  state.subjectId=sid;state.route="courses";heartbeat();setTitle("ห้องเรียนรายวิชา");busy("กำลังเปิดห้องเรียนและชุดใบงาน...");const c=client();
+  const [sr,wr,fr,er,xr]=await Promise.all([
     c.from("subjects").select("id,code,name,color_hex,description,semester,academic_year").eq("id",sid).single(),
     c.from("worksheets").select("*").eq("subject_id",sid).order("created_at"),
     c.from("subject_files").select("id,subject_id,worksheet_id,resource_kind,sequence_no,original_name,storage_path,mime_type,size_bytes,created_at").eq("subject_id",sid).order("created_at"),
-    c.from("subject_enrollments").select("id,status,user_id,profiles(full_name,student_code,grade_level,room_label)").eq("subject_id",sid)
+    c.from("subject_enrollments").select("id,status,user_id,requested_at,profiles(full_name,student_code,grade_level,room_label,class_name)").eq("subject_id",sid),
+    c.from("exams").select("id,title,status,open_at,due_at").eq("subject_id",sid).order("created_at",{ascending:false})
   ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error)throw fr.error;if(er.error)throw er.error;
-  const s=sr.data,ready=(wr.data||[]).filter(w=>w.settings?.template_ready===true),files=fr.data||[],approved=(er.data||[]).filter(e=>e.status==="approved");
-  const renderGroup=(mode,label)=>{const list=ready.filter(w=>w.mode===mode).sort((a,b)=>wsSeq(a)-wsSeq(b));return `<section class="v14-ws-section"><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} ใบ • แยกจาก${mode==="paper"?"ใบงานอิเล็กทรอนิกส์":"ใบงานกระดาษ"}</p></div><button class="btn sm" data-v14-select-mode="${mode}">เลือกทั้งหมด</button></div><div class="v14-bundle-list">${list.map(w=>{const fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-bundle" style="--course:${esc(s.color_hex||"#22d3ee")}"><label class="v14-select"><input type="checkbox" data-v14-wselect value="${w.id}"><span>${esc(wsCode(w))}</span></label><div class="v14-bundle-main"><div class="v14-badges"><span>${mode==="paper"?"ใบงานกระดาษ":"ใบงานดิจิทัล"}</span><span class="${w.status}">${w.status==="published"?"เผยแพร่แล้ว":"ฉบับร่าง"}</span></div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">${w.open_at?`เปิด ${fmt(w.open_at)}`:"ยังไม่กำหนดเวลา"}${w.due_at?` • ส่ง ${fmt(w.due_at)}`:""}</div><div class="v14-actions"><button class="btn sm" data-v14-preview="${w.id}">👁 ดูตัวอย่างใบงาน</button><button class="btn sm" data-v14-upload="${w.id}" data-subject="${sid}" data-seq="${wsSeq(w)}">＋ เพิ่มสไลด์/สื่อ</button></div></div><div class="v14-media-pane"><b>📊 สไลด์ / สื่อประกอบ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<div class="v14-media-empty">ยังไม่มีสื่อที่จับคู่</div>`}</div></article>`}).join("")}</div></section>`};
-  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับรายวิชา</button><div class="v14-course-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><b>${approved.length}</b><span>ผู้เรียนอนุมัติแล้ว</span></div></div>
-  <div class="card v14-releasebar"><div><b>ปล่อยใบงานให้ผู้เรียนทั้งรายวิชา</b><div class="muted">ติ๊กได้กี่ใบก็ได้ ทั้งหมดจะส่งให้ผู้เรียนที่อนุมัติแล้ว ${approved.length} คนพร้อมกัน</div></div><button class="btn primary" id="v14-bulk-release">🚀 ปล่อยใบงานที่เลือก</button></div>
-  ${renderGroup("paper","🖨️ ใบงานสำหรับพิมพ์ P01–P05")}${renderGroup("digital","💻 ใบงานอิเล็กทรอนิกส์ D01–D13")}</section>`;
+  const s=sr.data,allWorks=wr.data||[],ready=allWorks.filter(w=>w.settings?.template_ready===true),files=fr.data||[],approved=(er.data||[]).filter(e=>e.status==="approved"),pending=(er.data||[]).filter(e=>e.status==="pending"),exams=xr.data||[];
+  const renderGroup=(mode,label)=>{const list=ready.filter(w=>w.mode===mode).sort((a,b)=>wsSeq(a)-wsSeq(b));return `<section class="v14-ws-section"><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} ใบ • ใบงานสำเร็จรูปของห้องนี้ ใช้เลือกและกำหนดปล่อยงานได้ทันที</p></div><button class="btn sm" data-v14-select-mode="${mode}">เลือกทั้งหมด</button></div><div class="v14-bundle-list">${list.map(w=>{const fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-bundle" style="--course:${esc(s.color_hex||"#22d3ee")}"><label class="v14-select"><input type="checkbox" data-v14-wselect value="${w.id}"><span>${esc(wsCode(w))}</span></label><div class="v14-bundle-main"><div class="v14-badges"><span>${mode==="paper"?"ใบงานกระดาษ":"ใบงานดิจิทัล"}</span><span class="${w.status}">${w.status==="published"?"เผยแพร่แล้ว":"พร้อมกำหนดใช้"}</span></div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">${w.open_at?`เปิด ${fmt(w.open_at)}`:"ยังไม่กำหนดเวลา"}${w.due_at?` • ส่ง ${fmt(w.due_at)}`:""}</div><div class="v14-actions"><button class="btn sm" data-v14-preview="${w.id}">👁 ดูตัวอย่างใบงาน</button><button class="btn sm" data-v14-upload="${w.id}" data-subject="${sid}" data-seq="${wsSeq(w)}">＋ เพิ่มสไลด์/สื่อ</button></div></div><div class="v14-media-pane"><b>📊 สไลด์ / สื่อประกอบ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<div class="v14-media-empty">ยังไม่มีสื่อที่จับคู่</div>`}</div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานสำเร็จรูปประเภทนี้</div>`}</div></section>`};
+  const roster=approved.sort((a,b)=>String(a.profiles?.student_code||"").localeCompare(String(b.profiles?.student_code||""))).map((e,i)=>`<tr><td>${i+1}</td><td><b>${esc(e.profiles?.student_code||"-")}</b></td><td>${esc(e.profiles?.full_name||"-")}</td><td>${esc(`${e.profiles?.grade_level||""}${e.profiles?.room_label||""}`||e.profiles?.class_name||"-")}</td><td><span class="v14-status approved">สมาชิกห้อง</span></td></tr>`).join("");
+  const published=allWorks.filter(w=>w.status==="published").length;
+  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนรายวิชา</button>
+  <div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p><small>ชื่อห้องเรียนใช้ข้อมูลเดียวกับรายวิชา จึงไม่เกิดชื่อซ้ำหรือชื่อไม่ตรงกัน</small></div><div class="v15-room-hero-stats"><b>${approved.length}</b><span>นักศึกษาในห้อง</span><small>${pending.length} คำขอรออนุมัติ</small></div></div>
+  <div class="v15-room-toolbar">
+    <button class="btn" data-v15-jump="#v15-room-roster">👥 นักศึกษา ${approved.length}</button>
+    <button class="btn" data-v15-jump="#v15-room-ready">📚 ใบงานสำเร็จรูป ${ready.length}</button>
+    <button class="btn" data-v15-jump="#v15-room-ready">🚀 ปล่อยแล้ว ${published}</button>
+    <button class="btn primary" data-v15-room-exam="${sid}">🧪 ระบบสอบ ${exams.length}</button>
+  </div>
+  <section id="v15-room-roster" class="card v15-room-roster"><div class="v14-section-head compact"><div><h2>👥 นักศึกษาในห้องเรียน</h2><p>สมาชิกห้อง = นักศึกษาที่ Admin อนุมัติให้เรียนรายวิชานี้</p></div><button class="btn sm" data-v14-route="enrollments">จัดการคำขอลงทะเบียน</button></div>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ระดับ/ห้อง</th><th>สถานะ</th></tr></thead><tbody>${roster||`<tr><td colspan="5" class="empty">ยังไม่มีนักศึกษาที่ได้รับอนุมัติเข้าห้องนี้</td></tr>`}</tbody></table></div>
+  </section>
+  <div class="card v14-releasebar" id="v15-room-ready"><div><b>📚 ใบงานสำเร็จรูปประจำห้องเรียน</b><div class="muted">เลือกใบงานจากห้องนี้ได้หลายใบ แล้วกำหนดวัน/เวลาเพื่อแจกให้นักศึกษาสมาชิกห้อง ${approved.length} คนพร้อมกัน</div></div><button class="btn primary" id="v14-bulk-release">🚀 ปล่อยใบงานที่เลือก</button></div>
+  ${renderGroup("paper","🖨️ ใบงานสำหรับพิมพ์ P01–P05")}
+  ${renderGroup("digital","💻 ใบงานอิเล็กทรอนิกส์ D01–D13")}
+  <section class="card v15-room-exam-card"><div><span class="v14-kicker">ROOM EXAM</span><h2>🧪 ระบบสอบของห้องเรียนนี้</h2><p>เปิด Exam Center โดยผูกกับรายวิชา ${esc(subjectRoomName(s))} โดยตรง เพื่อให้จัดข้อสอบและปล่อยสอบเป็นวงจรเดียวกับห้องเรียน</p></div><button class="btn primary" data-v15-room-exam="${sid}">เปิดระบบสอบของห้องนี้</button></section>
+  </section>`;
 }
 async function previewWorksheet(id){
   const c=client(),{data:w,error}=await c.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single();if(error){toast(errorText(error),true);return}
@@ -390,11 +412,11 @@ async function openSubjectFile(path){const {data,error}=await client().storage.f
 // Student courses / work status
 // ---------------------------------------------------------------------------
 async function renderStudentCourses(){
-  setTitle("วิชาของฉัน");busy("กำลังโหลดรายวิชาที่อนุมัติ...");const courses=await approvedCourses();
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">MY COURSES</span><h1>รายวิชาของฉัน</h1><p>เข้าแต่ละวิชาเพื่อดูสไลด์และใบงานที่ปล่อยแล้ว</p></div><button class="btn primary" data-v14-route="enroll">＋ ลงทะเบียนรายวิชา</button></div><div class="v14-course-grid">${courses.map(s=>`<button class="v14-course-card" data-v14-open-course="${s.id}" style="--course:${esc(s.color_hex||"#22d3ee")}"><span class="code">${esc(s.code)}</span><b>${esc(s.name)}</b><small>สถานะ: อนุมัติให้เรียนแล้ว</small></button>`).join("")||`<div class="v14-empty">ยังไม่มีรายวิชาที่ได้รับอนุมัติ</div>`}</div></section>`;
+  setTitle("ห้องเรียนของฉัน");busy("กำลังโหลดห้องเรียนรายวิชาที่อนุมัติ...");const courses=await approvedCourses();
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">MY SUBJECT ROOMS</span><h1>ห้องเรียนของฉัน</h1><p>แต่ละรายวิชาเป็นห้องเรียนของคุณ ภายในมีใบงาน สไลด์ สื่อ และทางเข้าสู่ระบบสอบของวิชานั้น</p></div><button class="btn primary" data-v14-route="enroll">＋ ลงทะเบียนรายวิชา</button></div><div class="v14-course-grid">${courses.map(s=>`<button class="v14-course-card" data-v14-open-course="${s.id}" style="--course:${esc(s.color_hex||"#22d3ee")}"><span class="code">${esc(s.code)}</span><b>${esc(s.name)}</b><small>สมาชิกห้องเรียน • เปิดดูใบงาน/สื่อ/ข้อสอบ</small></button>`).join("")||`<div class="v14-empty">ยังไม่มีรายวิชาที่ได้รับอนุมัติ</div>`}</div></section>`;
 }
 async function renderStudentCourse(sid){
-  state.subjectId=sid;state.route="courses";heartbeat();setTitle("รายวิชาของฉัน");busy("กำลังโหลดบทเรียน...");const c=client();
+  state.subjectId=sid;state.route="courses";heartbeat();setTitle("ห้องเรียนของฉัน");busy("กำลังเปิดห้องเรียนรายวิชา...");const c=client();
   const [sr,wr,fr,subr]=await Promise.all([
     c.from("subjects").select("id,code,name,color_hex,description").eq("id",sid).single(),
     c.from("worksheets").select("id,subject_id,title,reference_code,mode,status,open_at,due_at,settings,subjects(id,code,name,color_hex)").eq("subject_id",sid).eq("status","published").order("open_at"),
@@ -403,7 +425,7 @@ async function renderStudentCourse(sid){
   ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error&&!String(fr.error.message).includes("permission"))throw fr.error;
   const s=sr.data,sm=new Map((subr.data||[]).map(x=>[x.worksheet_id,x])),works=wr.data||[],files=fr.data||[];
   const group=(mode,label)=>{const list=works.filter(w=>w.mode===mode);return `<section><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} งานที่ปล่อยแล้ว</p></div></div><div class="v14-work-list">${list.map(w=>{const st=workStatus(w,sm.get(w.id)),fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-learning-set" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-learning-content"><span class="v14-codebox">${esc(wsCode(w))}</span><div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">เปิด ${fmt(w.open_at)} • ส่ง ${fmt(w.due_at)}</div>${!["sent","late","graded"].includes(st.key)&&w.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(w.due_at)}"></b>`:""}</div></div><div class="v14-learning-media"><b>📊 สไลด์ / สื่อ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<small>ยังไม่มีสื่อประกอบชุดนี้</small>`}</div><div class="v14-learning-actions"><span class="v14-status ${st.cls}">${esc(st.label)}</span><button class="btn primary" data-v14-open-work="${w.id}">${mode==="digital"?"เปิดทำใบงาน":"ดูใบงาน"}</button></div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานประเภทนี้ที่ปล่อยให้คุณ</div>`}</div></section>`};
-  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับรายวิชาของฉัน</button><div class="v14-course-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();
+  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();
 }
 async function renderWorkStatus(){
   setTitle("ตารางสถานะงาน");busy("กำลังตรวจงานทั้งหมด...");const rows=await studentWorkRows();const counts={sent:0,late:0,graded:0,draft:0,pending:0,upcoming:0,overdue:0};rows.forEach(x=>counts[x.status.key]++);
@@ -526,6 +548,8 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v14-preview]")){previewWorksheet(t.dataset.v14Preview);return}
   if(t.matches("[data-v14-upload]")){uploadSubjectFile(t.dataset.subject,t.dataset.v14Upload,t.dataset.seq);return}
   if(t.matches("[data-v14-file]")){openSubjectFile(t.dataset.v14File);return}
+  if(t.matches("[data-v15-room-exam]")){openSubjectExam(t.dataset.v15RoomExam);return}
+  if(t.matches("[data-v15-jump]")){document.querySelector(t.dataset.v15Jump)?.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(t.matches("[data-v14-open-work]")){if(window.DOCNR_BASE?.openWorksheet)window.DOCNR_BASE.openWorksheet(t.dataset.v14OpenWork);else toast("ตัวเปิดใบงานหลักยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
   if(t.matches("[data-v14-select-mode]")){const mode=t.dataset.v14SelectMode;const boxes=$$(`[data-v14-wselect]`).filter(x=>x.closest(".v14-ws-section")?.querySelector(`[data-v14-select-mode="${mode}"]`));const all=boxes.every(x=>x.checked);boxes.forEach(x=>x.checked=!all);t.textContent=all?"เลือกทั้งหมด":"ยกเลิกทั้งหมด";return}
   if(t.id==="v14-bulk-release"){releaseSelected(state.subjectId);return}

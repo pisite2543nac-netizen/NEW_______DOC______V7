@@ -27,9 +27,9 @@ ok(any('maskable' in str(x.get('purpose','')) for x in icons),'manifest missing 
 for f in ['icon-48.png.b64','icon-180.png.b64','icon-192.png.b64','icon-512.png.b64','icon-maskable-512.png.b64']:
     ok((SITE/'icons'/f).is_file(),f'missing icon source {f}')
 sw=(SITE/'sw.js').read_text('utf-8')
-ok('doc-full-nr-v15-final-20260911' in sw,'service worker cache marker is not V15')
+ok('doc-full-nr-v15-1-subject-rooms-20260911' in sw,'service worker cache marker is not V15')
 platform=(SITE/'v15-platform.js').read_text('utf-8')
-ok('V15-FINAL-PRODUCTION-ALIGNED' in platform,'platform V15 marker missing')
+ok('V15.1-SUBJECT-ROOMS-INTEGRATED' in platform,'platform V15 marker missing')
 examjs=(SITE/'v15-exam.js').read_text('utf-8')
 ok('my_exam_attempt_status' in examjs,'student exam status RPC not used')
 # Score may appear in Admin paths, but student exam home must not query score from exam attempts.
@@ -42,4 +42,4 @@ if errors:
     for e in errors: print('-',e)
     sys.exit(1)
 print('STATIC VALIDATION PASS')
-print('release=V15 FINAL; files=',len(required),'manifest_icons=',len(icons))
+print('release=V15.1 SUBJECT ROOMS; files=',len(required),'manifest_icons=',len(icons))
