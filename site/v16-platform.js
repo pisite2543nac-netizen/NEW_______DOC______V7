@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V15.1-SUBJECT-ROOMS-INTEGRATED";
+const V15_VERSION="V16.1-MENU-PROFILE-ATTENDANCE-REALTIME";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -16,8 +16,9 @@ const safeName=s=>String(s||"file").replace(/[^a-zA-Z0-9._-]/g,"_").slice(-110);
 const state={
   uid:null,profile:null,route:null,subjectId:null,serverOffset:0,
   heartbeatTimer:null,countdownTimer:null,navTimer:null,presenceChannel:null,
-  scanner:null,scanBusy:false,lastScanToken:null,lastScanAt:0,currentAttendanceSession:null,
-  rtClient:null
+  scanner:null,scanBusy:false,lastScanToken:null,lastScanAt:0,currentAttendanceSession:null,currentAttendanceDeadline:null,
+  rtClient:null,roomChannel:null,roomRefreshTimer:null,currentRoomMode:null,
+  notificationChannel:null,notificationReady:false,notificationUid:null,attendanceTimer:null,attendanceFinalizeNotice:false,attendanceAutoClosing:false
 };
 
 function readSession(){
@@ -68,7 +69,9 @@ function errorText(err){
     STUDENT_NOT_IN_CLASSROOM:"นักศึกษาไม่ได้อยู่ในห้องเรียนนี้",INVALID_QR_TOKEN:"QR ไม่ถูกต้องหรือถูกยกเลิกแล้ว",
     PHONE_NOT_VERIFIED:"เบอร์โทรศัพท์ยังไม่ได้รับการยืนยัน",PHONE_CHANGE_REQUIRES_VERIFICATION:"ต้องยืนยันเบอร์โทรด้วย OTP ก่อน",
     EXAM_NOT_OPEN:"ยังไม่ถึงเวลาเปิดสอบ",EXAM_CLOSED:"หมดเวลาเปิดสอบแล้ว",MAX_ATTEMPTS_REACHED:"ใช้สิทธิ์เข้าสอบครบแล้ว",
-    EXAM_TIME_EXPIRED:"หมดเวลาทำข้อสอบแล้ว",NOT_ASSIGNED:"บัญชีนี้ไม่ได้รับมอบหมายข้อสอบ",ATTEMPT_FINALIZED:"ข้อสอบถูกส่งเรียบร้อยแล้ว"
+    EXAM_TIME_EXPIRED:"หมดเวลาทำข้อสอบแล้ว",NOT_ASSIGNED:"บัญชีนี้ไม่ได้รับมอบหมายข้อสอบ",ATTEMPT_FINALIZED:"ข้อสอบถูกส่งเรียบร้อยแล้ว",
+    ATTENDANCE_WINDOW_CLOSED_USE_ADMIN:"หมดเวลาเช็คชื่อผ่านหัวหน้าห้องแล้ว กรุณาให้นักศึกษาติดต่อ Admin เพื่อเช็คชื่อเป็นมาสาย",
+    INVALID_ATTENDANCE_WINDOW:"ช่วงเวลาเช็คชื่อไม่ถูกต้อง"
   };
   for(const [k,v] of Object.entries(map))if(raw.includes(k))return v;
   return raw;
@@ -116,7 +119,69 @@ function startHeartbeat(){
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")heartbeat()},{passive:true});
 }
 function clearPresenceChannel(){if(state.presenceChannel&&state.rtClient){try{state.rtClient.removeChannel(state.presenceChannel)}catch{}}state.presenceChannel=null}
+function clearRoomChannel(){if(state.roomChannel&&state.rtClient){try{state.rtClient.removeChannel(state.roomChannel)}catch{}}state.roomChannel=null;clearTimeout(state.roomRefreshTimer)}
+async function subscribeSubjectRoom(sid,mode){
+  clearRoomChannel();state.currentRoomMode=mode;
+  const rt=await realtimeClient();if(!rt||!sid)return;
+  const refresh=()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{
+    if(state.subjectId!==sid||state.route!=="courses"||$("#v14-overlay"))return;
+    if($$("[data-v14-wselect]:checked").length)return;
+    if(mode==="admin")renderAdminSubject(sid).catch(()=>{});else if(mode==="student")renderStudentCourse(sid).catch(()=>{});
+  },900)};
+  const ch=rt.channel(`subject-room-${sid}-${Date.now()}`)
+    .on("postgres_changes",{event:"*",schema:"public",table:"subject_enrollments",filter:`subject_id=eq.${sid}`},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"worksheets",filter:`subject_id=eq.${sid}`},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"exams",filter:`subject_id=eq.${sid}`},refresh)
+    .subscribe();
+  state.roomChannel=ch;
+}
 
+
+function notificationTime(meta,created){
+  const t=meta?.scanned_at||meta?.updated_at||created;
+  return t?new Date(t).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"medium"}):"-";
+}
+async function refreshNotificationBadge(){
+  const p=await getProfile();if(!p)return;
+  const {count}=await client().from("app_notifications").select("id",{count:"exact",head:true}).eq("user_id",uid()).is("read_at",null);
+  const badge=$("#v161-notification-count");if(badge){const n=count||0;badge.textContent=n>99?"99+":String(n);badge.hidden=!n}
+}
+function ensureNotificationUI(){
+  const bar=$(".topbar .row:last-child");if(!bar||$("#v161-notification-button"))return;
+  const b=document.createElement("button");b.type="button";b.id="v161-notification-button";b.className="btn sm v161-notify-btn";
+  b.innerHTML=`🔔<span id="v161-notification-count" hidden>0</span>`;b.title="การแจ้งเตือน";bar.insertBefore(b,bar.firstChild);
+  b.onclick=showNotificationPanel;
+}
+async function showNotificationPanel(){
+  $("#v161-notification-panel")?.remove();
+  const {data,error}=await client().from("app_notifications").select("id,type,title,message,metadata,read_at,created_at").eq("user_id",uid()).order("created_at",{ascending:false}).limit(40);
+  if(error){toast(errorText(error),true);return}
+  const panel=document.createElement("aside");panel.id="v161-notification-panel";panel.className="v161-notification-panel";
+  panel.innerHTML=`<div class="v161-notification-head"><div><b>🔔 การแจ้งเตือน</b><small>ข้อมูลจากระบบแบบ Real-time</small></div><button class="btn sm" id="v161-notification-close">✕</button></div>
+    <div class="v161-notification-list">${(data||[]).map(n=>`<button class="v161-notification-item ${n.read_at?"":"unread"}" data-v161-notification="${n.id}">
+      <b>${esc(n.title)}</b><span>${esc(n.message)}</span><small>${notificationTime(n.metadata,n.created_at)}</small>
+    </button>`).join("")||`<div class="v14-empty">ยังไม่มีการแจ้งเตือน</div>`}</div>`;
+  document.body.appendChild(panel);$("#v161-notification-close").onclick=()=>panel.remove();
+  const unread=(data||[]).filter(n=>!n.read_at);
+  await Promise.all(unread.map(n=>client().rpc("mark_notification_read",{p_notification_id:n.id}).catch(()=>null)));
+  refreshNotificationBadge();
+}
+async function startNotificationRealtime(){
+  const currentUid=uid();if(!currentUid)return;
+  if(state.notificationReady&&state.notificationUid===currentUid){ensureNotificationUI();return}
+  state.notificationReady=true;state.notificationUid=currentUid;ensureNotificationUI();await refreshNotificationBadge();
+  const rt=await realtimeClient();if(!rt)return;
+  if(state.notificationChannel)try{rt.removeChannel(state.notificationChannel)}catch{}
+  state.notificationChannel=rt.channel(`app-notifications-${currentUid}-${Date.now()}`)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"app_notifications",filter:`user_id=eq.${currentUid}`},payload=>{
+      const n=payload.new||{};refreshNotificationBadge();
+      toast(`${n.title||"แจ้งเตือน"} • ${n.message||""}`);
+      if(state.route==="attendance"){
+        const banner=$("#v161-latest-checkin");
+        if(banner&&n.type==="attendance_checked")banner.innerHTML=`<b>✅ ${esc(n.title||"เช็คชื่อแล้ว")}</b><span>${esc(n.message||"")}</span><small>${notificationTime(n.metadata,n.created_at)}</small>`;
+      }
+    }).subscribe();
+}
 function navBtn(route,label){const b=document.createElement("button");b.type="button";b.dataset.v14Route=route;b.textContent=label;b.className="v14-nav";return b}
 async function ensureNav(){
   const nav=$("#sidebar .nav");if(!nav)return;
@@ -139,11 +204,11 @@ async function ensureNav(){
   const keep=new Set(wanted.map(x=>x[0]));
   $$('[data-v14-route]',nav).forEach(x=>{if(!keep.has(x.dataset.v14Route))x.remove()});
   for(const [r,l] of wanted){let b=nav.querySelector(`[data-v14-route="${r}"]`);if(!b){b=navBtn(r,l);before?nav.insertBefore(b,before):nav.appendChild(b)}else if(b.textContent!==l)b.textContent=l}
-  const brand=$("#sidebar .brand .smalltext");if(brand&&brand.textContent!==`${p.role==="admin"?"ADMIN":"USER"} • V15 FINAL`)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V15 FINAL`;
+  const brand=$("#sidebar .brand .smalltext");if(brand&&brand.textContent!==`${p.role==="admin"?"ADMIN":"USER"} • V16 FINAL`)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V16 FINAL`;
   const ws=nav.querySelector('[data-route="worksheets"]');if(ws&&p.role==="admin")ws.remove();
   const mw=nav.querySelector('[data-route="myworks"]');if(mw&&p.role!=="admin")mw.remove();
 }
-function scheduleEnsureNav(){if(state.navTimer)return;state.navTimer=setTimeout(()=>{state.navTimer=null;ensureNav().catch(()=>{})},80)}
+function scheduleEnsureNav(){if(state.navTimer)return;state.navTimer=setTimeout(()=>{state.navTimer=null;ensureNav().catch(()=>{});ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},80)}
 const shellObserver=new MutationObserver(scheduleEnsureNav);
 shellObserver.observe($("#app")||document.body,{childList:true,subtree:true});
 
@@ -157,7 +222,7 @@ async function requirePhoneGate(route){
   return false;
 }
 async function navigate(route,arg=null){
-  clearPresenceChannel();state.route=route;state.subjectId=null;heartbeat();
+  clearPresenceChannel();clearRoomChannel();state.route=route;state.subjectId=null;heartbeat();
   const p=await getProfile(true);if(!p)return;
   if(await requirePhoneGate(route))return;
   $$("#sidebar .nav button").forEach(x=>x.classList.remove("active"));
@@ -292,15 +357,21 @@ async function renderAdminDashboard(){
   const cfg=await otpConfig();
   content().innerHTML=`<section class="v14-page"><div class="v14-hero"><div><span class="v14-kicker">DOC-FULL-NR • ${V15_VERSION}</span><h1>ศูนย์ควบคุมการเรียนรู้</h1><p>วิทยาลัยเทคนิคนางรอง • ระบบรายวิชา ใบงาน เช็คชื่อ สอบ และเลื่อนชั้น</p></div><div class="v14-live"><i></i> Production Connected</div></div>
   <div class="v14-kpis"><div><span>นักศึกษาใช้งาน</span><b>${pc.count||0}</b></div><div><span>รออนุมัติบัญชี</span><b>${ac.count||0}</b></div><div><span>รายวิชา</span><b>${sc.count||0}</b></div><div><span>ใบงานสำเร็จรูป</span><b>${wc.count||0}</b><small>ต้องคง 198</small></div><div><span>รออนุมัติวิชา</span><b>${ec.count||0}</b></div><div><span>ออนไลน์ล่าสุด</span><b>${online}</b></div><div><span>ชุดข้อสอบ</span><b>${xc.count||0}</b></div></div>
-  <div class="v14-action-grid">
-    <button data-v14-route="accounts"><span>🧑‍🎓</span><b>อนุมัติบัญชี</b><small>ตรวจคำขอลงทะเบียนก่อนเปิดสิทธิ์ระบบ</small></button>
-    <button data-v14-route="courses"><span>🎓</span><b>รายวิชา / ปล่อยงาน</b><small>เลือก Paper/Digital หลายใบแล้วปล่อยพร้อมกัน</small></button>
-    <button data-v14-route="enrollments"><span>✅</span><b>อนุมัติลงทะเบียนเรียน</b><small>ควบคุมว่าใครเรียนวิชาใด</small></button>
-    <button data-v14-route="attendance"><span>📷</span><b>เช็คชื่อ QR</b><small>หัวหน้าห้อง / Admin ใช้กล้องสแกน</small></button>
-    <button data-v14-route="presence"><span>📡</span><b>สถานะออนไลน์</b><small>ดูผู้ที่กำลังใช้งานแบบ Real-time</small></button>
-    <button data-v14-route="profiles"><span>🪪</span><b>โปรไฟล์นักศึกษา</b><small>ข้อมูลส่วนตัวสำหรับ Admin เท่านั้น</small></button>
-    <button data-v14-route="promotion"><span>📈</span><b>เลื่อนชั้น</b><small>ตรวจรายชื่อ → อนุมัติ → ดำเนินการ</small></button>
-    <button data-v14-route="exam"><span>🧪</span><b>Exam Center</b><small>คลังข้อสอบ สอบ และผลสอบ</small></button>
+  <div class="v14-action-grid v161-menu-grid">
+    <button data-v14-route="accounts"><span>🧑‍🎓</span><b>อนุมัติบัญชี</b><small>ตรวจคำขอบัญชีนักศึกษาก่อนเปิดสิทธิ์ใช้งาน</small></button>
+    <button data-v14-route="courses"><span>🎓</span><b>ห้องเรียนรายวิชา</b><small>นักศึกษา ใบงาน สื่อ คะแนน และเครื่องมืออยู่ในห้องเดียวกัน</small></button>
+    <button data-v14-route="enrollments"><span>✅</span><b>อนุมัติลงทะเบียนเรียน</b><small>กำหนดว่านักศึกษาคนใดเป็นสมาชิกวิชาใด</small></button>
+    <button data-v14-route="attendance"><span>📷</span><b>เช็คชื่อ / หัวหน้าห้อง</b><small>QR 15 นาที • สรุปยอด • ลา/สาย • Real-time</small></button>
+    <button data-v14-route="presence"><span>📡</span><b>สถานะออนไลน์</b><small>ดูผู้ใช้งานที่กำลังออนไลน์แบบ Real-time</small></button>
+    <button data-v14-route="profiles"><span>🪪</span><b>โปรไฟล์นักศึกษา</b><small>ข้อมูลทางการศึกษาและข้อมูลส่วนตัวสำหรับ Admin</small></button>
+    <button data-v14-route="promotion"><span>📈</span><b>เลื่อนชั้น</b><small>ตรวจรายชื่อ อนุมัติ และเก็บประวัติการศึกษา</small></button>
+    <button data-v14-route="exam"><span>🧪</span><b>Exam Center</b><small>คลังข้อสอบ สอบกลาง/ปลายภาค และผลสอบ</small></button>
+    <button data-v16-base-route="users"><span>👥</span><b>ผู้ใช้งาน</b><small>จัดการบัญชีและข้อมูลนักศึกษาโดย Admin</small></button>
+    <button data-v16-base-route="grading"><span>📝</span><b>ตรวจงาน</b><small>ตรวจ Submission ให้คะแนนและสถานะงาน</small></button>
+    <button data-v16-base-route="overrides"><span>⏳</span><b>สิทธิ์ส่งเพิ่ม</b><small>ขยายเวลาหรือเพิ่มสิทธิ์ส่งงานรายบุคคล</small></button>
+    <button data-v16-base-route="reports"><span>📊</span><b>รายงาน</b><small>ดูรายงานผลและ Export สำหรับ Admin</small></button>
+    <button data-v16-base-route="audit"><span>🧾</span><b>Audit Log</b><small>ตรวจประวัติการดำเนินการสำคัญของระบบ</small></button>
+    <button data-v16-base-route="system"><span>⚙️</span><b>ตั้งค่าระบบ</b><small>สถานะระบบ การลงทะเบียน และการตั้งค่าหลัก</small></button>
   </div>
   <div class="card v14-system-strip"><div><b>OTP เบอร์โทรศัพท์</b><div class="muted">โค้ดรองรับการยืนยันจริงผ่าน Supabase Phone Auth</div></div><label class="v14-switch"><input id="v14-otp-toggle" type="checkbox" ${cfg?.enabled?"checked":""}><span></span><b>${cfg?.enabled?"บังคับ OTP":"ยังไม่บังคับ OTP"}</b></label></div>
   <div class="alert ${cfg?.enabled?"warn":""}"><b>หมายเหตุ OTP:</b> ก่อนเปิดบังคับ OTP ต้องตั้ง SMS Provider ใน Supabase Authentication ให้พร้อมก่อน หากยังไม่ได้ตั้งให้คงสวิตช์ปิดเพื่อไม่ล็อกนักศึกษาออกจากระบบ</div></section>`;
@@ -314,6 +385,14 @@ async function renderStudentDashboard(){
   content().innerHTML=`<section class="v14-page"><div class="v14-hero student"><div><span class="v14-kicker">SMART LEARNING DASHBOARD</span><h1>สวัสดี ${esc(p?.full_name||"")}</h1><p>${esc(p?.student_code||"")} • ${esc(p?.grade_level||"")}${esc(p?.room_label||"")} • ${esc(p?.major||"")}</p></div><div class="v14-live"><i></i> เชื่อมต่อระบบ</div></div>
   ${cfg?.enabled&&!p?.phone_verified_at?`<div class="alert warn"><b>ต้องยืนยันเบอร์โทรด้วย OTP</b> เพื่อใช้งานระบบเต็มรูปแบบ <button class="btn warn sm" data-v14-route="phone">ยืนยันตอนนี้</button></div>`:p?.phone_verified_at?`<div class="alert success">✅ เบอร์โทรศัพท์ได้รับการยืนยันแล้ว</div>`:""}
   <div class="v14-kpis"><div><span>วิชาที่อนุมัติแล้ว</span><b>${courses.length}</b></div><div><span>วิชารออนุมัติ</span><b>${pendingCourses}</b></div><div><span>งานทั้งหมด</span><b>${rows.length}</b></div><div><span>ส่งแล้ว/ตรวจแล้ว</span><b>${sent}</b></div><div><span>ต้องดำเนินการ</span><b>${pending}</b></div></div>
+  <div class="v14-action-grid v161-menu-grid v161-student-menu">
+    <button data-v14-route="courses"><span>🎓</span><b>ห้องเรียนของฉัน</b><small>ใบงาน สื่อ การสอบ และความคืบหน้าแยกตามรายวิชา</small></button>
+    <button data-v14-route="enroll"><span>✅</span><b>ลงทะเบียนรายวิชา</b><small>ส่งคำขอเข้าเรียนและติดตามสถานะอนุมัติ</small></button>
+    <button data-v14-route="work"><span>📋</span><b>สถานะงาน</b><small>ดูงานที่ยังไม่ส่ง ส่งแล้ว และใกล้ครบกำหนด</small></button>
+    <button data-v14-route="attendance"><span>📷</span><b>QR / การเข้าเรียน</b><small>แสดง QR เช็คชื่อและประวัติการเข้าเรียนแบบ Real-time</small></button>
+    <button data-v14-route="exam"><span>🧪</span><b>ระบบสอบ</b><small>เข้าสอบที่ได้รับมอบหมายและดูสถานะการสอบ</small></button>
+    <button data-v16-base-route="profile"><span>🪪</span><b>โปรไฟล์ของฉัน</b><small>ดูข้อมูลส่วนตัวแบบอ่านอย่างเดียว ไม่สามารถแก้ไขเอง</small></button>
+  </div>
   <div class="v14-section-head"><div><h2>📚 รายวิชาของฉัน</h2><p>แสดงเฉพาะรายวิชาที่ Admin อนุมัติแล้ว</p></div><button class="btn" data-v14-route="enroll">ลงทะเบียนเพิ่ม</button></div>
   <div class="v14-course-grid">${courses.map(s=>{const cw=rows.filter(x=>x.w.subject_id===s.id),done=cw.filter(x=>["sent","late","graded"].includes(x.status.key)).length,pct=cw.length?Math.round(done*100/cw.length):0;return `<button class="v14-course-card" data-v14-open-course="${s.id}" style="--course:${esc(s.color_hex||"#22d3ee")}"><span class="code">${esc(s.code)}</span><b>${esc(s.name)}</b><small>งาน ${done}/${cw.length} • ความคืบหน้า ${pct}%</small><div class="v14-progress"><i style="width:${pct}%"></i></div><small>เปิดรายวิชา → ใบงาน + สไลด์</small></button>`}).join("")||`<div class="v14-empty">ยังไม่มีรายวิชาที่ได้รับอนุมัติ • ไปที่ “ลงทะเบียนรายวิชา” เพื่อส่งคำขอ</div>`}</div>
   <div class="v14-section-head"><div><h2>⏱️ งานที่ใกล้กำหนด</h2><p>ระบบนับเวลาจาก Server</p></div><button class="btn" data-v14-route="work">ดูตารางทั้งหมด</button></div>
@@ -378,6 +457,8 @@ async function renderAdminSubject(sid){
     <button class="btn" data-v15-jump="#v15-room-roster">👥 นักศึกษา ${approved.length}</button>
     <button class="btn" data-v15-jump="#v15-room-ready">📚 ใบงานสำเร็จรูป ${ready.length}</button>
     <button class="btn" data-v15-jump="#v15-room-ready">🚀 ปล่อยแล้ว ${published}</button>
+    <button class="btn" data-v16-gradebook="${sid}">📊 สรุปคะแนน</button>
+    <button class="btn" data-v16-paper-scan="${sid}">📄 สแกนสำเนาใบงาน</button>
     <button class="btn primary" data-v15-room-exam="${sid}">🧪 ระบบสอบ ${exams.length}</button>
   </div>
   <section id="v15-room-roster" class="card v15-room-roster"><div class="v14-section-head compact"><div><h2>👥 นักศึกษาในห้องเรียน</h2><p>สมาชิกห้อง = นักศึกษาที่ Admin อนุมัติให้เรียนรายวิชานี้</p></div><button class="btn sm" data-v14-route="enrollments">จัดการคำขอลงทะเบียน</button></div>
@@ -386,8 +467,13 @@ async function renderAdminSubject(sid){
   <div class="card v14-releasebar" id="v15-room-ready"><div><b>📚 ใบงานสำเร็จรูปประจำห้องเรียน</b><div class="muted">เลือกใบงานจากห้องนี้ได้หลายใบ แล้วกำหนดวัน/เวลาเพื่อแจกให้นักศึกษาสมาชิกห้อง ${approved.length} คนพร้อมกัน</div></div><button class="btn primary" id="v14-bulk-release">🚀 ปล่อยใบงานที่เลือก</button></div>
   ${renderGroup("paper","🖨️ ใบงานสำหรับพิมพ์ P01–P05")}
   ${renderGroup("digital","💻 ใบงานอิเล็กทรอนิกส์ D01–D13")}
+  <section class="v16-room-tools">
+    <button class="v16-tool-card" data-v16-gradebook="${sid}"><span>📊</span><b>สรุปคะแนนรายวิชา</b><small>งาน 40 • จิตพิสัย 20 • กลางภาค 20 • ปลายภาค 20 • พิมพ์รายงานได้</small></button>
+    <button class="v16-tool-card" data-v16-paper-scan="${sid}"><span>📄</span><b>สแกนใบงานทั้งแผ่น</b><small>เก็บภาพสำเนา ตรวจ Barcode/QR และสถานะหมดอายุจาก Server</small></button>
+  </section>
   <section class="card v15-room-exam-card"><div><span class="v14-kicker">ROOM EXAM</span><h2>🧪 ระบบสอบของห้องเรียนนี้</h2><p>เปิด Exam Center โดยผูกกับรายวิชา ${esc(subjectRoomName(s))} โดยตรง เพื่อให้จัดข้อสอบและปล่อยสอบเป็นวงจรเดียวกับห้องเรียน</p></div><button class="btn primary" data-v15-room-exam="${sid}">เปิดระบบสอบของห้องนี้</button></section>
   </section>`;
+  subscribeSubjectRoom(sid,"admin").catch(()=>{});
 }
 async function previewWorksheet(id){
   const c=client(),{data:w,error}=await c.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single();if(error){toast(errorText(error),true);return}
@@ -425,7 +511,7 @@ async function renderStudentCourse(sid){
   ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error&&!String(fr.error.message).includes("permission"))throw fr.error;
   const s=sr.data,sm=new Map((subr.data||[]).map(x=>[x.worksheet_id,x])),works=wr.data||[],files=fr.data||[];
   const group=(mode,label)=>{const list=works.filter(w=>w.mode===mode);return `<section><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} งานที่ปล่อยแล้ว</p></div></div><div class="v14-work-list">${list.map(w=>{const st=workStatus(w,sm.get(w.id)),fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-learning-set" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-learning-content"><span class="v14-codebox">${esc(wsCode(w))}</span><div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">เปิด ${fmt(w.open_at)} • ส่ง ${fmt(w.due_at)}</div>${!["sent","late","graded"].includes(st.key)&&w.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(w.due_at)}"></b>`:""}</div></div><div class="v14-learning-media"><b>📊 สไลด์ / สื่อ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<small>ยังไม่มีสื่อประกอบชุดนี้</small>`}</div><div class="v14-learning-actions"><span class="v14-status ${st.cls}">${esc(st.label)}</span><button class="btn primary" data-v14-open-work="${w.id}">${mode==="digital"?"เปิดทำใบงาน":"ดูใบงาน"}</button></div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานประเภทนี้ที่ปล่อยให้คุณ</div>`}</div></section>`};
-  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();
+  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();subscribeSubjectRoom(sid,"student").catch(()=>{});
 }
 async function renderWorkStatus(){
   setTitle("ตารางสถานะงาน");busy("กำลังตรวจงานทั้งหมด...");const rows=await studentWorkRows();const counts={sent:0,late:0,graded:0,draft:0,pending:0,upcoming:0,overdue:0};rows.forEach(x=>counts[x.status.key]++);
@@ -476,25 +562,108 @@ async function renderPresence(){
 // Attendance / leader controls
 // ---------------------------------------------------------------------------
 async function renderAttendance(){
-  setTitle("เช็คชื่อ / การเข้าเรียน");state.route="attendance";busy("กำลังโหลดระบบเช็คชื่อ...");const p=await getProfile();const c=client();
-  const [qr,summary,leaderRooms]=await Promise.all([p.role!=="admin"?c.rpc("get_my_attendance_qr"):Promise.resolve({data:null}),p.role!=="admin"?c.rpc("my_attendance_summary"):Promise.resolve({data:[]}),p.role!=="admin"?c.rpc("my_leader_classrooms"):Promise.resolve({data:[]})]);
-  const canScan=p.role==="admin"||(leaderRooms.data||[]).length>0;let rooms=[];if(p.role==="admin"){const rr=await c.from("classrooms").select("id,name,level,semester,academic_year").eq("active",true).order("name");rooms=rr.data||[]}else rooms=leaderRooms.data||[];
+  setTitle("เช็คชื่อ / การเข้าเรียน");state.route="attendance";busy("กำลังโหลดระบบเช็คชื่อ...");
+  const p=await getProfile(),c=client();
+  const [qr,summary,leaderRooms,lastNotice]=await Promise.all([
+    p.role!=="admin"?c.rpc("get_my_attendance_qr"):Promise.resolve({data:null}),
+    p.role!=="admin"?c.rpc("my_attendance_summary"):Promise.resolve({data:[]}),
+    p.role!=="admin"?c.rpc("my_leader_classrooms"):Promise.resolve({data:[]}),
+    p.role!=="admin"?c.from("app_notifications").select("title,message,metadata,created_at").eq("user_id",uid()).eq("type","attendance_checked").order("created_at",{ascending:false}).limit(1):Promise.resolve({data:[]})
+  ]);
+  const canScan=p.role==="admin"||(leaderRooms.data||[]).length>0;
+  let rooms=[];
+  if(p.role==="admin"){const rr=await c.from("classrooms").select("id,name,level,semester,academic_year").eq("active",true).order("name");rooms=rr.data||[]}
+  else rooms=leaderRooms.data||[];
   const subjects=canScan?await allSubjects():[];
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">QR ATTENDANCE</span><h1>${canScan?"เช็คชื่อด้วย QR Code":"QR ประจำตัว / การเข้าเรียน"}</h1><p>ใช้ Server Time และบันทึก Audit Log ทุกการสแกน</p></div></div>
-  ${p.role!=="admin"?`<div class="v14-attendance-grid"><div class="card v14-qr-card"><h2>QR ประจำตัวนักศึกษา</h2><div id="v14-my-qr"></div><small>QR นี้เป็น Token ไม่เปิดเผย user_id โดยตรง</small><button class="btn sm" id="v14-rotate-qr">ออก QR ใหม่</button></div><div class="card"><h2>สรุปการเข้าเรียน</h2>${(summary.data||[]).map(x=>`<div class="v14-att-row"><div><b>${esc(x.subject_code)} ${esc(x.subject_name)}</b><small>มา ${x.present_count} • สาย ${x.late_count} • ขาด ${x.absent_count}</small></div><strong>${x.attendance_percent??0}%</strong></div>`).join("")||`<div class="v14-empty">ยังไม่มีข้อมูลเช็คชื่อ</div>`}</div></div>`:""}
-  ${canScan?`<div class="card v14-scan-panel"><div class="v14-section-head compact"><div><h2>📷 สแกนเช็คชื่อ</h2><p>การสแกนคนแรกจะเปิดรอบของวันนี้อัตโนมัติ</p></div><button class="btn red" id="v14-close-session" ${state.currentAttendanceSession?"":"disabled"}>ปิดรอบเช็คชื่อ</button></div><div class="v14-form-grid three"><label>ห้องเรียน<select class="input" id="v14-att-class"><option value="">เลือกห้อง</option>${rooms.map(r=>`<option value="${r.classroom_id||r.id}">${esc(r.classroom_name||r.name)}</option>`).join("")}</select></label><label>รายวิชา<select class="input" id="v14-att-subject"><option value="">เลือกรายวิชา</option>${subjects.map(s=>`<option value="${s.id}">${esc(s.code)} ${esc(s.name)}</option>`).join("")}</select></label><label>นาทีที่ถือว่าสาย<input class="input" id="v14-att-late" type="number" min="0" max="240" value="15"></label></div><div class="row end"><button class="btn" id="v14-att-summary-btn">📊 สรุป % การเข้าเรียน</button></div><div id="v14-att-summary-box"></div><div class="v14-camera-grid"><div><video id="v14-scan-video" playsinline muted></video><canvas id="v14-scan-canvas" hidden></canvas><div class="row"><button class="btn primary" id="v14-start-scan">เปิดกล้องสแกน</button><button class="btn" id="v14-stop-scan">หยุดกล้อง</button></div></div><div><form id="v14-manual-scan"><label class="field"><span>กรอก Token สำรอง</span><input class="input" name="token" placeholder="DOCNR-ATTEND:..." required></label><button class="btn">บันทึก Token</button></form><div id="v14-scan-result" class="v14-scan-results"></div></div></div></div>`:""}
-  ${p.role==="admin"?`<div class="card v14-leader-admin"><h2>👑 แต่งตั้งหัวหน้าห้อง</h2><div class="row"><select id="v14-leader-class" class="input"><option value="">เลือกห้องเรียน</option>${rooms.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select><button id="v14-load-roster" class="btn">โหลดรายชื่อ</button></div><div id="v14-roster"></div></div>`:""}
-  ${canScan?`<div class="card"><div class="row between"><h2>รอบเช็คชื่อล่าสุด</h2><button class="btn sm" id="v14-refresh-sessions">รีเฟรช</button></div><div id="v14-session-list"></div></div>`:""}</section>`;
-  if(p.role!=="admin"&&qr.data?.payload&&window.QRCode){new QRCode($("#v14-my-qr"),{text:qr.data.payload,width:190,height:190});$("#v14-rotate-qr").onclick=async()=>{if(!ask("ออก QR ใหม่? QR เดิมจะใช้เช็คชื่อไม่ได้ทันที"))return;const r=await c.rpc("rotate_attendance_qr",{p_user_id:null});if(r.error){toast(errorText(r.error),true);return}renderAttendance()}}
-  if(canScan){$("#v14-start-scan").onclick=startScanner;$("#v14-stop-scan").onclick=stopScanner;$("#v14-manual-scan").onsubmit=async e=>{e.preventDefault();await submitAttendanceToken(new FormData(e.target).get("token"))};$("#v14-close-session").onclick=closeAttendanceCurrent;$("#v14-refresh-sessions").onclick=loadAttendanceSessions;$("#v14-att-summary-btn").onclick=loadAttendanceSummary;loadAttendanceSessions()}
-  if(p.role==="admin"){$("#v14-load-roster").onclick=loadLeaderRoster}
+  const latest=lastNotice.data?.[0]||null;
+  content().innerHTML=`<section class="v14-page v161-attendance-page">
+    <div class="v14-section-head"><div><span class="v14-kicker">REAL-TIME ATTENDANCE</span><h1>${canScan?"เช็คชื่อด้วย QR Code":"QR ประจำตัว / การเข้าเรียน"}</h1><p>สแกนคนแรกเริ่มเวลา 15 นาที • ครบเวลา Server สรุปยอดอัตโนมัติ • หลังหมดเวลาเช็คสายโดย Admin เท่านั้น</p></div><span class="v16-live-pill"><i></i> Real-time</span></div>
+    ${p.role!=="admin"?`<div class="v14-attendance-grid">
+      <div class="card v161-student-id-card"><div class="v161-id-head"><div><span>QR ประจำตัวนักศึกษา</span><h2>${esc(p.full_name||"-")}</h2><p>${esc(p.grade_level||"")}${esc(p.room_label||"")} • รหัส ${esc(p.student_code||"-")}</p></div><div id="v14-my-qr"></div></div><small>QR เป็น Token สำหรับระบบ ไม่เปิดเผย user_id</small><button class="btn sm" id="v14-rotate-qr">ออก QR ใหม่</button></div>
+      <div class="card"><h2>สรุปการเข้าเรียน</h2>${(summary.data||[]).map(x=>`<div class="v14-att-row"><div><b>${esc(x.subject_code)} ${esc(x.subject_name)}</b><small>มา ${x.present_count} • สาย ${x.late_count} • ขาด ${x.absent_count} • ลา ${x.excused_count}</small></div><strong>${x.attendance_percent??0}%</strong></div>`).join("")||`<div class="v14-empty">ยังไม่มีข้อมูลเช็คชื่อ</div>`}</div>
+    </div>
+    <div id="v161-latest-checkin" class="v161-checkin-banner">${latest?`<b>✅ ${esc(latest.title)}</b><span>${esc(latest.message)}</span><small>${notificationTime(latest.metadata,latest.created_at)}</small>`:`<b>สถานะเช็คชื่อวันนี้</b><span>เมื่อหัวหน้าห้อง/Admin สแกนสำเร็จ รายการจะขึ้นตรงนี้แบบ Real-time</span>`}</div>`:""}
+    ${canScan?`<div class="card v14-scan-panel v161-scan-panel">
+      <div class="v14-section-head compact"><div><h2>📷 เช็คชื่อภายใน 15 นาที</h2><p>เลือกห้องและรายวิชา จากนั้นสแกน QR นักศึกษา การสแกนคนแรกจะเริ่มนับเวลา</p></div><div class="v161-session-summary"><b id="v161-session-count">ยังไม่เริ่มรอบ</b><span id="v161-session-countdown">15:00</span></div></div>
+      <div class="v14-form-grid"><label>ห้องเรียน<select class="input" id="v14-att-class"><option value="">เลือกห้อง</option>${rooms.map(r=>`<option value="${r.classroom_id||r.id}">${esc(r.classroom_name||r.name)}</option>`).join("")}</select></label><label>รายวิชา<select class="input" id="v14-att-subject"><option value="">เลือกรายวิชา</option>${subjects.map(s=>`<option value="${s.id}">${esc(s.code)} ${esc(s.name)}</option>`).join("")}</select></label></div>
+      <div class="v161-att-actions"><button class="btn primary" id="v14-start-scan">📷 เปิดกล้องสแกน</button><button class="btn" id="v14-stop-scan">หยุดกล้อง</button><button class="btn green" id="v161-summary-submit" ${state.currentAttendanceSession?"":"disabled"}>✅ สรุปยอดและส่ง Admin</button><button class="btn" id="v14-att-summary-btn">📊 สรุปย้อนหลัง</button></div>
+      <div id="v161-window-note" class="alert">⏱️ รอบเช็คชื่อปกติเปิด 15 นาทีจากการสแกนคนแรก หากสรุปก่อนเวลาได้ทันที หลังปิดรอบนักศึกษาที่มาทีหลังต้องให้ Admin สแกนและระบบจะบันทึกเป็น “มาสาย”</div>
+      <div id="v14-att-summary-box"></div>
+      <div class="v14-camera-grid"><div><video id="v14-scan-video" playsinline muted></video><canvas id="v14-scan-canvas" hidden></canvas></div><div>
+        <form id="v14-manual-scan"><label class="field"><span>กรอก Token สำรอง</span><input class="input" name="token" placeholder="DOCNR-ATTEND:..." required></label><button class="btn">บันทึก Token</button></form>
+        <div id="v14-scan-result" class="v14-scan-results"></div></div></div>
+    </div>`:""}
+    ${p.role==="admin"?`<div class="card v14-leader-admin"><h2>👑 แต่งตั้งหัวหน้าห้อง</h2><div class="row"><select id="v14-leader-class" class="input"><option value="">เลือกห้องเรียน</option>${rooms.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select><button id="v14-load-roster" class="btn">โหลดรายชื่อ</button></div><div id="v14-roster"></div></div>`:""}
+    ${canScan?`<div class="card"><div class="row between"><div><h2>รอบเช็คชื่อล่าสุด</h2><small class="muted">กดรายการเพื่อดูรายชื่อทั้งหมด • Admin สามารถกำหนด มา/สาย/ขาด/ลา ได้โดยตรง</small></div><button class="btn sm" id="v14-refresh-sessions">รีเฟรช</button></div><div id="v14-session-list"></div></div>`:""}
+  </section>`;
+  if(p.role!=="admin"&&qr.data?.payload&&window.QRCode){
+    new QRCode($("#v14-my-qr"),{text:qr.data.payload,width:170,height:170});
+    $("#v14-rotate-qr").onclick=async()=>{if(!ask("ออก QR ใหม่? QR เดิมจะใช้เช็คชื่อไม่ได้ทันที"))return;const r=await c.rpc("rotate_attendance_qr",{p_user_id:null});if(r.error){toast(errorText(r.error),true);return}renderAttendance()}
+  }
+  if(canScan){
+    $("#v14-start-scan").onclick=startScanner;$("#v14-stop-scan").onclick=stopScanner;
+    $("#v14-manual-scan").onsubmit=async e=>{e.preventDefault();await submitAttendanceToken(new FormData(e.target).get("token"))};
+    $("#v161-summary-submit").onclick=closeAttendanceCurrent;
+    $("#v14-refresh-sessions").onclick=loadAttendanceSessions;$("#v14-att-summary-btn").onclick=loadAttendanceSummary;
+    $("#v14-att-class").onchange=()=>{state.currentAttendanceSession=null;state.currentAttendanceDeadline=null;updateAttendanceWindow()};
+    $("#v14-att-subject").onchange=()=>{state.currentAttendanceSession=null;state.currentAttendanceDeadline=null;updateAttendanceWindow()};
+    await loadAttendanceSessions();startAttendanceWindowTimer();
+  }
+  if(p.role==="admin")$("#v14-load-roster").onclick=loadLeaderRoster;
+  if(canScan){
+    clearRoomChannel();const rt=await realtimeClient();
+    if(rt){
+      const refresh=()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.route==="attendance"){loadAttendanceSessions().catch(()=>{});refreshAttendanceSnapshot().catch(()=>{})}},500)};
+      state.roomChannel=rt.channel(`attendance-live-${uid()}-${Date.now()}`)
+        .on("postgres_changes",{event:"*",schema:"public",table:"attendance_sessions"},refresh)
+        .on("postgres_changes",{event:"*",schema:"public",table:"attendance_records"},refresh)
+        .subscribe();
+    }
+  }
 }
 function parseAttendanceToken(raw){const s=String(raw||"").trim();const x=s.startsWith("DOCNR-ATTEND:")?s.slice(13):s;return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(x)?x:null}
+function attendanceStatusLabel(s){return s==="present"?"มาเรียน":s==="late"?"มาสาย":s==="absent"?"ขาด":s==="excused"?"ลา":"รอเช็คชื่อ"}
+function updateAttendanceWindow(){
+  const el=$("#v161-session-countdown"),btn=$("#v161-summary-submit");if(btn)btn.disabled=!state.currentAttendanceSession;
+  if(!el)return;
+  if(!state.currentAttendanceDeadline){el.textContent="15:00";el.classList.remove("expired");return}
+  const ms=new Date(state.currentAttendanceDeadline).getTime()-nowMs();
+  if(ms<=0){
+    el.textContent="หมดเวลา";el.classList.add("expired");
+    if(!state.attendanceFinalizeNotice){state.attendanceFinalizeNotice=true;toast("ครบ 15 นาทีแล้ว ระบบกำลังสรุปยอดอัตโนมัติ นักศึกษาที่มาทีหลังต้องเช็คกับ Admin")}
+    if(state.currentAttendanceSession&&!state.attendanceAutoClosing){
+      state.attendanceAutoClosing=true;
+      client().rpc("finalize_due_attendance_session_v161",{p_session_id:state.currentAttendanceSession}).then(r=>{
+        state.attendanceAutoClosing=false;
+        if(!r.error&&r.data?.ok){const s=r.data?.summary||{};toast(`สรุปอัตโนมัติแล้ว • มา ${s.present||0} สาย ${s.late||0} ขาด ${s.absent||0} ลา ${s.excused||0}`);state.currentAttendanceSession=null;state.currentAttendanceDeadline=null;stopScanner();loadAttendanceSessions().catch(()=>{})}
+      }).catch(()=>{state.attendanceAutoClosing=false});
+    }
+    return
+  }
+  state.attendanceFinalizeNotice=false;const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000);el.textContent=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;el.classList.remove("expired");
+}
+function startAttendanceWindowTimer(){clearInterval(state.attendanceTimer);updateAttendanceWindow();state.attendanceTimer=setInterval(updateAttendanceWindow,1000)}
+async function refreshAttendanceSnapshot(){
+  if(!state.currentAttendanceSession)return;
+  const r=await client().rpc("attendance_session_snapshot",{p_session_id:state.currentAttendanceSession});
+  if(r.error)return;
+  const s=r.data||{},count=$("#v161-session-count");if(count)count.textContent=`เช็คแล้ว ${s.checked||0}/${s.expected||0} คน`;
+  state.currentAttendanceDeadline=s.auto_close_at||state.currentAttendanceDeadline;
+  if(s.status==="closed"){state.currentAttendanceSession=null;const b=$("#v161-summary-submit");if(b)b.disabled=true;toast(`สรุปยอดแล้ว • มา ${s.present||0} สาย ${s.late||0} ขาด ${s.absent||0} ลา ${s.excused||0}`)}
+  updateAttendanceWindow();
+}
 async function submitAttendanceToken(raw){
   const token=parseAttendanceToken(raw);if(!token){toast("QR/Token ไม่ถูกต้อง",true);return}
-  const classId=$("#v14-att-class")?.value,subjectId=$("#v14-att-subject")?.value,late=Number($("#v14-att-late")?.value||15);if(!classId||!subjectId){toast("กรุณาเลือกห้องและรายวิชาก่อนสแกน",true);return}
-  if(state.scanBusy)return;state.scanBusy=true;const {data,error}=await client().rpc("scan_attendance_qr",{p_classroom_id:classId,p_subject_id:subjectId,p_token:token,p_late_after_minutes:late});state.scanBusy=false;
-  if(error){toast(errorText(error),true);return}state.currentAttendanceSession=data.session_id;const b=$("#v14-close-session");if(b)b.disabled=false;const box=$("#v14-scan-result");if(box)box.insertAdjacentHTML("afterbegin",`<div class="v14-scan-hit ${data.status}"><b>${esc(data.student_code||"")} ${esc(data.full_name||"")}</b><span>${data.status==="late"?"สาย":"มาเรียน"} • ${new Date().toLocaleTimeString("th-TH")}</span></div>`);toast(`เช็คชื่อ ${data.full_name||data.student_code} สำเร็จ`);loadAttendanceSessions();
+  const classId=$("#v14-att-class")?.value,subjectId=$("#v14-att-subject")?.value;if(!classId||!subjectId){toast("กรุณาเลือกห้องและรายวิชาก่อนสแกน",true);return}
+  if(state.scanBusy)return;state.scanBusy=true;
+  const {data,error}=await client().rpc("scan_attendance_qr",{p_classroom_id:classId,p_subject_id:subjectId,p_token:token,p_late_after_minutes:15});state.scanBusy=false;
+  if(error){toast(errorText(error),true);if(String(error.message||"").includes("ATTENDANCE_WINDOW_CLOSED_USE_ADMIN")){stopScanner();await loadAttendanceSessions()}return}
+  state.currentAttendanceSession=data.session_id;state.currentAttendanceDeadline=data.auto_close_at||null;
+  const btn=$("#v161-summary-submit");if(btn)btn.disabled=false;
+  const box=$("#v14-scan-result"),when=data.scanned_at?new Date(data.scanned_at).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"medium"}):new Date().toLocaleString("th-TH");
+  if(box)box.insertAdjacentHTML("afterbegin",`<div class="v161-scan-hit ${data.status}"><div><strong>${esc(data.full_name||"-")}</strong><span>${esc(data.grade_level||"")}${esc(data.room_label||"")} • รหัส ${esc(data.student_code||"-")}</span></div><div><b>${attendanceStatusLabel(data.status)}</b><small>${esc(when)}</small></div></div>`);
+  toast(`เช็คชื่อ ${data.full_name||data.student_code} แล้ว • ${attendanceStatusLabel(data.status)}`);
+  await refreshAttendanceSnapshot();loadAttendanceSessions();
 }
 async function startScanner(){
   if(state.scanner?.stream)return;const video=$("#v14-scan-video");if(!video)return;if(!navigator.mediaDevices?.getUserMedia){toast("เบราว์เซอร์นี้ไม่รองรับกล้อง กรุณาเปิดด้วย Chrome/Safari",true);return}
@@ -505,20 +674,36 @@ async function startScanner(){
   }catch(e){toast("เปิดกล้องไม่ได้ กรุณาอนุญาต Camera หรือใช้ช่อง Token สำรอง",true)}
 }
 function stopScanner(){if(state.scanner?.raf)cancelAnimationFrame(state.scanner.raf);if(state.scanner?.stream)state.scanner.stream.getTracks().forEach(t=>t.stop());state.scanner=null;const v=$("#v14-scan-video");if(v)v.srcObject=null}
-async function closeAttendanceCurrent(){if(!state.currentAttendanceSession||!ask("ปิดรอบเช็คชื่อ? ผู้ที่ยังไม่ได้สแกนและอยู่ในวิชานี้จะถูกบันทึกเป็นขาด"))return;const r=await client().rpc("close_attendance_session",{p_session_id:state.currentAttendanceSession});if(r.error){toast(errorText(r.error),true);return}toast(`ปิดรอบแล้ว • เพิ่มขาด ${r.data?.absent_added||0} คน`);state.currentAttendanceSession=null;renderAttendance()}
-async function loadAttendanceSessions(){const box=$("#v14-session-list");if(!box)return;const {data,error}=await client().from("attendance_sessions").select("id,session_date,started_at,closed_at,status,late_after_minutes,classrooms(name),subjects(code,name)").order("started_at",{ascending:false}).limit(20);if(error){box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}box.innerHTML=(data||[]).map(x=>`<button class="v14-session-row" data-v14-session="${x.id}"><div><b>${esc(x.subjects?.code||"")} ${esc(x.subjects?.name||"")}</b><small>${esc(x.classrooms?.name||"")} • ${fmt(x.started_at)}</small></div><span class="v14-status ${x.status==="open"?"approved":"muted"}">${x.status==="open"?"กำลังเช็คชื่อ":"ปิดแล้ว"}</span></button>`).join("")||`<div class="v14-empty">ยังไม่มีรอบเช็คชื่อ</div>`}
+async function closeAttendanceCurrent(){
+  if(!state.currentAttendanceSession||!ask("สรุปยอดตอนนี้และส่งให้ Admin? ผู้ที่ยังไม่ได้เช็คชื่อจะถูกบันทึกเป็นขาด และหลังจากนี้นักศึกษาที่มาทีหลังต้องเช็คกับ Admin เป็นมาสาย"))return;
+  const r=await client().rpc("close_attendance_session",{p_session_id:state.currentAttendanceSession});
+  if(r.error){toast(errorText(r.error),true);return}
+  const s=r.data?.summary||{};toast(`ส่งสรุปให้ Admin แล้ว • มา ${s.present||0} สาย ${s.late||0} ขาด ${s.absent||0} ลา ${s.excused||0}`);
+  state.currentAttendanceSession=null;state.currentAttendanceDeadline=null;stopScanner();renderAttendance();
+}
+async function loadAttendanceSessions(){
+  const box=$("#v14-session-list");if(!box)return;
+  const {data,error}=await client().from("attendance_sessions").select("id,session_date,started_at,auto_close_at,closed_at,status,late_after_minutes,close_reason,summary,classrooms(name),subjects(code,name)").order("started_at",{ascending:false}).limit(20);
+  if(error){box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}
+  const rows=data||[],open=rows.find(x=>x.status==="open");
+  if(open&&!state.currentAttendanceSession){state.currentAttendanceSession=open.id;state.currentAttendanceDeadline=open.auto_close_at;refreshAttendanceSnapshot()}
+  box.innerHTML=rows.map(x=>{const s=x.summary||{};return `<button class="v14-session-row" data-v14-session="${x.id}"><div><b>${esc(x.subjects?.code||"")} ${esc(x.subjects?.name||"")}</b><small>${esc(x.classrooms?.name||"")} • เริ่ม ${fmt(x.started_at)}${x.auto_close_at?` • กำหนดสรุป ${fmt(x.auto_close_at)}`:""}</small></div><div class="v161-session-row-end"><span class="v14-status ${x.status==="open"?"approved":"muted"}">${x.status==="open"?"กำลังเช็คชื่อ":"สรุปแล้ว"}</span>${x.status==="closed"?`<small>มา ${s.present||0} • สาย ${s.late||0} • ขาด ${s.absent||0} • ลา ${s.excused||0}</small>`:""}</div></button>`}).join("")||`<div class="v14-empty">ยังไม่มีรอบเช็คชื่อ</div>`;
+  updateAttendanceWindow();
+}
 async function loadAttendanceSummary(){
   const classId=$("#v14-att-class")?.value,subjectId=$("#v14-att-subject")?.value,box=$("#v14-att-summary-box");
   if(!classId||!subjectId){toast("กรุณาเลือกห้องและรายวิชาก่อนดูสรุป",true);return}
   if(box)box.innerHTML='<div class="v14-loading-inline">กำลังสรุปการเข้าเรียน...</div>';
   const {data,error}=await client().rpc("attendance_subject_summary",{p_classroom_id:classId,p_subject_id:subjectId});
   if(error){if(box)box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}
-  if(box)box.innerHTML=`<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>นักศึกษา</th><th>ครั้งเรียน</th><th>มา</th><th>สาย</th><th>ขาด</th><th>ลา</th><th>% เข้าเรียน</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${x.total_sessions}</td><td>${x.present_count}</td><td>${x.late_count}</td><td>${x.absent_count}</td><td>${x.excused_count}</td><td><b>${x.attendance_percent??0}%</b></td></tr>`).join("")||`<tr><td colspan="8" class="empty">ยังไม่มีรอบเช็คชื่อที่ปิดแล้ว</td></tr>`}</tbody></table></div>`;
+  if(box)box.innerHTML=`<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>นักศึกษา</th><th>ครั้งเรียน</th><th>มา</th><th>สาย</th><th>ขาด</th><th>ลา</th><th>% เข้าเรียน</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${x.total_sessions}</td><td>${x.present_count}</td><td>${x.late_count}</td><td>${x.absent_count}</td><td>${x.excused_count}</td><td><b>${x.attendance_percent??0}%</b></td></tr>`).join("")||`<tr><td colspan="8" class="empty">ยังไม่มีรอบเช็คชื่อที่สรุปแล้ว</td></tr>`}</tbody></table></div>`;
 }
 async function loadAttendanceRoster(sessionId){
-  const [rr,p]=await Promise.all([client().rpc("attendance_session_roster",{p_session_id:sessionId}),getProfile()]);
-  if(rr.error){toast(errorText(rr.error),true);return}const editable=p?.role==="admin";
-  overlay(`<div class="v14-modal-head"><div><h2>รายชื่อการเข้าเรียน</h2><p>${editable?"Admin สามารถแก้สถานะได้ และระบบบันทึก Audit Log":"หัวหน้าห้องดูข้อมูลของห้องตนเอง"}</p></div><button class="btn" data-v14-close>✕</button></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>สถานะ</th><th>เวลา</th></tr></thead><tbody>${(rr.data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${editable?`<select class="input" data-v14-att-status="${x.record_id}" data-session="${sessionId}"><option value="present" ${x.status==="present"?"selected":""}>มา</option><option value="late" ${x.status==="late"?"selected":""}>สาย</option><option value="absent" ${x.status==="absent"?"selected":""}>ขาด</option><option value="excused" ${x.status==="excused"?"selected":""}>ลา/มีเหตุผล</option></select>`:esc(x.status)}</td><td>${fmt(x.scanned_at)}</td></tr>`).join("")}</tbody></table></div>`,true)
+  const [rr,p,snap]=await Promise.all([client().rpc("attendance_session_roster_v161",{p_session_id:sessionId}),getProfile(),client().rpc("attendance_session_snapshot",{p_session_id:sessionId})]);
+  if(rr.error){toast(errorText(rr.error),true);return}const editable=p?.role==="admin",s=snap.data||{};
+  overlay(`<div class="v14-modal-head"><div><h2>รายชื่อการเข้าเรียน</h2><p>${editable?"Admin กำหนด มา / สาย / ขาด / ลา ได้โดยตรง":"หัวหน้าห้องดูผลแบบอ่านอย่างเดียว"} • เช็คแล้ว ${s.checked||0}/${s.expected||0}</p></div><button class="btn" data-v14-close>✕</button></div>
+    <div class="v161-roster-summary"><span>มา <b>${s.present||0}</b></span><span>สาย <b>${s.late||0}</b></span><span>ขาด <b>${s.absent||0}</b></span><span>ลา <b>${s.excused||0}</b></span></div>
+    <div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>สถานะ</th><th>เวลา</th></tr></thead><tbody>${(rr.data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.grade_level||"")}${esc(x.room_label||"")}</td><td>${editable?`<select class="input" data-v161-att-user="${x.user_id}" data-session="${sessionId}"><option value="pending" ${x.status==="pending"?"selected":""} disabled>รอเช็คชื่อ</option><option value="present" ${x.status==="present"?"selected":""}>มา</option><option value="late" ${x.status==="late"?"selected":""}>สาย</option><option value="absent" ${x.status==="absent"?"selected":""}>ขาด</option><option value="excused" ${x.status==="excused"?"selected":""}>ลา</option></select>`:`<span class="v14-status ${x.status}">${attendanceStatusLabel(x.status)}</span>`}</td><td>${fmt(x.scanned_at)}</td></tr>`).join("")}</tbody></table></div>`,true);
 }
 async function loadLeaderRoster(){const cid=$("#v14-leader-class").value,box=$("#v14-roster");if(!cid){toast("เลือกห้องก่อน",true);return}box.innerHTML="กำลังโหลด...";const {data,error}=await client().rpc("admin_classroom_roster",{p_classroom_id:cid});if(error){box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}box.innerHTML=`<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ระดับ</th><th>สิทธิ์</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.grade_level||"")}${esc(x.room_label||"")}</td><td><button class="btn sm ${x.is_leader?"red":"green"}" data-v14-leader-user="${x.user_id}" data-class="${cid}" data-active="${x.is_leader?"false":"true"}">${x.is_leader?"ยกเลิกหัวหน้าห้อง":"แต่งตั้งหัวหน้าห้อง"}</button></td></tr>`).join("")}</tbody></table></div>`}
 
@@ -534,11 +719,161 @@ async function renderPromotion(){
 }
 function promotionCreateDialog(source,target){overlay(`<div class="v14-modal-head"><div><h2>เตรียมรายการเลื่อนชั้น</h2><p>ระบบสร้างรายการให้ตรวจ ก่อน Admin อนุมัติ</p></div><button class="btn" data-v14-close>✕</button></div><form id="v14-promo-form"><label class="field">ปีการศึกษาปัจจุบัน<input class="input" name="source" value="${esc(source)}"></label><label class="field">ปีการศึกษาใหม่<input class="input" name="target" value="${esc(target)}" required></label><label class="field">หมายเหตุ<textarea class="input" name="note"></textarea></label><div class="row end"><button class="btn primary">สร้างรายการตรวจสอบ</button></div></form>`);$("#v14-promo-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const r=await client().rpc("prepare_promotion_batch",{p_source_academic_year:String(f.get("source")||""),p_target_academic_year:String(f.get("target")||""),p_note:String(f.get("note")||"")||null});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("สร้างรายการเลื่อนชั้นแล้ว กรุณาตรวจรายชื่อ");renderPromotion()}}
 
+
+// ---------------------------------------------------------------------------
+// V16 Subject score summary / print
+// ---------------------------------------------------------------------------
+function csvDownload(rows,filename){
+  const cell=v=>{const x=String(v??"");return /[",\r\n]/.test(x)?`"${x.replaceAll('"','""')}"`:x};
+  const blob=new Blob(["\uFEFF"+rows.map(r=>r.map(cell).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+async function renderSubjectGradebook(sid){
+  clearRoomChannel();state.subjectId=sid;state.route="courses";setTitle("สรุปคะแนนรายวิชา");busy("กำลังคำนวณคะแนนจากข้อมูลจริง...");
+  const c=client();
+  const [sr,gr,cr,er]=await Promise.all([
+    c.from("subjects").select("id,code,name,academic_year,semester").eq("id",sid).single(),
+    c.rpc("admin_subject_gradebook",{p_subject_id:sid}),
+    c.from("subject_grade_settings").select("*").eq("subject_id",sid).maybeSingle(),
+    c.from("exams").select("id,title,exam_kind,status,full_score").eq("subject_id",sid).order("created_at",{ascending:false})
+  ]);
+  if(sr.error)throw sr.error;if(gr.error)throw gr.error;
+  const subject=sr.data,rows=gr.data||[],cfg=cr.data||{work_points:40,behavior_points:20,midterm_points:20,final_points:20,default_behavior_score:20,midterm_exam_id:null,final_exam_id:null},exams=er.data||[];
+  const avg=rows.length?rows.reduce((a,x)=>a+Number(x.total_score||0),0)/rows.length:0;
+  const fullWork=rows.filter(x=>Number(x.assigned_work_count||0)>0&&Number(x.completed_work_count||0)>=Number(x.assigned_work_count||0)).length;
+  const body=rows.map((x,i)=>`<tr>
+    <td>${i+1}</td><td><b>${esc(x.student_code||"-")}</b></td><td>${esc(x.full_name||"-")}</td><td>${esc(x.class_name||`${x.grade_level||""}${x.room_label||""}`)}</td>
+    <td><b>${x.completed_work_count}/${x.assigned_work_count}</b><small>${Number(x.work_score||0).toFixed(2)}/${Number(x.work_points||40)}</small></td>
+    <td><button class="v16-score-edit" data-v16-behavior="${x.user_id}" data-score="${Number(x.behavior_score||0)}">${Number(x.behavior_score||0).toFixed(2)}/${Number(x.behavior_points||20)}</button></td>
+    <td>${Number(x.midterm_score||0).toFixed(2)}/${Number(x.midterm_points||20)}</td>
+    <td>${Number(x.final_score||0).toFixed(2)}/${Number(x.final_points||20)}</td>
+    <td><strong>${Number(x.total_score||0).toFixed(2)}</strong></td>
+  </tr>`).join("");
+  content().innerHTML=`<section class="v14-page v16-gradebook-page">
+    <div class="v16-no-print"><button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button></div>
+    <div class="v16-print-head"><img src="./icons/icon-192.png" alt=""><div><span>วิทยาลัยเทคนิคนางรอง</span><h1>สรุปผลคะแนนรายวิชา</h1><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} ภาคเรียน ${esc(subject.semester||"-")}</p></div></div>
+    <div class="v16-summary-kpis v16-no-print"><div><span>นักศึกษา</span><b>${rows.length}</b></div><div><span>ส่งงานครบ</span><b>${fullWork}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>คะแนนเต็ม</span><b>100</b></div></div>
+    <div class="v16-grade-rules"><b>เกณฑ์คะแนน</b><span>งาน ${cfg.work_points} • จิตพิสัย ${cfg.behavior_points} • สอบกลางภาค ${cfg.midterm_points} • สอบปลายภาค ${cfg.final_points}</span><small>คะแนนงานคิดจาก “จำนวนงานที่มอบหมายจริง” เช่น มอบหมาย 13 งานและส่งครบ 13 งาน = ได้คะแนนงานเต็ม ${cfg.work_points} แม้คลังใบงานจะมีมากกว่า 13 ใบ</small></div>
+    <div class="v16-grade-actions v16-no-print">
+      <button class="btn" id="v16-grade-settings">⚙️ ตั้งค่าองค์ประกอบคะแนน</button>
+      <button class="btn" id="v16-grade-csv">⬇️ CSV</button>
+      <button class="btn primary" id="v16-grade-print">🖨️ พิมพ์สรุปรายวิชา</button>
+      <span class="v16-live-pill"><i></i> Real-time</span>
+    </div>
+    <div class="table-wrap v16-grade-table"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th><th>งาน ${cfg.work_points}</th><th>จิตพิสัย ${cfg.behavior_points}</th><th>กลางภาค ${cfg.midterm_points}</th><th>ปลายภาค ${cfg.final_points}</th><th>รวม 100</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">ยังไม่มีนักศึกษาที่อนุมัติในห้องเรียนนี้</td></tr>`}</tbody></table></div>
+    <div class="v16-print-foot">พิมพ์จาก DOC-FULL-NR • ${new Date(nowMs()).toLocaleString("th-TH")}</div>
+  </section>`;
+  $("#v16-grade-print").onclick=()=>window.print();
+  $("#v16-grade-csv").onclick=()=>csvDownload([
+    ["ลำดับ","รหัสนักศึกษา","ชื่อ-นามสกุล","ห้อง","ส่งงาน","งาน","จิตพิสัย","กลางภาค","ปลายภาค","รวม"],
+    ...rows.map((x,i)=>[i+1,x.student_code,x.full_name,x.class_name,`${x.completed_work_count}/${x.assigned_work_count}`,x.work_score,x.behavior_score,x.midterm_score,x.final_score,x.total_score])
+  ],`gradebook-${subject.code}-${new Date().toISOString().slice(0,10)}.csv`);
+  $("#v16-grade-settings").onclick=()=>gradeSettingsDialog(sid,cfg,exams);
+  $$("[data-v16-behavior]").forEach(b=>b.onclick=async()=>{
+    const val=prompt("คะแนนจิตพิสัย 0–20",String(b.dataset.score||20));if(val===null)return;
+    const score=Number(val);if(!Number.isFinite(score)||score<0||score>20){toast("คะแนนต้องอยู่ระหว่าง 0–20",true);return}
+    const note=prompt("หมายเหตุ (ไม่บังคับ)","")||null;
+    const r=await c.rpc("admin_set_behavior_score",{p_subject_id:sid,p_user_id:b.dataset.v16Behavior,p_score:score,p_note:note});
+    if(r.error){toast(errorText(r.error),true);return}toast("บันทึกคะแนนจิตพิสัยแล้ว");renderSubjectGradebook(sid);
+  });
+  const rt=await realtimeClient();if(rt){
+    const refresh=()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.subjectId===sid&&!$("#v14-overlay"))renderSubjectGradebook(sid).catch(()=>{})},1000)};
+    state.roomChannel=rt.channel(`gradebook-${sid}-${Date.now()}`)
+      .on("postgres_changes",{event:"*",schema:"public",table:"submissions"},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"exam_attempts"},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"subject_behavior_scores",filter:`subject_id=eq.${sid}`},refresh)
+      .subscribe();
+  }
+}
+function gradeSettingsDialog(sid,cfg,exams){
+  const mids=exams.filter(x=>x.exam_kind==="midterm"),finals=exams.filter(x=>x.exam_kind==="final");
+  overlay(`<div class="v14-modal-head"><div><h2>ตั้งค่าองค์ประกอบคะแนน</h2><p>ค่าแนะนำและค่าเริ่มต้นคือ 40 / 20 / 20 / 20 รวม 100 คะแนน</p></div><button class="btn" data-v14-close>✕</button></div>
+  <form id="v16-grade-settings-form" class="v16-form-stack">
+    <div class="v14-form-grid">
+      <label>งาน<input class="input" name="work" type="number" min="0" max="100" step=".01" value="${cfg.work_points??40}"></label>
+      <label>จิตพิสัย<input class="input" name="behavior" type="number" min="0" max="100" step=".01" value="${cfg.behavior_points??20}"></label>
+      <label>กลางภาค<input class="input" name="midterm" type="number" min="0" max="100" step=".01" value="${cfg.midterm_points??20}"></label>
+      <label>ปลายภาค<input class="input" name="final" type="number" min="0" max="100" step=".01" value="${cfg.final_points??20}"></label>
+    </div>
+    <label>คะแนนจิตพิสัยเริ่มต้น<input class="input" name="defaultBehavior" type="number" min="0" max="20" step=".01" value="${cfg.default_behavior_score??20}"></label>
+    <label>ชุดสอบกลางภาค<select class="input" name="midExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${mids.map(x=>`<option value="${x.id}" ${x.id===cfg.midterm_exam_id?"selected":""}>${esc(x.title)}</option>`).join("")}</select></label>
+    <label>ชุดสอบปลายภาค<select class="input" name="finalExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${finals.map(x=>`<option value="${x.id}" ${x.id===cfg.final_exam_id?"selected":""}>${esc(x.title)}</option>`).join("")}</select></label>
+    <div class="row end"><button class="btn primary">บันทึก</button></div>
+  </form>`);
+  $("#v16-grade-settings-form").onsubmit=async e=>{
+    e.preventDefault();const f=new FormData(e.target),vals=["work","behavior","midterm","final"].map(k=>Number(f.get(k)));if(Math.abs(vals.reduce((a,b)=>a+b,0)-100)>.001){toast("องค์ประกอบคะแนนต้องรวม 100",true);return}
+    const r=await client().rpc("admin_set_subject_grade_settings",{p_subject_id:sid,p_work_points:vals[0],p_behavior_points:vals[1],p_midterm_points:vals[2],p_final_points:vals[3],p_default_behavior_score:Number(f.get("defaultBehavior")||20),p_midterm_exam_id:String(f.get("midExam")||"")||null,p_final_exam_id:String(f.get("finalExam")||"")||null});
+    if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกเกณฑ์คะแนนแล้ว");renderSubjectGradebook(sid);
+  };
+}
+
+// ---------------------------------------------------------------------------
+// V16 Full-sheet paper scan / barcode verification / evidence copy
+// ---------------------------------------------------------------------------
+async function renderPaperScanCenter(sid){
+  clearRoomChannel();state.subjectId=sid;state.route="courses";setTitle("สแกนสำเนาใบงาน");busy("กำลังเปิดศูนย์สแกนเอกสาร...");
+  const c=client(),[sr,rr]=await Promise.all([c.from("subjects").select("id,code,name").eq("id",sid).single(),c.rpc("admin_subject_paper_scans",{p_subject_id:sid})]);if(sr.error)throw sr.error;
+  const subject=sr.data,recent=rr.data||[];
+  content().innerHTML=`<section class="v14-page v16-scan-page">
+    <button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button>
+    <div class="v14-section-head"><div><span class="v14-kicker">FULL-SHEET EVIDENCE SCAN</span><h1>📄 สแกนใบงานทั้งแผ่น</h1><p>${esc(subject.code)} ${esc(subject.name)} • เก็บภาพสำเนาทั้งหน้า แล้วตรวจ Barcode/QR กับข้อมูล Server</p></div><span class="v16-live-pill"><i></i> Real-time</span></div>
+    <div class="v16-scan-grid">
+      <div class="card v16-camera-card"><div class="v16-paper-frame"><video id="v16-paper-video" playsinline muted></video><div class="v16-paper-guide"><span>วางใบงานให้เห็นครบทั้ง 4 มุม</span></div></div><canvas id="v16-paper-canvas" hidden></canvas>
+        <div class="row wrap"><button class="btn primary" id="v16-camera-start">เปิดกล้อง</button><button class="btn" id="v16-camera-stop">หยุดกล้อง</button><button class="btn green" id="v16-capture" disabled>📸 ถ่ายสำเนาทั้งแผ่น</button></div>
+        <div class="v16-scan-help">ระบบพยายามอ่าน Barcode/QR จากภาพกล้องอัตโนมัติ หากอุปกรณ์ไม่รองรับ สามารถกรอกรหัสที่ช่องด้านขวาได้</div>
+      </div>
+      <div class="card"><h2>ตรวจรหัสใบงาน</h2><form id="v16-token-form"><label class="field">Barcode / QR Token<input id="v16-token" class="input" name="token" autocomplete="off" required placeholder="สแกนหรือกรอกรหัส"></label><button class="btn" type="submit">ตรวจข้อมูลจาก Server</button></form><div id="v16-token-info" class="v16-token-info"><div class="v14-empty">ยังไม่ได้อ่านรหัส</div></div></div>
+    </div>
+    <div class="v14-section-head compact"><div><h2>สำเนาที่สแกนล่าสุด</h2><p>ภาพต้นฉบับเก็บใน Private Storage และ Admin เปิดดูได้จากรายการนี้</p></div></div>
+    <div class="table-wrap"><table><thead><tr><th>เวลา</th><th>นักศึกษา</th><th>ใบงาน</th><th>สถานะ</th><th>สำเนา</th></tr></thead><tbody>${recent.map(x=>`<tr><td>${fmt(x.scanned_at)}</td><td><b>${esc(x.student_code||"")}</b><div>${esc(x.full_name||"")}</div></td><td>${esc(x.reference_code||"")} ${esc(x.worksheet_title||"")}</td><td><span class="v14-status ${x.scan_status==="accepted"?"approved":"pending"}">${esc(x.scan_status)}</span></td><td><button class="btn sm" data-v16-view-scan="${esc(x.storage_path)}">เปิดภาพ</button></td></tr>`).join("")||`<tr><td colspan="5" class="empty">ยังไม่มีสำเนาที่สแกน</td></tr>`}</tbody></table></div>
+  </section>`;
+  let stream=null,current=null,lastCode="",detecting=false;
+  const video=$("#v16-paper-video"),tokenInput=$("#v16-token"),capture=$("#v16-capture");
+  const stop=()=>{detecting=false;if(stream){stream.getTracks().forEach(x=>x.stop());stream=null}video.srcObject=null;capture.disabled=true};
+  const lookup=async token=>{
+    const clean=String(token||"").trim();if(!clean)return null;
+    const tr=await c.from("paper_tokens").select("id,worksheet_id,user_id,token,used_at,expires_at,revoked_at,code_kind,last_verified_at").eq("token",clean).maybeSingle();
+    if(tr.error||!tr.data){current=null;$("#v16-token-info").innerHTML=`<div class="alert error">ไม่พบ Barcode/QR นี้ในระบบ</div>`;capture.disabled=true;return null}
+    const t=tr.data,[wr,pr]=await Promise.all([c.from("worksheets").select("id,title,reference_code,subject_id,due_at,status").eq("id",t.worksheet_id).single(),c.from("profiles").select("id,full_name,student_code,class_name").eq("id",t.user_id).single()]);
+    if(wr.error||wr.data.subject_id!==sid){current=null;$("#v16-token-info").innerHTML=`<div class="alert error">รหัสนี้ไม่ใช่ใบงานของห้องเรียนรายวิชานี้</div>`;capture.disabled=true;return null}
+    const now=nowMs(),expired=!!t.expires_at&&now>new Date(t.expires_at).getTime(),revoked=!!t.revoked_at;
+    current={token:t,worksheet:wr.data,profile:pr.data,expired,revoked};
+    $("#v16-token-info").innerHTML=`<div class="v16-token-result ${revoked||expired?"warn":"ok"}"><b>${revoked?"รหัสถูกยกเลิก":expired?"รหัสหมดอายุ":"รหัสใช้งานได้"}</b><span>${esc(pr.data?.student_code||"")} • ${esc(pr.data?.full_name||"")}</span><span>${esc(wr.data.reference_code||"")} • ${esc(wr.data.title)}</span><small>หมดอายุ ${fmt(t.expires_at)} • ใช้งานก่อนหน้า ${fmt(t.used_at)}</small></div>`;
+    capture.disabled=!stream||revoked;return current;
+  };
+  $("#v16-token-form").onsubmit=e=>{e.preventDefault();lookup(tokenInput.value)};
+  $("#v16-camera-start").onclick=async()=>{
+    if(!navigator.mediaDevices?.getUserMedia){toast("อุปกรณ์นี้ไม่รองรับกล้องผ่าน Browser",true);return}
+    try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}});video.srcObject=stream;await video.play();capture.disabled=!current||current.revoked;detecting=true;
+      if("BarcodeDetector" in window){const detector=new BarcodeDetector({formats:["qr_code","code_128","code_39","ean_13","ean_8"]});const loop=async()=>{if(!detecting)return;try{const codes=await detector.detect(video);const raw=codes?.[0]?.rawValue||"";if(raw&&raw!==lastCode){lastCode=raw;let parsed=raw;if(raw.includes("token=")){try{parsed=new URL(raw,location.href).searchParams.get("token")||raw}catch{const m=raw.match(/[?&]token=([^&]+)/);parsed=m?decodeURIComponent(m[1]):raw}}tokenInput.value=parsed;await lookup(tokenInput.value)}}catch{}requestAnimationFrame(loop)};loop()}
+    }catch(e){toast("เปิดกล้องไม่สำเร็จ กรุณาอนุญาตสิทธิ์กล้อง",true)}
+  };
+  $("#v16-camera-stop").onclick=stop;
+  capture.onclick=async()=>{
+    if(!stream||!current)return;if(current.expired&&!ask("Barcode/QR หมดอายุแล้ว ต้องการรับเอกสารและบันทึกเป็น “หมดอายุแต่รับไว้” หรือไม่?"))return;
+    capture.disabled=true;capture.textContent="กำลังบันทึกสำเนา...";
+    const canvas=$("#v16-paper-canvas");canvas.width=video.videoWidth||1920;canvas.height=video.videoHeight||1080;canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height);
+    const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.9));if(!blob){toast("ถ่ายภาพไม่สำเร็จ",true);capture.disabled=false;return}
+    const path=`${current.token.user_id}/paper-scans/${current.worksheet.id}/${Date.now()}.jpg`;
+    const up=await c.storage.from("submissions").upload(path,blob,{contentType:"image/jpeg",upsert:false});
+    if(up.error){toast(errorText(up.error),true);capture.disabled=false;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น";return}
+    const rr=await c.rpc("admin_record_paper_scan",{p_token:current.token.token,p_storage_path:path,p_original_name:`${current.worksheet.reference_code||current.worksheet.id}.jpg`,p_mime_type:"image/jpeg",p_size_bytes:blob.size,p_barcode_format:current.token.code_kind||"barcode",p_accept_expired:current.expired,p_metadata:{capture:"full_sheet_camera",device:deviceLabel()}});
+    if(rr.error){await c.storage.from("submissions").remove([path]);toast(errorText(rr.error),true);capture.disabled=false;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น";return}
+    toast("บันทึกสำเนาทั้งแผ่นและยืนยันใบงานแล้ว");stop();renderPaperScanCenter(sid);
+  };
+  const rt=await realtimeClient();if(rt){state.roomChannel=rt.channel(`paper-scan-${sid}-${Date.now()}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"paper_scans"},()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.subjectId===sid&&!stream)renderPaperScanCenter(sid).catch(()=>{})},900)}).subscribe()}
+}
+async function openPaperScanCopy(path){
+  const r=await client().storage.from("submissions").createSignedUrl(path,300);if(r.error){toast(errorText(r.error),true);return}window.open(r.data.signedUrl,"_blank","noopener");
+}
+
 // ---------------------------------------------------------------------------
 // Delegated interactions (single owner)
 // ---------------------------------------------------------------------------
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,a");if(!t)return;
+  if(t.matches("[data-v16-base-route]")){const b=$(`#sidebar .nav [data-route="${t.dataset.v16BaseRoute}"]`);if(b){b.click()}else toast("เมนูนี้ยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
+  if(t.matches("[data-v161-notification]")){client().rpc("mark_notification_read",{p_notification_id:t.dataset.v161Notification});return}
   if(t.matches("[data-v15-account]")){await decideAccount(t.dataset.v15Account,t.dataset.accountStatus);return}
   if(t.matches("[data-v14-request-course]")){const r=await client().rpc("request_subject_enrollment",{p_subject_id:t.dataset.v14RequestCourse});if(r.error)toast(errorText(r.error),true);else{toast("ส่งคำขอลงทะเบียนแล้ว");renderEnrollSubjects()}return}
   if(t.matches("[data-v14-withdraw-course]")){if(!ask("ยืนยันถอนคำขอ/ถอนรายวิชานี้? ประวัติงานที่ส่งแล้วจะยังคงอยู่"))return;const r=await client().rpc("withdraw_subject_enrollment",{p_subject_id:t.dataset.v14WithdrawCourse});if(r.error)toast(errorText(r.error),true);else{toast("ถอนรายวิชาแล้ว");renderEnrollSubjects()}return}
@@ -549,6 +884,9 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v14-upload]")){uploadSubjectFile(t.dataset.subject,t.dataset.v14Upload,t.dataset.seq);return}
   if(t.matches("[data-v14-file]")){openSubjectFile(t.dataset.v14File);return}
   if(t.matches("[data-v15-room-exam]")){openSubjectExam(t.dataset.v15RoomExam);return}
+  if(t.matches("[data-v16-gradebook]")){renderSubjectGradebook(t.dataset.v16Gradebook);return}
+  if(t.matches("[data-v16-paper-scan]")){renderPaperScanCenter(t.dataset.v16PaperScan);return}
+  if(t.matches("[data-v16-view-scan]")){openPaperScanCopy(t.dataset.v16ViewScan);return}
   if(t.matches("[data-v15-jump]")){document.querySelector(t.dataset.v15Jump)?.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(t.matches("[data-v14-open-work]")){if(window.DOCNR_BASE?.openWorksheet)window.DOCNR_BASE.openWorksheet(t.dataset.v14OpenWork);else toast("ตัวเปิดใบงานหลักยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
   if(t.matches("[data-v14-select-mode]")){const mode=t.dataset.v14SelectMode;const boxes=$$(`[data-v14-wselect]`).filter(x=>x.closest(".v14-ws-section")?.querySelector(`[data-v14-select-mode="${mode}"]`));const all=boxes.every(x=>x.checked);boxes.forEach(x=>x.checked=!all);t.textContent=all?"เลือกทั้งหมด":"ยกเลิกทั้งหมด";return}
@@ -561,6 +899,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("change",async e=>{
   const t=e.target;
   if(t.matches("[data-v14-promotion-item]")){let reason=null;if(["transfer","suspend"].includes(t.value)){reason=prompt(t.value==="transfer"?"เหตุผลการย้ายออก (จำเป็น)":"เหตุผลการพักการเรียน (จำเป็น)","");if(!reason){renderPromotion();return}}const r=await client().rpc("set_promotion_item_decision_v15",{p_item_id:t.dataset.v14PromotionItem,p_decision:t.value,p_new_grade_level:null,p_new_room_label:null,p_new_class_name:null,p_new_seat_number:null,p_reason:reason,p_effective_at:null});if(r.error){toast(errorText(r.error),true);renderPromotion()}else toast("บันทึกการตัดสินใจแล้ว");return}
+  if(t.matches("[data-v161-att-user]")){const note=prompt(t.value==="excused"?"ระบุเหตุผลการลา (แนะนำให้กรอก)":"หมายเหตุการแก้สถานะ (ไม่บังคับ)","")||null;const r=await client().rpc("admin_set_attendance_status_v161",{p_session_id:t.dataset.session,p_user_id:t.dataset.v161AttUser,p_status:t.value,p_note:note});if(r.error){toast(errorText(r.error),true);loadAttendanceRoster(t.dataset.session);return}toast(`บันทึกสถานะ ${attendanceStatusLabel(t.value)} แล้ว`);loadAttendanceRoster(t.dataset.session);return}
   if(t.matches("[data-v14-att-status]")){const note=prompt("หมายเหตุการแก้สถานะ (ไม่บังคับ)","")||null;const r=await client().rpc("set_attendance_record_status",{p_record_id:t.dataset.v14AttStatus,p_status:t.value,p_note:note});if(r.error){toast(errorText(r.error),true);loadAttendanceRoster(t.dataset.session);return}toast("แก้สถานะการเข้าเรียนแล้ว");loadAttendanceRoster(t.dataset.session)}
 });
 
@@ -568,11 +907,11 @@ document.addEventListener("change",async e=>{
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v15";
-  await syncServerTime();startHeartbeat();scheduleEnsureNav();
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v16.1";
+  await syncServerTime();startHeartbeat();scheduleEnsureNav();setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{})},900);
   setTimeout(async()=>{const p=await getProfile(true);if(!p)return;if(p.role!=="admin"&&(!p.active||p.approval_status!=="approved"))return;await ensureNav();const active=$("#sidebar .nav [data-route].active");if(active?.dataset.route==="dashboard"||!active)navigate("dashboard")},700);
 }
 
-window.DOCNR_V15=Object.freeze({navigate,version:V15_VERSION});
-window.addEventListener("pagehide",()=>{stopScanner();clearPresenceChannel()});
-boot().catch(e=>console.error("DOC-FULL-NR V15 boot",e));
+window.DOCNR_V16_1=Object.freeze({navigate,version:V15_VERSION});
+window.addEventListener("pagehide",()=>{stopScanner();clearPresenceChannel();clearRoomChannel();clearInterval(state.attendanceTimer);if(state.notificationChannel&&state.rtClient){try{state.rtClient.removeChannel(state.notificationChannel)}catch{}}});
+boot().catch(e=>console.error("DOC-FULL-NR V16.1 boot",e));
