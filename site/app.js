@@ -197,7 +197,7 @@ function signupDialog(){
 function navItems(){
   return isAdmin()
     ? [["dashboard","แดชบอร์ด"],["users","ผู้ใช้งาน"],["classrooms","ห้องเรียน"],["subjects","รายวิชา"],["worksheets","ใบงาน"],["grading","ตรวจงาน"],["overrides","สิทธิ์ส่งเพิ่ม"],["reports","รายงาน"],["audit","Audit log"],["system","ตั้งค่าระบบ"],["profile","โปรไฟล์"]]
-    : [["dashboard","หน้าหลัก"],["myworks","ใบงานของฉัน"],["scan","ยืนยันงานกระดาษ"],["profile","โปรไฟล์"]];
+    : [["dashboard","หน้าหลัก"],["myworks","ใบงานของฉัน"],["profile","โปรไฟล์"]];
 }
 function installGuide(){
   if(S.installPrompt){

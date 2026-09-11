@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V15.1-SUBJECT-ROOMS-INTEGRATED";
+const V15_VERSION="V16-INTEGRATED-ROOMS-GRADEBOOK-SCAN-REALTIME";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -17,7 +17,7 @@ const state={
   uid:null,profile:null,route:null,subjectId:null,serverOffset:0,
   heartbeatTimer:null,countdownTimer:null,navTimer:null,presenceChannel:null,
   scanner:null,scanBusy:false,lastScanToken:null,lastScanAt:0,currentAttendanceSession:null,
-  rtClient:null
+  rtClient:null,roomChannel:null,roomRefreshTimer:null,currentRoomMode:null
 };
 
 function readSession(){
@@ -116,6 +116,22 @@ function startHeartbeat(){
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")heartbeat()},{passive:true});
 }
 function clearPresenceChannel(){if(state.presenceChannel&&state.rtClient){try{state.rtClient.removeChannel(state.presenceChannel)}catch{}}state.presenceChannel=null}
+function clearRoomChannel(){if(state.roomChannel&&state.rtClient){try{state.rtClient.removeChannel(state.roomChannel)}catch{}}state.roomChannel=null;clearTimeout(state.roomRefreshTimer)}
+async function subscribeSubjectRoom(sid,mode){
+  clearRoomChannel();state.currentRoomMode=mode;
+  const rt=await realtimeClient();if(!rt||!sid)return;
+  const refresh=()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{
+    if(state.subjectId!==sid||state.route!=="courses"||$("#v14-overlay"))return;
+    if($$("[data-v14-wselect]:checked").length)return;
+    if(mode==="admin")renderAdminSubject(sid).catch(()=>{});else if(mode==="student")renderStudentCourse(sid).catch(()=>{});
+  },900)};
+  const ch=rt.channel(`subject-room-${sid}-${Date.now()}`)
+    .on("postgres_changes",{event:"*",schema:"public",table:"subject_enrollments",filter:`subject_id=eq.${sid}`},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"worksheets",filter:`subject_id=eq.${sid}`},refresh)
+    .on("postgres_changes",{event:"*",schema:"public",table:"exams",filter:`subject_id=eq.${sid}`},refresh)
+    .subscribe();
+  state.roomChannel=ch;
+}
 
 function navBtn(route,label){const b=document.createElement("button");b.type="button";b.dataset.v14Route=route;b.textContent=label;b.className="v14-nav";return b}
 async function ensureNav(){
@@ -139,7 +155,7 @@ async function ensureNav(){
   const keep=new Set(wanted.map(x=>x[0]));
   $$('[data-v14-route]',nav).forEach(x=>{if(!keep.has(x.dataset.v14Route))x.remove()});
   for(const [r,l] of wanted){let b=nav.querySelector(`[data-v14-route="${r}"]`);if(!b){b=navBtn(r,l);before?nav.insertBefore(b,before):nav.appendChild(b)}else if(b.textContent!==l)b.textContent=l}
-  const brand=$("#sidebar .brand .smalltext");if(brand&&brand.textContent!==`${p.role==="admin"?"ADMIN":"USER"} • V15 FINAL`)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V15 FINAL`;
+  const brand=$("#sidebar .brand .smalltext");if(brand&&brand.textContent!==`${p.role==="admin"?"ADMIN":"USER"} • V16 FINAL`)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V16 FINAL`;
   const ws=nav.querySelector('[data-route="worksheets"]');if(ws&&p.role==="admin")ws.remove();
   const mw=nav.querySelector('[data-route="myworks"]');if(mw&&p.role!=="admin")mw.remove();
 }
@@ -157,7 +173,7 @@ async function requirePhoneGate(route){
   return false;
 }
 async function navigate(route,arg=null){
-  clearPresenceChannel();state.route=route;state.subjectId=null;heartbeat();
+  clearPresenceChannel();clearRoomChannel();state.route=route;state.subjectId=null;heartbeat();
   const p=await getProfile(true);if(!p)return;
   if(await requirePhoneGate(route))return;
   $$("#sidebar .nav button").forEach(x=>x.classList.remove("active"));
@@ -378,6 +394,8 @@ async function renderAdminSubject(sid){
     <button class="btn" data-v15-jump="#v15-room-roster">👥 นักศึกษา ${approved.length}</button>
     <button class="btn" data-v15-jump="#v15-room-ready">📚 ใบงานสำเร็จรูป ${ready.length}</button>
     <button class="btn" data-v15-jump="#v15-room-ready">🚀 ปล่อยแล้ว ${published}</button>
+    <button class="btn" data-v16-gradebook="${sid}">📊 สรุปคะแนน</button>
+    <button class="btn" data-v16-paper-scan="${sid}">📄 สแกนสำเนาใบงาน</button>
     <button class="btn primary" data-v15-room-exam="${sid}">🧪 ระบบสอบ ${exams.length}</button>
   </div>
   <section id="v15-room-roster" class="card v15-room-roster"><div class="v14-section-head compact"><div><h2>👥 นักศึกษาในห้องเรียน</h2><p>สมาชิกห้อง = นักศึกษาที่ Admin อนุมัติให้เรียนรายวิชานี้</p></div><button class="btn sm" data-v14-route="enrollments">จัดการคำขอลงทะเบียน</button></div>
@@ -386,8 +404,13 @@ async function renderAdminSubject(sid){
   <div class="card v14-releasebar" id="v15-room-ready"><div><b>📚 ใบงานสำเร็จรูปประจำห้องเรียน</b><div class="muted">เลือกใบงานจากห้องนี้ได้หลายใบ แล้วกำหนดวัน/เวลาเพื่อแจกให้นักศึกษาสมาชิกห้อง ${approved.length} คนพร้อมกัน</div></div><button class="btn primary" id="v14-bulk-release">🚀 ปล่อยใบงานที่เลือก</button></div>
   ${renderGroup("paper","🖨️ ใบงานสำหรับพิมพ์ P01–P05")}
   ${renderGroup("digital","💻 ใบงานอิเล็กทรอนิกส์ D01–D13")}
+  <section class="v16-room-tools">
+    <button class="v16-tool-card" data-v16-gradebook="${sid}"><span>📊</span><b>สรุปคะแนนรายวิชา</b><small>งาน 40 • จิตพิสัย 20 • กลางภาค 20 • ปลายภาค 20 • พิมพ์รายงานได้</small></button>
+    <button class="v16-tool-card" data-v16-paper-scan="${sid}"><span>📄</span><b>สแกนใบงานทั้งแผ่น</b><small>เก็บภาพสำเนา ตรวจ Barcode/QR และสถานะหมดอายุจาก Server</small></button>
+  </section>
   <section class="card v15-room-exam-card"><div><span class="v14-kicker">ROOM EXAM</span><h2>🧪 ระบบสอบของห้องเรียนนี้</h2><p>เปิด Exam Center โดยผูกกับรายวิชา ${esc(subjectRoomName(s))} โดยตรง เพื่อให้จัดข้อสอบและปล่อยสอบเป็นวงจรเดียวกับห้องเรียน</p></div><button class="btn primary" data-v15-room-exam="${sid}">เปิดระบบสอบของห้องนี้</button></section>
   </section>`;
+  subscribeSubjectRoom(sid,"admin").catch(()=>{});
 }
 async function previewWorksheet(id){
   const c=client(),{data:w,error}=await c.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single();if(error){toast(errorText(error),true);return}
@@ -425,7 +448,7 @@ async function renderStudentCourse(sid){
   ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error&&!String(fr.error.message).includes("permission"))throw fr.error;
   const s=sr.data,sm=new Map((subr.data||[]).map(x=>[x.worksheet_id,x])),works=wr.data||[],files=fr.data||[];
   const group=(mode,label)=>{const list=works.filter(w=>w.mode===mode);return `<section><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} งานที่ปล่อยแล้ว</p></div></div><div class="v14-work-list">${list.map(w=>{const st=workStatus(w,sm.get(w.id)),fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-learning-set" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-learning-content"><span class="v14-codebox">${esc(wsCode(w))}</span><div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">เปิด ${fmt(w.open_at)} • ส่ง ${fmt(w.due_at)}</div>${!["sent","late","graded"].includes(st.key)&&w.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(w.due_at)}"></b>`:""}</div></div><div class="v14-learning-media"><b>📊 สไลด์ / สื่อ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<small>ยังไม่มีสื่อประกอบชุดนี้</small>`}</div><div class="v14-learning-actions"><span class="v14-status ${st.cls}">${esc(st.label)}</span><button class="btn primary" data-v14-open-work="${w.id}">${mode==="digital"?"เปิดทำใบงาน":"ดูใบงาน"}</button></div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานประเภทนี้ที่ปล่อยให้คุณ</div>`}</div></section>`};
-  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();
+  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();subscribeSubjectRoom(sid,"student").catch(()=>{});
 }
 async function renderWorkStatus(){
   setTitle("ตารางสถานะงาน");busy("กำลังตรวจงานทั้งหมด...");const rows=await studentWorkRows();const counts={sent:0,late:0,graded:0,draft:0,pending:0,upcoming:0,overdue:0};rows.forEach(x=>counts[x.status.key]++);
@@ -534,6 +557,154 @@ async function renderPromotion(){
 }
 function promotionCreateDialog(source,target){overlay(`<div class="v14-modal-head"><div><h2>เตรียมรายการเลื่อนชั้น</h2><p>ระบบสร้างรายการให้ตรวจ ก่อน Admin อนุมัติ</p></div><button class="btn" data-v14-close>✕</button></div><form id="v14-promo-form"><label class="field">ปีการศึกษาปัจจุบัน<input class="input" name="source" value="${esc(source)}"></label><label class="field">ปีการศึกษาใหม่<input class="input" name="target" value="${esc(target)}" required></label><label class="field">หมายเหตุ<textarea class="input" name="note"></textarea></label><div class="row end"><button class="btn primary">สร้างรายการตรวจสอบ</button></div></form>`);$("#v14-promo-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const r=await client().rpc("prepare_promotion_batch",{p_source_academic_year:String(f.get("source")||""),p_target_academic_year:String(f.get("target")||""),p_note:String(f.get("note")||"")||null});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("สร้างรายการเลื่อนชั้นแล้ว กรุณาตรวจรายชื่อ");renderPromotion()}}
 
+
+// ---------------------------------------------------------------------------
+// V16 Subject score summary / print
+// ---------------------------------------------------------------------------
+function csvDownload(rows,filename){
+  const cell=v=>{const x=String(v??"");return /[",\r\n]/.test(x)?`"${x.replaceAll('"','""')}"`:x};
+  const blob=new Blob(["\uFEFF"+rows.map(r=>r.map(cell).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+async function renderSubjectGradebook(sid){
+  clearRoomChannel();state.subjectId=sid;state.route="courses";setTitle("สรุปคะแนนรายวิชา");busy("กำลังคำนวณคะแนนจากข้อมูลจริง...");
+  const c=client();
+  const [sr,gr,cr,er]=await Promise.all([
+    c.from("subjects").select("id,code,name,academic_year,semester").eq("id",sid).single(),
+    c.rpc("admin_subject_gradebook",{p_subject_id:sid}),
+    c.from("subject_grade_settings").select("*").eq("subject_id",sid).maybeSingle(),
+    c.from("exams").select("id,title,exam_kind,status,full_score").eq("subject_id",sid).order("created_at",{ascending:false})
+  ]);
+  if(sr.error)throw sr.error;if(gr.error)throw gr.error;
+  const subject=sr.data,rows=gr.data||[],cfg=cr.data||{work_points:40,behavior_points:20,midterm_points:20,final_points:20,default_behavior_score:20,midterm_exam_id:null,final_exam_id:null},exams=er.data||[];
+  const avg=rows.length?rows.reduce((a,x)=>a+Number(x.total_score||0),0)/rows.length:0;
+  const fullWork=rows.filter(x=>Number(x.assigned_work_count||0)>0&&Number(x.completed_work_count||0)>=Number(x.assigned_work_count||0)).length;
+  const body=rows.map((x,i)=>`<tr>
+    <td>${i+1}</td><td><b>${esc(x.student_code||"-")}</b></td><td>${esc(x.full_name||"-")}</td><td>${esc(x.class_name||`${x.grade_level||""}${x.room_label||""}`)}</td>
+    <td><b>${x.completed_work_count}/${x.assigned_work_count}</b><small>${Number(x.work_score||0).toFixed(2)}/${Number(x.work_points||40)}</small></td>
+    <td><button class="v16-score-edit" data-v16-behavior="${x.user_id}" data-score="${Number(x.behavior_score||0)}">${Number(x.behavior_score||0).toFixed(2)}/${Number(x.behavior_points||20)}</button></td>
+    <td>${Number(x.midterm_score||0).toFixed(2)}/${Number(x.midterm_points||20)}</td>
+    <td>${Number(x.final_score||0).toFixed(2)}/${Number(x.final_points||20)}</td>
+    <td><strong>${Number(x.total_score||0).toFixed(2)}</strong></td>
+  </tr>`).join("");
+  content().innerHTML=`<section class="v14-page v16-gradebook-page">
+    <div class="v16-no-print"><button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button></div>
+    <div class="v16-print-head"><img src="./icons/icon-192.png" alt=""><div><span>วิทยาลัยเทคนิคนางรอง</span><h1>สรุปผลคะแนนรายวิชา</h1><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} ภาคเรียน ${esc(subject.semester||"-")}</p></div></div>
+    <div class="v16-summary-kpis v16-no-print"><div><span>นักศึกษา</span><b>${rows.length}</b></div><div><span>ส่งงานครบ</span><b>${fullWork}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>คะแนนเต็ม</span><b>100</b></div></div>
+    <div class="v16-grade-rules"><b>เกณฑ์คะแนน</b><span>งาน ${cfg.work_points} • จิตพิสัย ${cfg.behavior_points} • สอบกลางภาค ${cfg.midterm_points} • สอบปลายภาค ${cfg.final_points}</span><small>คะแนนงานคิดจาก “จำนวนงานที่มอบหมายจริง” เช่น มอบหมาย 13 งานและส่งครบ 13 งาน = ได้คะแนนงานเต็ม ${cfg.work_points} แม้คลังใบงานจะมีมากกว่า 13 ใบ</small></div>
+    <div class="v16-grade-actions v16-no-print">
+      <button class="btn" id="v16-grade-settings">⚙️ ตั้งค่าองค์ประกอบคะแนน</button>
+      <button class="btn" id="v16-grade-csv">⬇️ CSV</button>
+      <button class="btn primary" id="v16-grade-print">🖨️ พิมพ์สรุปรายวิชา</button>
+      <span class="v16-live-pill"><i></i> Real-time</span>
+    </div>
+    <div class="table-wrap v16-grade-table"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th><th>งาน ${cfg.work_points}</th><th>จิตพิสัย ${cfg.behavior_points}</th><th>กลางภาค ${cfg.midterm_points}</th><th>ปลายภาค ${cfg.final_points}</th><th>รวม 100</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">ยังไม่มีนักศึกษาที่อนุมัติในห้องเรียนนี้</td></tr>`}</tbody></table></div>
+    <div class="v16-print-foot">พิมพ์จาก DOC-FULL-NR • ${new Date(nowMs()).toLocaleString("th-TH")}</div>
+  </section>`;
+  $("#v16-grade-print").onclick=()=>window.print();
+  $("#v16-grade-csv").onclick=()=>csvDownload([
+    ["ลำดับ","รหัสนักศึกษา","ชื่อ-นามสกุล","ห้อง","ส่งงาน","งาน","จิตพิสัย","กลางภาค","ปลายภาค","รวม"],
+    ...rows.map((x,i)=>[i+1,x.student_code,x.full_name,x.class_name,`${x.completed_work_count}/${x.assigned_work_count}`,x.work_score,x.behavior_score,x.midterm_score,x.final_score,x.total_score])
+  ],`gradebook-${subject.code}-${new Date().toISOString().slice(0,10)}.csv`);
+  $("#v16-grade-settings").onclick=()=>gradeSettingsDialog(sid,cfg,exams);
+  $$("[data-v16-behavior]").forEach(b=>b.onclick=async()=>{
+    const val=prompt("คะแนนจิตพิสัย 0–20",String(b.dataset.score||20));if(val===null)return;
+    const score=Number(val);if(!Number.isFinite(score)||score<0||score>20){toast("คะแนนต้องอยู่ระหว่าง 0–20",true);return}
+    const note=prompt("หมายเหตุ (ไม่บังคับ)","")||null;
+    const r=await c.rpc("admin_set_behavior_score",{p_subject_id:sid,p_user_id:b.dataset.v16Behavior,p_score:score,p_note:note});
+    if(r.error){toast(errorText(r.error),true);return}toast("บันทึกคะแนนจิตพิสัยแล้ว");renderSubjectGradebook(sid);
+  });
+  const rt=await realtimeClient();if(rt){
+    const refresh=()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.subjectId===sid&&!$("#v14-overlay"))renderSubjectGradebook(sid).catch(()=>{})},1000)};
+    state.roomChannel=rt.channel(`gradebook-${sid}-${Date.now()}`)
+      .on("postgres_changes",{event:"*",schema:"public",table:"submissions"},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"exam_attempts"},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"subject_behavior_scores",filter:`subject_id=eq.${sid}`},refresh)
+      .subscribe();
+  }
+}
+function gradeSettingsDialog(sid,cfg,exams){
+  const mids=exams.filter(x=>x.exam_kind==="midterm"),finals=exams.filter(x=>x.exam_kind==="final");
+  overlay(`<div class="v14-modal-head"><div><h2>ตั้งค่าองค์ประกอบคะแนน</h2><p>ค่าแนะนำและค่าเริ่มต้นคือ 40 / 20 / 20 / 20 รวม 100 คะแนน</p></div><button class="btn" data-v14-close>✕</button></div>
+  <form id="v16-grade-settings-form" class="v16-form-stack">
+    <div class="v14-form-grid">
+      <label>งาน<input class="input" name="work" type="number" min="0" max="100" step=".01" value="${cfg.work_points??40}"></label>
+      <label>จิตพิสัย<input class="input" name="behavior" type="number" min="0" max="100" step=".01" value="${cfg.behavior_points??20}"></label>
+      <label>กลางภาค<input class="input" name="midterm" type="number" min="0" max="100" step=".01" value="${cfg.midterm_points??20}"></label>
+      <label>ปลายภาค<input class="input" name="final" type="number" min="0" max="100" step=".01" value="${cfg.final_points??20}"></label>
+    </div>
+    <label>คะแนนจิตพิสัยเริ่มต้น<input class="input" name="defaultBehavior" type="number" min="0" max="20" step=".01" value="${cfg.default_behavior_score??20}"></label>
+    <label>ชุดสอบกลางภาค<select class="input" name="midExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${mids.map(x=>`<option value="${x.id}" ${x.id===cfg.midterm_exam_id?"selected":""}>${esc(x.title)}</option>`).join("")}</select></label>
+    <label>ชุดสอบปลายภาค<select class="input" name="finalExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${finals.map(x=>`<option value="${x.id}" ${x.id===cfg.final_exam_id?"selected":""}>${esc(x.title)}</option>`).join("")}</select></label>
+    <div class="row end"><button class="btn primary">บันทึก</button></div>
+  </form>`);
+  $("#v16-grade-settings-form").onsubmit=async e=>{
+    e.preventDefault();const f=new FormData(e.target),vals=["work","behavior","midterm","final"].map(k=>Number(f.get(k)));if(Math.abs(vals.reduce((a,b)=>a+b,0)-100)>.001){toast("องค์ประกอบคะแนนต้องรวม 100",true);return}
+    const r=await client().rpc("admin_set_subject_grade_settings",{p_subject_id:sid,p_work_points:vals[0],p_behavior_points:vals[1],p_midterm_points:vals[2],p_final_points:vals[3],p_default_behavior_score:Number(f.get("defaultBehavior")||20),p_midterm_exam_id:String(f.get("midExam")||"")||null,p_final_exam_id:String(f.get("finalExam")||"")||null});
+    if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกเกณฑ์คะแนนแล้ว");renderSubjectGradebook(sid);
+  };
+}
+
+// ---------------------------------------------------------------------------
+// V16 Full-sheet paper scan / barcode verification / evidence copy
+// ---------------------------------------------------------------------------
+async function renderPaperScanCenter(sid){
+  clearRoomChannel();state.subjectId=sid;state.route="courses";setTitle("สแกนสำเนาใบงาน");busy("กำลังเปิดศูนย์สแกนเอกสาร...");
+  const c=client(),[sr,rr]=await Promise.all([c.from("subjects").select("id,code,name").eq("id",sid).single(),c.rpc("admin_subject_paper_scans",{p_subject_id:sid})]);if(sr.error)throw sr.error;
+  const subject=sr.data,recent=rr.data||[];
+  content().innerHTML=`<section class="v14-page v16-scan-page">
+    <button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button>
+    <div class="v14-section-head"><div><span class="v14-kicker">FULL-SHEET EVIDENCE SCAN</span><h1>📄 สแกนใบงานทั้งแผ่น</h1><p>${esc(subject.code)} ${esc(subject.name)} • เก็บภาพสำเนาทั้งหน้า แล้วตรวจ Barcode/QR กับข้อมูล Server</p></div><span class="v16-live-pill"><i></i> Real-time</span></div>
+    <div class="v16-scan-grid">
+      <div class="card v16-camera-card"><div class="v16-paper-frame"><video id="v16-paper-video" playsinline muted></video><div class="v16-paper-guide"><span>วางใบงานให้เห็นครบทั้ง 4 มุม</span></div></div><canvas id="v16-paper-canvas" hidden></canvas>
+        <div class="row wrap"><button class="btn primary" id="v16-camera-start">เปิดกล้อง</button><button class="btn" id="v16-camera-stop">หยุดกล้อง</button><button class="btn green" id="v16-capture" disabled>📸 ถ่ายสำเนาทั้งแผ่น</button></div>
+        <div class="v16-scan-help">ระบบพยายามอ่าน Barcode/QR จากภาพกล้องอัตโนมัติ หากอุปกรณ์ไม่รองรับ สามารถกรอกรหัสที่ช่องด้านขวาได้</div>
+      </div>
+      <div class="card"><h2>ตรวจรหัสใบงาน</h2><form id="v16-token-form"><label class="field">Barcode / QR Token<input id="v16-token" class="input" name="token" autocomplete="off" required placeholder="สแกนหรือกรอกรหัส"></label><button class="btn" type="submit">ตรวจข้อมูลจาก Server</button></form><div id="v16-token-info" class="v16-token-info"><div class="v14-empty">ยังไม่ได้อ่านรหัส</div></div></div>
+    </div>
+    <div class="v14-section-head compact"><div><h2>สำเนาที่สแกนล่าสุด</h2><p>ภาพต้นฉบับเก็บใน Private Storage และ Admin เปิดดูได้จากรายการนี้</p></div></div>
+    <div class="table-wrap"><table><thead><tr><th>เวลา</th><th>นักศึกษา</th><th>ใบงาน</th><th>สถานะ</th><th>สำเนา</th></tr></thead><tbody>${recent.map(x=>`<tr><td>${fmt(x.scanned_at)}</td><td><b>${esc(x.student_code||"")}</b><div>${esc(x.full_name||"")}</div></td><td>${esc(x.reference_code||"")} ${esc(x.worksheet_title||"")}</td><td><span class="v14-status ${x.scan_status==="accepted"?"approved":"pending"}">${esc(x.scan_status)}</span></td><td><button class="btn sm" data-v16-view-scan="${esc(x.storage_path)}">เปิดภาพ</button></td></tr>`).join("")||`<tr><td colspan="5" class="empty">ยังไม่มีสำเนาที่สแกน</td></tr>`}</tbody></table></div>
+  </section>`;
+  let stream=null,current=null,lastCode="",detecting=false;
+  const video=$("#v16-paper-video"),tokenInput=$("#v16-token"),capture=$("#v16-capture");
+  const stop=()=>{detecting=false;if(stream){stream.getTracks().forEach(x=>x.stop());stream=null}video.srcObject=null;capture.disabled=true};
+  const lookup=async token=>{
+    const clean=String(token||"").trim();if(!clean)return null;
+    const tr=await c.from("paper_tokens").select("id,worksheet_id,user_id,token,used_at,expires_at,revoked_at,code_kind,last_verified_at").eq("token",clean).maybeSingle();
+    if(tr.error||!tr.data){current=null;$("#v16-token-info").innerHTML=`<div class="alert error">ไม่พบ Barcode/QR นี้ในระบบ</div>`;capture.disabled=true;return null}
+    const t=tr.data,[wr,pr]=await Promise.all([c.from("worksheets").select("id,title,reference_code,subject_id,due_at,status").eq("id",t.worksheet_id).single(),c.from("profiles").select("id,full_name,student_code,class_name").eq("id",t.user_id).single()]);
+    if(wr.error||wr.data.subject_id!==sid){current=null;$("#v16-token-info").innerHTML=`<div class="alert error">รหัสนี้ไม่ใช่ใบงานของห้องเรียนรายวิชานี้</div>`;capture.disabled=true;return null}
+    const now=nowMs(),expired=!!t.expires_at&&now>new Date(t.expires_at).getTime(),revoked=!!t.revoked_at;
+    current={token:t,worksheet:wr.data,profile:pr.data,expired,revoked};
+    $("#v16-token-info").innerHTML=`<div class="v16-token-result ${revoked||expired?"warn":"ok"}"><b>${revoked?"รหัสถูกยกเลิก":expired?"รหัสหมดอายุ":"รหัสใช้งานได้"}</b><span>${esc(pr.data?.student_code||"")} • ${esc(pr.data?.full_name||"")}</span><span>${esc(wr.data.reference_code||"")} • ${esc(wr.data.title)}</span><small>หมดอายุ ${fmt(t.expires_at)} • ใช้งานก่อนหน้า ${fmt(t.used_at)}</small></div>`;
+    capture.disabled=!stream||revoked;return current;
+  };
+  $("#v16-token-form").onsubmit=e=>{e.preventDefault();lookup(tokenInput.value)};
+  $("#v16-camera-start").onclick=async()=>{
+    if(!navigator.mediaDevices?.getUserMedia){toast("อุปกรณ์นี้ไม่รองรับกล้องผ่าน Browser",true);return}
+    try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}});video.srcObject=stream;await video.play();capture.disabled=!current||current.revoked;detecting=true;
+      if("BarcodeDetector" in window){const detector=new BarcodeDetector({formats:["qr_code","code_128","code_39","ean_13","ean_8"]});const loop=async()=>{if(!detecting)return;try{const codes=await detector.detect(video);const raw=codes?.[0]?.rawValue||"";if(raw&&raw!==lastCode){lastCode=raw;let parsed=raw;if(raw.includes("token=")){try{parsed=new URL(raw,location.href).searchParams.get("token")||raw}catch{const m=raw.match(/[?&]token=([^&]+)/);parsed=m?decodeURIComponent(m[1]):raw}}tokenInput.value=parsed;await lookup(tokenInput.value)}}catch{}requestAnimationFrame(loop)};loop()}
+    }catch(e){toast("เปิดกล้องไม่สำเร็จ กรุณาอนุญาตสิทธิ์กล้อง",true)}
+  };
+  $("#v16-camera-stop").onclick=stop;
+  capture.onclick=async()=>{
+    if(!stream||!current)return;if(current.expired&&!ask("Barcode/QR หมดอายุแล้ว ต้องการรับเอกสารและบันทึกเป็น “หมดอายุแต่รับไว้” หรือไม่?"))return;
+    capture.disabled=true;capture.textContent="กำลังบันทึกสำเนา...";
+    const canvas=$("#v16-paper-canvas");canvas.width=video.videoWidth||1920;canvas.height=video.videoHeight||1080;canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height);
+    const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.9));if(!blob){toast("ถ่ายภาพไม่สำเร็จ",true);capture.disabled=false;return}
+    const path=`${current.token.user_id}/paper-scans/${current.worksheet.id}/${Date.now()}.jpg`;
+    const up=await c.storage.from("submissions").upload(path,blob,{contentType:"image/jpeg",upsert:false});
+    if(up.error){toast(errorText(up.error),true);capture.disabled=false;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น";return}
+    const rr=await c.rpc("admin_record_paper_scan",{p_token:current.token.token,p_storage_path:path,p_original_name:`${current.worksheet.reference_code||current.worksheet.id}.jpg`,p_mime_type:"image/jpeg",p_size_bytes:blob.size,p_barcode_format:current.token.code_kind||"barcode",p_accept_expired:current.expired,p_metadata:{capture:"full_sheet_camera",device:deviceLabel()}});
+    if(rr.error){await c.storage.from("submissions").remove([path]);toast(errorText(rr.error),true);capture.disabled=false;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น";return}
+    toast("บันทึกสำเนาทั้งแผ่นและยืนยันใบงานแล้ว");stop();renderPaperScanCenter(sid);
+  };
+  const rt=await realtimeClient();if(rt){state.roomChannel=rt.channel(`paper-scan-${sid}-${Date.now()}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"paper_scans"},()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.subjectId===sid&&!stream)renderPaperScanCenter(sid).catch(()=>{})},900)}).subscribe()}
+}
+async function openPaperScanCopy(path){
+  const r=await client().storage.from("submissions").createSignedUrl(path,300);if(r.error){toast(errorText(r.error),true);return}window.open(r.data.signedUrl,"_blank","noopener");
+}
+
 // ---------------------------------------------------------------------------
 // Delegated interactions (single owner)
 // ---------------------------------------------------------------------------
@@ -549,6 +720,9 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v14-upload]")){uploadSubjectFile(t.dataset.subject,t.dataset.v14Upload,t.dataset.seq);return}
   if(t.matches("[data-v14-file]")){openSubjectFile(t.dataset.v14File);return}
   if(t.matches("[data-v15-room-exam]")){openSubjectExam(t.dataset.v15RoomExam);return}
+  if(t.matches("[data-v16-gradebook]")){renderSubjectGradebook(t.dataset.v16Gradebook);return}
+  if(t.matches("[data-v16-paper-scan]")){renderPaperScanCenter(t.dataset.v16PaperScan);return}
+  if(t.matches("[data-v16-view-scan]")){openPaperScanCopy(t.dataset.v16ViewScan);return}
   if(t.matches("[data-v15-jump]")){document.querySelector(t.dataset.v15Jump)?.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(t.matches("[data-v14-open-work]")){if(window.DOCNR_BASE?.openWorksheet)window.DOCNR_BASE.openWorksheet(t.dataset.v14OpenWork);else toast("ตัวเปิดใบงานหลักยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
   if(t.matches("[data-v14-select-mode]")){const mode=t.dataset.v14SelectMode;const boxes=$$(`[data-v14-wselect]`).filter(x=>x.closest(".v14-ws-section")?.querySelector(`[data-v14-select-mode="${mode}"]`));const all=boxes.every(x=>x.checked);boxes.forEach(x=>x.checked=!all);t.textContent=all?"เลือกทั้งหมด":"ยกเลิกทั้งหมด";return}
@@ -574,5 +748,5 @@ async function boot(){
 }
 
 window.DOCNR_V15=Object.freeze({navigate,version:V15_VERSION});
-window.addEventListener("pagehide",()=>{stopScanner();clearPresenceChannel()});
+window.addEventListener("pagehide",()=>{stopScanner();clearPresenceChannel();clearRoomChannel()});
 boot().catch(e=>console.error("DOC-FULL-NR V15 boot",e));
