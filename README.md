@@ -1,75 +1,101 @@
-# Nangrong Smart Worksheet System / DOC-FULL-NR — V15 FINAL
+# Nangrong Smart Worksheet System / DOC-FULL-NR — V16.4 FINAL
 
-Production Ready Smart Learning Platform สำหรับวิทยาลัยเทคนิคนางรอง ใช้งานบน PC, Android, iPhone, iPad และ Tablet พร้อมติดตั้งเป็น PWA
+ระบบจัดการการเรียนรายวิชาแบบ PWA สำหรับวิทยาลัยเทคนิคนางรอง โดยใช้ **1 รายวิชา = 1 ห้องเรียนรายวิชา** และรวมสมาชิก ใบงาน สื่อ ระบบสอบ สแกนสำเนากระดาษ และสรุปคะแนนไว้ในวงจรเดียวกัน
 
-## Production URLs
+## โครงสร้างหลัก
 
-- Mobile / short link: `https://pisite2543nac-netizen.github.io/smartworksheet/`
-- Direct GitHub Pages: `https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/`
+`ห้องเรียนรายวิชา → นักศึกษา → ใบงาน Paper/Digital → สื่อ → ระบบสอบ → สแกนสำเนางานกระดาษ → สรุปคะแนน`
 
-## Production architecture
+Frontend เป็น Static PWA ใน `/site` ไม่ใช้ React/Vite และ Backend ใช้ Supabase Auth/PostgreSQL/RLS/RPC/Storage/Realtime
 
-Frontend เป็น **Static PWA ใน `/site`** โดยตรง ไม่ใช้ React/Vite build ใน Production
+## V16 Exam Center
 
-- Core shell/router: `site/app.js` + `site/v15-platform.js`
-- Exam Center: `site/v15-exam.js` + `site/exam.html`
-- Supabase: Auth + PostgreSQL + RLS + RPC + Storage + Edge Functions
-- Deployment: GitHub Actions → GitHub Pages
-- App icon: monitor/server artwork supplied by project owner; installed PWA uses 192/512/maskable variants
+นำแนวคิดที่เหมาะสมจากระบบสอบเดิมมาปรับเป็น Server-backed Exam Center:
 
-## Base roles
+- ข้อสอบปรนัย 4 ตัวเลือก **50 ข้อ**
+- เวลา **75 นาที** และ Auto-submit เมื่อหมดเวลา
+- คะแนนเต็ม **20** สูตร `จำนวนข้อถูก × 20 / 50`
+- Question Bank แยกตามรายวิชา
+- สุ่มข้อจากคลัง และสลับลำดับข้อ/ตัวเลือกต่อ attempt
+- กล่องตัวเลือกมีขนาดสม่ำเสมอ
+- บันทึกเหตุการณ์สลับแท็บ / ออกจาก Fullscreen / Copy-Paste-Cut / Context Menu / Print
+- Browser restriction เป็นมาตรการลดการทุจริตและ Audit ไม่ใช่ security boundary 100%
+- Student ไม่เห็นคะแนน เฉลย Answer Key หรือ Admin Comment
+- Admin เพิ่ม/แก้/ปิดข้อสอบ, Import/Export JSON, ดูผล, ดูเหตุการณ์, Reset ผู้เข้าสอบ และลบชุดสอบ
+- คะแนนปลายภาคไม่มี flow ให้ Student ขอเปิดดู
 
-ระบบมี Base Role เพียง 2 แบบ:
+## สรุปคะแนนรายวิชา 100 คะแนน
 
-- `admin` — ครู/ผู้ดูแลระบบ
-- `user` — นักเรียน/นักศึกษา
+ค่าเริ่มต้นต่อห้องเรียนรายวิชา:
 
-`classroom_leaders` เป็น capability ของ User ไม่ใช่ role ที่สาม
+- งาน 40
+- จิตพิสัย 20
+- สอบกลางภาค 20
+- สอบปลายภาค 20
 
-## Core flow
+**คะแนนงานคิดจากงานที่ครูปล่อย/มอบหมายจริงเท่านั้น** ไม่ใช่จำนวน Template ทั้งหมด เช่นมี Template 15 งาน แต่ครูอนุมัติ/ปล่อย 13 งาน และนักศึกษาส่งครบ 13 งาน = คะแนนงานเต็ม 40
 
-1. นักศึกษาสมัครด้วยรหัสนักศึกษา + รหัสผ่าน + ข้อมูลการศึกษา + กล้องหน้าสด
-2. บัญชีเริ่มที่ `pending` และไม่เข้าถึงข้อมูลการเรียนจน Admin อนุมัติ
-3. หลังบัญชีอนุมัติ นักศึกษาขอลงทะเบียนวิชา
-4. Admin อนุมัติรายวิชา
-5. Admin ปล่อยใบงานหลายใบพร้อมกันให้สมาชิก Approved ของวิชา
-6. ผู้เรียนทำ Digital / พิมพ์ Paper / ส่งงาน / สแกน QR ตามเงื่อนไข
-7. Admin ตรวจงานและคะแนน โดยข้อมูลคะแนน/เฉลย/Rubric/ความคิดเห็นไม่ถูกเปิดแก่ User
-8. ระบบรองรับ Attendance, Exam, Academic History และ Promotion
+Admin เปิด `📊 สรุปคะแนน` ในห้องเรียนเพื่อดูตาราง Real-time, แก้จิตพิสัย, เลือกชุดกลาง/ปลายภาค, Export CSV และพิมพ์ A4 Landscape ได้
+
+## สแกนสำเนางานกระดาษทั้งแผ่น
+
+Admin เปิด `📄 สแกนสำเนาใบงาน` ในห้องเรียน:
+
+1. กล้องอ่าน QR/Barcode เป็นจุดอ้างอิงหลัก
+2. Server ตรวจ Token, การมอบหมาย, ใบงาน, Student, Reference Code, วันหมดอายุและการยกเลิก
+3. กล้องถ่าย **ทั้งแผ่น** เป็น JPEG เพื่อเก็บหลักฐานว่ามีการเขียน/ส่งงานจริง
+4. สำเนาเก็บใน Private `submissions` Storage
+5. Metadata เก็บใน `paper_scans`
+6. Admin สามารถเปิดสำเนาผ่าน Signed URL
+7. Token หมดอายุจะแจ้งเตือน และต้องให้ Admin ยืนยันหากต้องการรับเป็นกรณีพิเศษ
+
+## Realtime
+
+Subject room และงานหลักใช้ Supabase Realtime สำหรับ enrollment, worksheets, assignments, submissions, exams, exam attempts, behavior scores, paper scans, attendance และ presence ตามสิทธิ์ RLS
 
 ## Ready-made worksheets
 
-Production มีใบงานสำเร็จรูปเดิม **198 ใบ** ครบ 11 รายวิชา:
+ยังรักษาใบงานสำเร็จรูปเดิม **198 ใบ** (Paper 55 / Digital 143) และแสดงภายในห้องเรียนรายวิชาตาม `subject_id` โดยไม่ Seed ซ้ำ
 
-- Paper 55 ใบ
-- Digital 143 ใบ
+## Security
 
-ห้าม seed ซ้ำหรือทำลายข้อมูลเดิม
-
-## Security baseline
-
-- Default-deny RLS สำหรับข้อมูลสำคัญ
-- User อ่านเฉพาะข้อมูลของตนเอง
-- คะแนน/เกรด/Answer Key/Rubric/Admin Comment เป็น Admin-only
-- User Exam ใช้ RPC สถานะที่ไม่คืน score/max_score
-- Submission และ Exam ใช้ Server Time เป็นผู้ตัดสิน
+- RLS เป็นตัวบังคับสิทธิ์ ไม่ใช่แค่ซ่อนปุ่ม
+- Student ไม่อ่าน Answer Key / Grade / Rubric / Exam Score โดยตรง
+- Submission/Exam ใช้ Server Time
+- Storage สำคัญเป็น Private
 - ไม่มี Service Role key ใน Frontend
-- Storage สำคัญเป็น Private และเปิดด้วย Signed URL ตามสิทธิ์
+- Account approval และ Subject enrollment แยกกัน
 
-## การนำเอกสาร Requirement มาปรับใช้
+## Production URLs
 
-V15 ใช้เอกสาร Requirement ที่เจ้าของโครงการส่งมาแบบ **Selective Adaptation** คือเลือกเฉพาะแนวทางที่ช่วยเพิ่มความเสถียร ความปลอดภัย Mobile UX และการบำรุงรักษา ไม่ได้นำทุกข้อมาแทนระบบเดิมแบบ 1:1 รายละเอียดอยู่ที่ `docs/ADAPTATION_NOTES.md`
+- `https://pisite2543nac-netizen.github.io/smartworksheet/`
+- `https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/`
 
-## Documentation
 
-- `docs/ADMIN_GUIDE.md`
-- `docs/USER_GUIDE.md`
-- `docs/SECURITY.md`
-- `docs/DEPLOYMENT.md`
-- `docs/MAINTENANCE.md`
-- `docs/ARCHITECTURE.md`
-- `tests/README.md`
+## V16.1 Menu + Attendance Realtime
+- Menu Card แบบเดียวกันทั้ง Admin/User เพื่อใช้งานง่าย
+- User Profile เป็น Read-only และ RLS ป้องกันการแก้ข้อมูลเอง
+- Attendance เริ่มนับ 15 นาทีจากคนแรก
+- Manual summary ได้ทุกเวลา / Auto summary ด้วย pg_cron
+- หลังหมดเวลาเช็คผ่าน Admin เท่านั้นและบันทึก Late
+- Leave/Excused กำหนดโดย Admin ใน Attendance roster
+- Realtime in-app notifications ทั้งผู้สแกน นักศึกษา และ Admin
+- Scan result แสดงชื่อ ชั้น รหัสนักศึกษา วันเวลา
 
-## Deployment rule
 
-ทุก Release ต้องผ่าน validation → staging/backup → production → Pages verification. ห้ามแก้ฐานข้อมูล Production แบบ destructive และห้าม deploy script legacy ที่สร้าง route owner ซ้ำ
+## V16.3 Phone Profile / No OTP
+- ปิดระบบ OTP เบอร์โทรศัพท์ถาวร
+- สมัครสมาชิกยังต้องกรอกเบอร์โทรศัพท์
+- เก็บเบอร์ใน `profiles.phone` เพื่อเป็นข้อมูลติดต่อ
+- ไม่มี SMS gate / OTP route ใน Student UI
+- User Profile เป็น Read-only และ Admin เป็นผู้ดูแลข้อมูลทางการ
+
+
+## V16.4
+- เพิ่มชื่อเล่นในข้อมูลสมัครและโปรไฟล์
+- Self-registration บังคับชื่อ-นามสกุลและชื่อเล่นเป็นภาษาไทย
+- ถ้าพิมพ์ตัวอักษรอังกฤษในช่องชื่อ/ชื่อเล่น ระบบแจ้ง “พ่อคุณเป็นฝรั่งหรอ” และลบตัวอักษรอังกฤษ
+- ตัดช่องอีเมลจากหน้าสมัครนักศึกษา
+- เพิ่มตัวกรองค้นหา: ระดับชั้น ห้อง แผนก สาขา สถานะ
+- ปรับธีมให้สีอ่อนและลด contrast ที่รบกวนสายตา
+- Admin Profile แสดงข้อมูลครบ พร้อมอัตราการส่งงานและอัตราการเข้าเรียนภาพรวม/รายวิชา
