@@ -82,3 +82,27 @@ html.v14-tech .alert{background:rgba(37,99,235,.1);border-color:rgba(96,165,250,
 .code-editor-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.answer-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.55;tab-size:2}.expanded-code{min-height:55vh!important}
 .drawing-tools{display:flex;justify-content:flex-end;margin-bottom:8px}.drawing-canvas{display:block;width:100%;height:auto;min-height:220px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;touch-action:none}.answer-counter{text-align:right;font-size:11px;color:#64748b;margin-top:4px}
 @media(max-width:640px){.account-state-info{grid-template-columns:1fr}.v15-history-item{display:grid}.v15-history-item>div:last-child{text-align:left}.matching-row{grid-template-columns:1fr}.drawing-canvas{min-height:190px}}
+
+
+/* V15.1 SUBJECT ROOM INTEGRATION */
+.v15-room-note{display:flex;justify-content:space-between;align-items:center;gap:14px;border-left:4px solid #38bdf8}
+.v15-room-note span{color:#8fb0c7;font-size:13px}
+.v15-room-card{position:relative;padding-top:42px!important}
+.v15-room-label{position:absolute;top:12px;right:12px;padding:5px 9px;border:1px solid color-mix(in srgb,var(--course) 55%,#1e3a5f);border-radius:999px;font-size:11px;color:#c8f4ff;background:rgba(7,27,45,.72)}
+.v15-room-hero{align-items:center}
+.v15-room-hero-stats{min-width:170px;text-align:center;display:grid;gap:3px}
+.v15-room-hero-stats b{font-size:34px;color:#67e8f9}
+.v15-room-hero-stats span{font-weight:800}
+.v15-room-hero-stats small{color:#91aabd}
+.v15-room-toolbar{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:8px;z-index:4;padding:9px;border:1px solid #234a65;background:rgba(5,20,34,.94);backdrop-filter:blur(12px);border-radius:14px}
+.v15-room-roster{scroll-margin-top:85px}
+#v15-room-ready{scroll-margin-top:85px}
+.v15-room-exam-card{display:flex;align-items:center;justify-content:space-between;gap:18px;border-left:4px solid #7c3aed}
+.v15-room-exam-card h2{margin:3px 0}
+.exam-room-context{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.exam-room-context>div{display:grid;gap:3px}
+@media(max-width:720px){
+  .v15-room-note,.v15-room-exam-card,.exam-room-context{display:grid}
+  .v15-room-toolbar{position:static}
+  .v15-room-hero-stats{text-align:left;min-width:0}
+}

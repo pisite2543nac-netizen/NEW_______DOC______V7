@@ -1,5 +1,5 @@
 {
-  "release": "V15 FINAL PRODUCTION",
+  "release": "V16.2 GRADE REPORT + ADMIN WORK DETAIL",
   "date": "2026-09-11",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -8,7 +8,7 @@
   "supabase_project": "DOC-FULL-NR-UNIVERSAL",
   "supabase_ref": "thjscmfqunlaqxlievna",
   "deployment": "Static PWA /site via GitHub Pages",
-  "frontend_owner": "app.js + v15-platform.js + v15-exam.js",
+  "frontend_owner": "app.js + v16-platform.js + v16-exam.js",
   "base_roles": [
     "admin",
     "user"
@@ -16,7 +16,17 @@
   "ready_templates": 198,
   "paper_templates": 55,
   "digital_templates": 143,
-  "release_marker": "V15-FINAL-PRODUCTION-ALIGNED",
+  "release_marker": "V16.2-GRADE-REPORT-WEB-DETAIL",
   "spec_adaptation": "selective",
-  "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม"
+  "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
+  "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
+  "exam_room_integration": "50 MCQ / 4 choices / 75 minutes / 20 points; question bank; per-attempt shuffle; anti-cheat event audit; student score hidden",
+  "version": "16.2",
+  "notes": "Grade summary print/download adapted to uploaded grade form. Summary export only; per-assignment detail remains Admin web-only. Retains V16.1 realtime attendance/profile protections.",
+  "gradebook": "work 40 + behavior 20 + midterm 20 + final 20; work denominator = actually assigned worksheets",
+  "paper_scan": "admin full-sheet evidence scan; QR/barcode server verification; private storage copy; expiry/revocation metadata",
+  "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
+  "release_date": "2026-09-11",
+  "grade_report": "A4 landscape and Excel-compatible .xls: term/year title, subject code/name, columns student code/name/group, behavior, work, midterm, final, total.",
+  "work_detail_visibility": "Admin web only; hidden from print/download summary."
 }

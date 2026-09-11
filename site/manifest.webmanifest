@@ -1,8 +1,8 @@
 {
   "id": "./",
   "name": "Nangrong Smart Worksheet System",
-  "short_name": "Nangrong SW",
-  "description": "ระบบจัดการใบงานอัจฉริยะ รายวิชา ใบงาน เช็คชื่อ และสอบออนไลน์ วิทยาลัยเทคนิคนางรอง",
+  "short_name": "Nangrong Worksheet",
+  "description": "ระบบห้องเรียนรายวิชา ใบงาน สแกนเอกสาร ระบบสอบ และสรุปคะแนน วิทยาลัยเทคนิคนางรอง",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

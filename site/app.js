@@ -196,8 +196,8 @@ function signupDialog(){
 
 function navItems(){
   return isAdmin()
-    ? [["dashboard","แดชบอร์ด"],["users","ผู้ใช้งาน"],["classrooms","ห้องเรียน"],["subjects","รายวิชา"],["worksheets","ใบงาน"],["grading","ตรวจงาน"],["overrides","สิทธิ์ส่งเพิ่ม"],["reports","รายงาน"],["audit","Audit log"],["system","ตั้งค่าระบบ"],["profile","โปรไฟล์"]]
-    : [["dashboard","หน้าหลัก"],["myworks","ใบงานของฉัน"],["scan","ยืนยันงานกระดาษ"],["profile","โปรไฟล์"]];
+    ? [["dashboard","แดชบอร์ด"],["users","ผู้ใช้งาน"],["grading","ตรวจงาน"],["overrides","สิทธิ์ส่งเพิ่ม"],["reports","รายงาน"],["audit","Audit log"],["system","ตั้งค่าระบบ"],["profile","โปรไฟล์ของฉัน"]]
+    : [["dashboard","หน้าหลัก"],["profile","โปรไฟล์ของฉัน"]];
 }
 function installGuide(){
   if(S.installPrompt){
@@ -230,7 +230,7 @@ function renderShell(){
   if(!items.some(x=>x[0]===S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V15 FINAL</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V16.2</div></div></div>
       <nav class="nav">${items.map(x=>`<button data-route="${x[0]}" class="${S.route===x[0]?"active":""}">${x[1]}</button>`).join("")}</nav>
     </aside>
     <main class="main">
@@ -887,11 +887,35 @@ async function system(){
   $("#initdemo").onclick=async()=>{const testPassword=randomPassword();try{const r=await adminOp({action:"initialize_system",test_username:"User2000",test_user_password:testPassword,room_name:"ห้องทดสอบระบบ"});modal(`<div class="modal-header"><div><h3>ชุดทดสอบพร้อมแล้ว</h3></div><button class="btn sm" data-close>✕</button></div><div class="alert success">สร้าง/อัปเดตห้อง ผู้ใช้ และใบงานทดสอบสำเร็จ</div><div class="field"><label>Username ทดสอบ</label><input value="${esc(r.test_username)}" readonly></div><div class="field"><label>Password ทดสอบ</label><input value="${esc(testPassword)}" readonly></div><div class="field"><label>ใบงาน</label><input value="${esc(r.worksheet_title||"")}" readonly></div><div class="row end"><button class="btn" id="savecred">บันทึกข้อมูลทดสอบเป็น TXT</button><button class="btn primary" data-close>พร้อมทดสอบ</button></div>`);$("#savecred").onclick=()=>downloadText("DOC-FULL-NR-TEST-ACCOUNT.txt",`Username: ${r.test_username}\nPassword: ${testPassword}\nใช้สำหรับทดสอบระบบเท่านั้น\n`) }catch(err){toast(friendlyError(err),"error")}};
 }
 async function profile(){
-  $("#content").innerHTML=`<div class="card" style="max-width:780px"><h1>โปรไฟล์</h1><div class="alert"><b>ชื่อผู้ใช้:</b> ${esc(S.profile?.username||"-")} • <b>สิทธิ์:</b> ${esc(S.profile?.role||"user")} • ${S.profile?.approval_status==="approved"&&S.profile?.active!==false?"อนุมัติแล้ว":esc(S.profile?.approval_status||"ปิดใช้งาน")}</div><form id="pf"><div class="form-grid"><div class="field"><label>ชื่อแสดงผล</label><input name="full_name" value="${esc(S.profile?.full_name||"")}"></div><div class="field"><label>อีเมลติดต่อ</label><input name="contact_email" type="email" value="${esc(S.profile?.contact_email||"")}"></div><div class="field"><label>รหัสนักศึกษา</label><input value="${esc(S.profile?.student_code||"")}" disabled></div><div class="field"><label>ห้องเรียน</label><input value="${esc(S.profile?.class_name||"")}" disabled></div></div><button class="btn primary">บันทึกโปรไฟล์</button></form><div class="divider"></div><h3>เปลี่ยนรหัสผ่าน</h3><form id="changepass"><div class="field"><label>รหัสผ่านใหม่ อย่างน้อย 8 ตัว</label><input name="password" type="password" minlength="8" required></div><button class="btn warn">เปลี่ยนรหัสผ่าน</button></form></div>`;
-  $("#pf").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const {error}=await sb.from("profiles").update({full_name:String(f.get("full_name")),display_name:String(f.get("full_name")),contact_email:String(f.get("contact_email")||"")||null}).eq("id",uid());if(error)return toast(friendlyError(error),"error");await loadProfile();toast("บันทึกโปรไฟล์แล้ว")};
-  $("#changepass").onsubmit=async e=>{e.preventDefault();const p=String(new FormData(e.target).get("password"));try{if(isAdmin())await adminOp({action:"reset_password",user_id:uid(),password:p});else{const {error}=await sb.auth.updateUser({password:p});if(error)throw error}toast("เปลี่ยนรหัสผ่านแล้ว") }catch(err){toast(friendlyError(err),"error")}};
+  let avatar=null;
+  if(S.profile?.avatar_path){
+    try{const r=await sb.storage.from("avatars").createSignedUrl(S.profile.avatar_path,300);avatar=r.data?.signedUrl||null}catch{}
+  }
+  $("#content").innerHTML=`<div class="card profile-readonly" style="max-width:900px">
+    <div class="section-head"><div><h1>โปรไฟล์ของฉัน</h1><div class="muted">ข้อมูลแบบอ่านอย่างเดียว • หากข้อมูลไม่ถูกต้องให้ติดต่อ Admin</div></div></div>
+    <div class="profile-view-grid">
+      <div class="profile-photo-view">${avatar?`<img src="${avatar}" alt="รูปโปรไฟล์">`:`<div class="profile-photo-placeholder">${esc((S.profile?.full_name||"?").slice(0,1))}</div>`}</div>
+      <div class="profile-data-grid">
+        <div><span>ชื่อ-นามสกุล</span><b>${esc(S.profile?.full_name||"-")}</b></div>
+        <div><span>เลขนักศึกษา</span><b>${esc(S.profile?.student_code||"-")}</b></div>
+        <div><span>ระดับชั้น / กลุ่ม</span><b>${esc(S.profile?.grade_level||"-")} ${esc(S.profile?.room_label||"")}</b></div>
+        <div><span>ห้องเรียน</span><b>${esc(S.profile?.class_name||"-")}</b></div>
+        <div><span>เลขที่</span><b>${esc(S.profile?.seat_number??"-")}</b></div>
+        <div><span>แผนกวิชา</span><b>${esc(S.profile?.department||"-")}</b></div>
+        <div><span>สาขาวิชา</span><b>${esc(S.profile?.major||"-")}</b></div>
+        <div><span>เบอร์โทร</span><b>${esc(S.profile?.phone||"-")}</b></div>
+        <div><span>อีเมลติดต่อ</span><b>${esc(S.profile?.contact_email||"-")}</b></div>
+        <div><span>สถานะบัญชี</span><b>${S.profile?.approval_status==="approved"&&S.profile?.active!==false?"อนุมัติแล้ว":esc(S.profile?.approval_status||"-")}</b></div>
+        <div><span>สถานะการศึกษา</span><b>${esc(S.profile?.academic_status||"studying")}</b></div>
+      </div>
+    </div>
+    <div class="alert" style="margin-top:16px">🔒 นักศึกษาไม่สามารถแก้ชื่อ รหัส ชั้น ห้อง แผนก สาขา หรือข้อมูลโปรไฟล์เองได้ เพื่อป้องกันข้อมูลทางการศึกษาถูกเปลี่ยนโดยไม่ได้รับอนุญาต</div>
+    <div class="divider"></div>
+    <h3>ความปลอดภัยของบัญชี</h3>
+    <form id="changepass"><div class="field"><label>เปลี่ยนรหัสผ่านใหม่ อย่างน้อย 8 ตัว</label><input name="password" type="password" minlength="8" required></div><button class="btn warn">เปลี่ยนรหัสผ่าน</button></form>
+  </div>`;
+  $("#changepass").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),password=String(f.get("password")||"");if(password.length<8)return toast("รหัสผ่านต้องมีอย่างน้อย 8 ตัว","error");const {error}=await sb.auth.updateUser({password});if(error)return toast(friendlyError(error),"error");e.target.reset();toast("เปลี่ยนรหัสผ่านแล้ว")};
 }
-
 async function printWorksheet(id){
   const {data:w,error}=await sb.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single();if(error)return toast(friendlyError(error),"error");
   const color=w.subjects?.color_hex||"#9A2F42";
