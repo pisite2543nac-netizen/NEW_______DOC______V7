@@ -24,7 +24,7 @@ Deno.serve(async(req:Request)=>{
 
     if(b.action==='update_user'){
       const userId=String(b.user_id||'');if(!userId)return json({error:'User id required'},400);
-      const allowed:any={};for(const k of ['full_name','display_name','student_code','class_name','grade_level','room_label','seat_number','phone','contact_email','department','major'])if(k in b)allowed[k]=b[k];
+      const allowed:any={};for(const k of ['full_name','display_name','student_code','birth_date','class_name','grade_level','room_label','seat_number','phone','contact_email','department','major'])if(k in b)allowed[k]=b[k];
       if(b.role==='admin'||b.role==='user')allowed.role=b.role;allowed.updated_at=new Date().toISOString();
       const {error}=await admin.from('profiles').update(allowed).eq('id',userId);if(error)throw error;
       await admin.from('audit_logs').insert({actor_id:ud.user.id,action:'UPDATE_USER',entity_type:'profile',entity_id:userId,metadata:{fields:Object.keys(allowed)}});return json({ok:true});

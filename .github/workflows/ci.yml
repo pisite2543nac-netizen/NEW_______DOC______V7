@@ -26,8 +26,6 @@ jobs:
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js
-          node --check site/v15-platform.js
-          node --check site/v15-exam.js
           node --check site/sw.js
       - uses: denoland/setup-deno@v2
         with:

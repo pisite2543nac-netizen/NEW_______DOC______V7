@@ -21,6 +21,13 @@
 
 Self-registration produces `approval_status=pending` and `active=false`. Pending/rejected/suspended accounts can see only their account-state page and logout.
 
-## OTP
+## Phone number / OTP
 
-Real SMS OTP remains disabled until a real SMS provider is configured. Never introduce fake/static OTP values.
+Phone OTP is disabled by project policy.
+
+- Registration still collects the student's phone number.
+- The number is stored in `profiles.phone` as contact information.
+- Student access does not depend on SMS/OTP verification.
+- Frontend has no OTP verification route or SMS gate.
+- Admin maintains the phone number as part of the official student profile.
+- Do not introduce fake/static OTP values.

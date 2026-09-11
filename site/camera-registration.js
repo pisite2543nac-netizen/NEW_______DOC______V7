@@ -1,4 +1,4 @@
-/* DOC-FULL-NR V14 - Camera-only registration + phone capture
+/* DOC-FULL-NR V16.5 - Camera-only registration + Thai profile fields
    Loaded BEFORE app.js. No file/gallery picker is created anywhere. */
 (() => {
   "use strict";
@@ -150,10 +150,18 @@
       <div class="camera-privacy">รูปจะเก็บใน Private Storage และใช้เป็นรูปโปรไฟล์ของบัญชีนี้</div>`;
 
     const grid = form.querySelector(".registration-grid");
+    if (grid && !form.querySelector('[name="nickname"]')) {
+      const nicknameField = document.createElement("div");
+      nicknameField.className = "field";
+      nicknameField.innerHTML = `<label>ชื่อเล่น <span class="camera-required">*จำเป็น</span></label><input name="nickname" placeholder="ชื่อเล่นภาษาไทย" maxlength="40" required><div class="field-help">ใช้ภาษาไทยเท่านั้น</div>`;
+      const fullNameField = form.querySelector('[name="full_name"]')?.closest(".field");
+      if (fullNameField) fullNameField.insertAdjacentElement("afterend", nicknameField);
+      else grid.prepend(nicknameField);
+    }
     if (grid && !form.querySelector('[name="phone"]')) {
       const phoneField = document.createElement("div");
       phoneField.className = "field";
-      phoneField.innerHTML = `<label>เบอร์โทรศัพท์ <span class="camera-required">*จำเป็น</span></label><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="เช่น 0812345678" pattern="(?:0[0-9]{9}|\+66[0-9]{9})" required><div class="field-help">ใช้สำหรับยืนยันตัวตนด้วย OTP เมื่อผู้ดูแลเปิดใช้งาน SMS OTP</div>`;
+      phoneField.innerHTML = `<label>เบอร์โทรศัพท์ <span class="camera-required">*จำเป็น</span></label><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="เช่น 0812345678" pattern="(?:0[0-9]{9}|\+66[0-9]{9})" required><div class="field-help">บันทึกไว้เป็นข้อมูลติดต่อในโปรไฟล์นักศึกษา ไม่มีการส่ง OTP</div>`;
       grid.appendChild(phoneField);
     }
     if (grid?.parentNode) grid.insertAdjacentElement("afterend", cameraBlock);
@@ -202,6 +210,10 @@
       payload.profile_photo_captured_at = new Date().toISOString();
       const phoneInput = state.activeForm?.querySelector('[name="phone"]');
       if (phoneInput) payload.phone = String(phoneInput.value || "").trim();
+      const nicknameInput = state.activeForm?.querySelector('[name="nickname"]');
+      if (nicknameInput) payload.nickname = String(nicknameInput.value || "").trim();
+      const birthDateInput = state.activeForm?.querySelector('[name="birth_date"]');
+      if (birthDateInput) payload.birth_date = String(birthDateInput.value || "").trim();
 
       const url = originalUrl.replace(REGISTER_PATH, CAMERA_REGISTER_PATH);
       if (input instanceof Request) {

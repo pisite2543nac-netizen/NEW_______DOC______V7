@@ -1,10 +1,10 @@
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v15-final-20260911";
+const CACHE="doc-full-nr-v16-5-course-code-20260911";
 const SHELL=[
   "./","./index.html","./exam.html",
-  "./styles.css?v=20260911-v15-final","./mobile.css?v=20260911-v15-final","./v15-tech.css?v=20260911-v15-final",
-  "./camera-registration.js?v=20260911-v15-final","./app.js?v=20260911-v15-final","./mobile.js?v=20260911-v15-final","./v15-platform.js?v=20260911-v15-final","./v15-exam.js?v=20260911-v15",
-  "./manifest.webmanifest?v=20260911-v15-final",
+  "./styles.css?v=20260911-v16-5","./mobile.css?v=20260911-v16-5","./v15-tech.css?v=20260911-v16-5","./v16-minimal.css?v=20260911-v16-5",
+  "./camera-registration.js?v=20260911-v16-5","./app.js?v=20260911-v16-5","./mobile.js?v=20260911-v16-5","./v16-platform.js?v=20260911-v16-5","./v16-exam.js?v=20260911-v16-5",
+  "./manifest.webmanifest?v=20260911-v16-5",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png"
 ];
 self.addEventListener("install",event=>{
