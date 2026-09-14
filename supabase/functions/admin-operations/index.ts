@@ -7,6 +7,13 @@ function json(body:unknown,status=200){return new Response(JSON.stringify(body),
 function csvCell(v:unknown){const s=String(v??'');return /[\",\n\r]/.test(s)?`\"${s.replaceAll('\"','\"\"')}\"`:s}
 async function sha256(v:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
 function cleanUsername(v:unknown){return String(v||'').trim().replace(/[^A-Za-z0-9._-]/g,'').slice(0,64)}
+const LEVELS=new Set(['ปวช.1','ปวช.2','ปวช.3','ปวส.1','ปวส.2']);
+const ROOMS=new Set(['/1','/2','/3','/4','/5','/6']);
+const DEPARTMENTS=new Set(['คอมพิวเตอร์','อิเล็กทรอนิก']);
+const MAJORS=new Set(['เทคโนโลยีสารสนเทศ (ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ทธ.)','คอมพิวเตอร์ธุรกิจ (คธ.)']);
+function thaiText(v:unknown,max=160){const s=String(v||'').trim();return !!s&&s.length<=max&&/[\u0E00-\u0E7F]/.test(s)&&!/[A-Za-z]/.test(s)}
+function normalizePhone(input:unknown){const raw=String(input||'').trim().replace(/[\s()-]/g,'');if(!raw)return null;if(/^0\d{9}$/.test(raw))return '+66'+raw.slice(1);if(/^\+66\d{9}$/.test(raw))return raw;return '__INVALID__'}
+function validBirthDate(v:unknown){const s=String(v||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(`${s}T00:00:00Z`);return Number.isFinite(d.getTime())&&d<=new Date()&&d.getUTCFullYear()>=1900}
 Deno.serve(async(req:Request)=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:cors});
   if(req.method!=='POST')return json({error:'Method not allowed'},405);
@@ -24,10 +31,37 @@ Deno.serve(async(req:Request)=>{
 
     if(b.action==='update_user'){
       const userId=String(b.user_id||'');if(!userId)return json({error:'User id required'},400);
-      const allowed:any={};for(const k of ['full_name','display_name','student_code','class_name','grade_level','room_label','seat_number','phone','contact_email','department','major'])if(k in b)allowed[k]=b[k];
-      if(b.role==='admin'||b.role==='user')allowed.role=b.role;allowed.updated_at=new Date().toISOString();
+      const {data:target,error:te}=await admin.from('profiles').select('*').eq('id',userId).single();if(te||!target)return json({error:'User not found'},404);
+      const now=new Date().toISOString();
+      const allowed:any={};
+      if('full_name' in b)allowed.full_name=String(b.full_name||'').trim();
+      if('contact_email' in b)allowed.contact_email=String(b.contact_email||'').trim().toLowerCase()||null;
+      if(target.role==='user'){
+        const fullName=String(b.full_name??target.full_name??'').trim(),nickname=String(b.display_name??target.display_name??'').trim(),studentCode=String(b.student_code??target.student_code??'').trim();
+        const birthDate=String(b.birth_date??target.birth_date??'').trim(),gradeLevel=String(b.grade_level??target.grade_level??'').trim(),roomLabel=String(b.room_label??target.room_label??'').trim(),department=String(b.department??target.department??'').trim(),major=String(b.major??target.major??'').trim();
+        const phone=normalizePhone(b.phone??target.phone),seatRaw=b.seat_number??target.seat_number,seatNumber=seatRaw===null||seatRaw===''?null:Number(seatRaw);
+        if(!/^\d{1,15}$/.test(studentCode)||!thaiText(fullName)||!thaiText(nickname,40)||!validBirthDate(birthDate)||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!MAJORS.has(major))return json({error:'INVALID_USER_DATA'},400);
+        if(phone==='__INVALID__'||!phone)return json({error:'INVALID_PHONE'},400);if(seatNumber!==null&&(!Number.isInteger(seatNumber)||seatNumber<1||seatNumber>999))return json({error:'INVALID_SEAT_NUMBER'},400);
+        const dup=await admin.from('profiles').select('id').eq('student_code',studentCode).neq('id',userId).limit(1);if(dup.error)throw dup.error;if((dup.data||[]).length)return json({error:'STUDENT_CODE_EXISTS'},409);
+        const pd=await admin.from('profiles').select('id').eq('phone',phone).neq('id',userId).limit(1);if(pd.error)throw pd.error;if((pd.data||[]).length)return json({error:'PHONE_EXISTS'},409);
+        const className=`${gradeLevel}${roomLabel}`;
+        Object.assign(allowed,{full_name:fullName,display_name:nickname,username:studentCode,student_code:studentCode,birth_date:birthDate,grade_level:gradeLevel,room_label:roomLabel,class_name:className,department,major,phone,seat_number:seatNumber,contact_email:null});
+        const authUser=await admin.auth.admin.getUserById(userId);if(authUser.error)return json({error:authUser.error.message},400);
+        const oldMeta=authUser.data.user?.user_metadata||{};
+        const authUpdate=await admin.auth.admin.updateUserById(userId,{email:`${studentCode.toLowerCase()}@docfullnr.local`,email_confirm:true,user_metadata:{...oldMeta,full_name:fullName,nickname,username:studentCode,student_code:studentCode}});if(authUpdate.error)return json({error:authUpdate.error.message},400);
+        const {data:period}=await admin.from('system_settings').select('value').eq('key','academic_period').maybeSingle();const academicYear=String(period?.value?.academic_year||'2569'),semester=String(period?.value?.semester||'1');
+        let roomId:string|null=null;const found=await admin.from('classrooms').select('id').eq('name',className).eq('academic_year',academicYear).eq('semester',semester).maybeSingle();if(found.error)throw found.error;roomId=found.data?.id||null;
+        if(!roomId){const ins=await admin.from('classrooms').insert({name:className,level:gradeLevel,academic_year:academicYear,semester,active:true,description:'สร้างอัตโนมัติจาก Admin แก้ข้อมูลนักศึกษา'}).select('id').single();if(ins.error){const retry=await admin.from('classrooms').select('id').eq('name',className).eq('academic_year',academicYear).eq('semester',semester).maybeSingle();roomId=retry.data?.id||null}else roomId=ins.data.id}
+        if(!roomId)return json({error:'CLASSROOM_LOOKUP_FAILED'},500);
+        await admin.from('classroom_memberships').update({active:false}).eq('user_id',userId).eq('active',true);
+        const mem=await admin.from('classroom_memberships').upsert({classroom_id:roomId,user_id:userId,seat_number:seatNumber,active:true},{onConflict:'classroom_id,user_id'});if(mem.error)throw mem.error;
+      }else{
+        if(!allowed.full_name)allowed.full_name=target.full_name;
+        if(!allowed.full_name)return json({error:'INVALID_USER_DATA'},400);
+      }
+      allowed.updated_at=now;
       const {error}=await admin.from('profiles').update(allowed).eq('id',userId);if(error)throw error;
-      await admin.from('audit_logs').insert({actor_id:ud.user.id,action:'UPDATE_USER',entity_type:'profile',entity_id:userId,metadata:{fields:Object.keys(allowed)}});return json({ok:true});
+      await admin.from('audit_logs').insert({actor_id:ud.user.id,action:'UPDATE_USER',entity_type:'profile',entity_id:userId,metadata:{fields:Object.keys(allowed),old_student_code:target.student_code,new_student_code:allowed.student_code||target.student_code,login_synced:target.role==='user'}});return json({ok:true,username:allowed.username||target.username,class_name:allowed.class_name||target.class_name});
     }
 
     if(b.action==='reset_password'){

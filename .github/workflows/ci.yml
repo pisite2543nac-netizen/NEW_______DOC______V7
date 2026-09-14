@@ -1,4 +1,4 @@
-name: DOC-FULL-NR V15 CI
+name: DOC-FULL-NR V16.6 CI
 
 on:
   pull_request:
@@ -26,9 +26,9 @@ jobs:
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js
-          node --check site/v15-platform.js
-          node --check site/v15-exam.js
           node --check site/sw.js
+          node --check site/v16-platform.js
+          node --check site/v16-exam.js
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
