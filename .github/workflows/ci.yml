@@ -31,6 +31,7 @@ jobs:
           node --check site/v16-7-hardening.js
           node --check site/v16-8-course-flow.js
           node --check site/v16-9-clean-dashboard.js
+          node --check site/v16-9-runtime-rescue.js
           node --check site/v16-exam.js
       - uses: denoland/setup-deno@v2
         with:

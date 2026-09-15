@@ -1,10 +1,10 @@
 // compatibility marker: doc-full-nr-v16-6-stable-20260914
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v16-9-dashboard-20260915";
+const CACHE="doc-full-nr-v16-9-rescue-r2-20260915";
 const SHELL=[
   "./","./index.html","./exam.html",
   "./styles.css?v=20260914-v16-6","./mobile.css?v=20260914-v16-6","./v16-minimal.css?v=20260914-v16-6",
-  "./camera-registration.js?v=20260914-v16-6","./app.js?v=20260914-v16-6","./mobile.js?v=20260914-v16-6","./v16-platform.js?v=20260914-v16-6","./v16-exam.js?v=20260914-v16-6",
+  "./camera-registration.js?v=20260914-v16-6","./app.js?v=20260914-v16-6","./mobile.js?v=20260914-v16-6","./v16-platform.js?v=20260914-v16-6","./v16-exam.js?v=20260914-v16-6","./v16-9-runtime-rescue.js?v=20260915-v16-9-r2",
   "./manifest.webmanifest?v=20260914-v16-6",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png"
 ];
