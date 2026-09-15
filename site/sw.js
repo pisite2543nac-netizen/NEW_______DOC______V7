@@ -1,7 +1,7 @@
 // DOC-FULL-NR V17.1 course CODE flow cache
 // compatibility marker: doc-full-nr-v17-master-flow-20260915
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v17-1-course-code-20260915";
+const CACHE="doc-full-nr-v17-2-college-branding-20260915";
 const SHELL=[
   "./","./index.html","./exam.html",
   "./styles.css?v=20260914-v16-6","./mobile.css?v=20260914-v16-6","./v16-minimal.css?v=20260915-v17-1",
