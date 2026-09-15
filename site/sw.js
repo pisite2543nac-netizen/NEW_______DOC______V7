@@ -1,5 +1,6 @@
+// compatibility marker: doc-full-nr-v16-6-stable-20260914
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v16-6-stable-20260914";
+const CACHE="doc-full-nr-v16-9-dashboard-20260915";
 const SHELL=[
   "./","./index.html","./exam.html",
   "./styles.css?v=20260914-v16-6","./mobile.css?v=20260914-v16-6","./v16-minimal.css?v=20260914-v16-6",
