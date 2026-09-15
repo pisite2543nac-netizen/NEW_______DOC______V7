@@ -128,7 +128,7 @@ function render(){S.session?renderShell():renderAuth()}
 function ownerSetupToken(){const h=location.hash||"";const m=h.match(/owner-setup=([^&]+)/);return m?decodeURIComponent(m[1]):null}
 function renderOwnerSetup(token){
   $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card">
-    <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><h2>ตั้งค่า Admin ครั้งแรก</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
+    <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><h2>ตั้งค่า Admin ครั้งแรก</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
     <div class="alert warn"><b>ขั้นตอนเดียว</b><div class="smalltext">กำหนดรหัสผ่าน Admin แล้วระบบจะเข้าสู่ระบบและเตรียมข้อมูลทดสอบให้อัตโนมัติ</div></div>
     <div id="authmsg"></div>
     <form id="ownerclaim"><div class="field"><label>ชื่อผู้ใช้ Admin</label><input value="${OWNER_USERNAME}" disabled></div><div class="field"><label>รหัสผ่าน Admin ใหม่</label><input name="password" type="password" minlength="8" required autocomplete="new-password"></div><div class="field"><label>ยืนยันรหัสผ่าน</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"></div><button class="btn primary w100" id="ownerbtn">ตั้งค่าและเข้าใช้งาน</button></form>
@@ -138,7 +138,7 @@ function renderOwnerSetup(token){
 function renderAuth(){
   const claim=ownerSetupToken();if(claim){renderOwnerSetup(claim);return}
   $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card">
-    <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><h2>DOC-FULL-NR</h2><div class="muted">Smart Worksheet • วิทยาลัยเทคนิคนางรอง</div></div></div>
+    <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><h2>DOC-FULL-NR</h2><div class="muted">Smart Worksheet • วิทยาลัยเทคนิคนางรอง</div></div></div>
     <div class="alert" style="margin-top:18px"><b>ระบบพร้อมใช้งาน</b><div class="smalltext">Supabase Auth • Database • Private Storage • RLS • Server Time</div></div>
     <div id="authmsg"></div>
     <form id="login"><div class="field"><label>ชื่อผู้ใช้หรืออีเมล</label><input name="login" type="text" autocomplete="username" placeholder="หรือรหัสนักศึกษา" required></div><div class="field"><label>รหัสผ่าน</label><input name="password" type="password" autocomplete="current-password" required minlength="8"></div><button class="btn primary w100" id="loginbtn">เข้าสู่ระบบ</button></form>
@@ -269,7 +269,7 @@ function renderShell(){
   if(!isAdmin()&&(approval!=="approved"||S.profile?.active===false)){
     const pending=approval==="pending",rejected=approval==="rejected",suspended=approval==="suspended"||(!pending&&!rejected&&S.profile?.active===false);
     $("#app").innerHTML=`<div class="auth-wrap"><div class="auth-card account-state-card">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><h2>${pending?"บัญชีของคุณกำลังรอการอนุมัติ":rejected?"คำขอบัญชียังไม่ได้รับอนุมัติ":"บัญชีถูกระงับ"}</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><h2>${pending?"บัญชีของคุณกำลังรอการอนุมัติ":rejected?"คำขอบัญชียังไม่ได้รับอนุมัติ":"บัญชีถูกระงับ"}</h2><div class="muted">DOC-FULL-NR • วิทยาลัยเทคนิคนางรอง</div></div></div>
       <div class="alert ${pending?"warn":"error"}" style="margin-top:16px">${pending?"ส่งคำขอลงทะเบียนเรียบร้อยแล้ว Admin ต้องอนุมัติก่อนจึงจะเข้าถึงรายวิชา ใบงาน การสอบ และข้อมูลภายในระบบได้":rejected?`Admin ไม่อนุมัติคำขอบัญชี${S.profile?.rejection_reason?`: ${esc(S.profile.rejection_reason)}`:""}`:`บัญชีนี้ถูกระงับการใช้งาน${S.profile?.rejection_reason?`: ${esc(S.profile.rejection_reason)}`:""}`}</div>
       <div class="account-state-info"><div><span>ชื่อ</span><b>${esc(S.profile?.full_name||"-")}</b></div><div><span>รหัสผู้เรียน</span><b>${esc(S.profile?.student_code||S.profile?.username||"-")}</b></div><div><span>อีเมลติดต่อ</span><b>${esc(S.profile?.contact_email||"-")}</b></div><div><span>สถานะ</span><b>${esc(approval)}</b></div></div>
       <p class="muted smalltext">หากรอนานเกินกำหนด กรุณาติดต่อ Admin ของวิทยาลัย</p>
@@ -281,7 +281,7 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V17.2</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V17.0</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">

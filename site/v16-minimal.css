@@ -209,21 +209,3 @@ table{background:#fff!important}thead th{background:#f8fafc!important;color:#475
 
 /* V17.1 course CODE registry */
 .v171-code-registry{margin:14px 0 18px;padding:18px}.v171-code-registry-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}.v171-code-registry-head h2{margin:2px 0 4px}.v171-code-registry-head p{margin:0;color:var(--muted,#64748b)}.v171-code-ok{white-space:nowrap;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:999px;padding:7px 11px;font-weight:800}.v171-code-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.v171-code-item{border:1px solid var(--v16-border,#d9e2ec);border-radius:14px;background:#fbfdff;padding:13px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:center}.v171-code-item>div:first-child{display:grid;gap:2px}.v171-code-item small{color:#64748b}.v171-code-item span{font-size:.82rem;color:#64748b}.v171-code-item>strong{font-size:1.45rem;letter-spacing:.15em;color:#214d75}.v171-code-actions{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap}.v171-room-card{display:block;text-align:left}.v171-room-top{display:flex;justify-content:space-between;gap:8px;align-items:center}.v171-code-pill{font-size:.78rem;border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;padding:5px 8px;border-radius:999px}.v171-code-pill b{letter-spacing:.08em}.v171-room-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.v171-room-actions .primary{margin-left:auto}@media(max-width:760px){.v171-code-registry-head{display:grid}.v171-code-grid{grid-template-columns:1fr}.v171-code-item{grid-template-columns:1fr}.v171-code-item>strong{font-size:1.3rem}.v171-room-top{align-items:flex-start}.v171-room-actions .primary{margin-left:0}}
-
-
-/* V17.2 Nangrong Technical College branding */
-.brand-app-icon{
-  width:52px!important;height:52px!important;object-fit:contain!important;
-  border-radius:50%!important;background:#fff!important;padding:3px!important;
-  box-shadow:0 0 0 1px rgba(148,163,184,.30),0 4px 12px rgba(15,23,42,.12)!important;
-}
-#sidebar .brand .brand-app-icon{width:58px!important;height:58px!important;flex:0 0 58px!important}
-.v1610-dashboard-hero{position:relative;overflow:hidden}
-.v172-dashboard-seal{
-  width:88px;height:88px;object-fit:contain;flex:0 0 88px;border-radius:50%;
-  background:#fff;padding:4px;box-shadow:0 8px 22px rgba(15,23,42,.12);
-}
-@media(max-width:760px){
-  .v172-dashboard-seal{width:66px;height:66px;flex-basis:66px}
-  #sidebar .brand .brand-app-icon{width:50px!important;height:50px!important;flex-basis:50px!important}
-}
