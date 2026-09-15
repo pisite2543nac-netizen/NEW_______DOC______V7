@@ -142,10 +142,11 @@ function renderAuth(){
     <div class="alert" style="margin-top:18px"><b>ระบบพร้อมใช้งาน</b><div class="smalltext">Supabase Auth • Database • Private Storage • RLS • Server Time</div></div>
     <div id="authmsg"></div>
     <form id="login"><div class="field"><label>ชื่อผู้ใช้หรืออีเมล</label><input name="login" type="text" autocomplete="username" placeholder="หรือรหัสนักศึกษา" required></div><div class="field"><label>รหัสผ่าน</label><input name="password" type="password" autocomplete="current-password" required minlength="8"></div><button class="btn primary w100" id="loginbtn">เข้าสู่ระบบ</button></form>
-    <div class="row center" style="margin-top:14px"><button id="show-signup" class="btn sm ghost">ลงทะเบียนผู้ใช้ใหม่</button><button id="forgot" class="btn sm ghost">ลืมรหัสผ่าน</button></div>
+    <div class="row center wrap" style="margin-top:14px"><button id="show-signup" class="btn sm ghost">ลงทะเบียนผู้ใช้ใหม่</button><button id="forgot" class="btn sm ghost">ลืมรหัสผ่าน</button><button id="auth-install" class="btn sm">📲 ติดตั้งแอป / วิธีติดตั้ง</button></div>
   </div></div>`;
   $("#login").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),btn=$("#loginbtn"),loginId=String(f.get("login")).trim();btn.disabled=true;btn.textContent="กำลังเข้าสู่ระบบ...";const {error}=await sb.auth.signInWithPassword({email:authEmailFor(loginId),password:String(f.get("password"))});if(error){$("#authmsg").innerHTML='<div class="alert error">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>';btn.disabled=false;btn.textContent="เข้าสู่ระบบ"}};
   $("#show-signup").onclick=signupDialog;
+  $("#auth-install").onclick=installGuide;
   $("#forgot").onclick=()=>{modal(`<div class="modal-header"><div><h3>ลืมรหัสผ่าน</h3></div><button class="btn sm" data-close>✕</button></div><p>หากเป็นบัญชีนักเรียนที่ใช้ชื่อผู้ใช้ ให้ติดต่อ Admin เพื่อกำหนดรหัสผ่านใหม่</p><p class="muted">หากเป็นบัญชี Admin ที่มีอีเมลจริง สามารถกรอกอีเมลเพื่อรับลิงก์รีเซ็ตได้</p><form id="forgotform"><div class="field"><label>อีเมล</label><input name="email" type="email" required></div><div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn primary">ส่งลิงก์</button></div></form>`);$("#forgotform").onsubmit=async e=>{e.preventDefault();const email=String(new FormData(e.target).get("email")).trim();const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href.split("#")[0]});closeModal();toast(error?friendlyError(error):"หากอีเมลนี้ลงทะเบียนไว้ ระบบจะส่งคำแนะนำให้",error?"error":"")}};
 }
 function signupDialog(){
@@ -250,19 +251,53 @@ async function navigateUnified(route,arg=null){
   await routeCurrent();
   return true;
 }
+function appDisplayMode(){
+  if(window.matchMedia?.('(display-mode: fullscreen)').matches)return 'fullscreen';
+  if(window.matchMedia?.('(display-mode: standalone)').matches||navigator.standalone===true)return 'standalone';
+  if(window.matchMedia?.('(display-mode: minimal-ui)').matches)return 'minimal-ui';
+  return 'browser';
+}
+function installationSteps(){
+  const ua=navigator.userAgent||'',ios=/iphone|ipad|ipod/i.test(ua),android=/android/i.test(ua),windows=/windows/i.test(ua),mac=/macintosh|mac os x/i.test(ua);
+  if(ios)return [
+    ['1','เปิดด้วย Safari','ต้องเปิดลิงก์ระบบด้วย Safari บน iPhone/iPad'],
+    ['2','กดปุ่ม Share','ปุ่มสี่เหลี่ยมมีลูกศรชี้ขึ้น'],
+    ['3','เลือก “เพิ่มไปยังหน้าจอโฮม”','เลื่อนรายการลงหากยังไม่เห็นเมนูนี้ แล้วกด Add / เพิ่ม'],
+    ['4','เปิดจากไอคอนวิทยาลัย','เมื่อเปิดจากหน้าจอโฮม Safari bar จะถูกซ่อนและระบบทำงานในโหมดแอป']
+  ];
+  if(android)return [
+    ['1','เปิดด้วย Chrome หรือ Edge','เข้าสู่ระบบผ่าน URL หลักของ DOC-FULL-NR'],
+    ['2','กด “ติดตั้งแอป”','ใช้ปุ่มติดตั้งด้านบน หรือเมนู ⋮ → Install app / Add to Home screen'],
+    ['3','กด Install','อนุญาตสร้างไอคอน Nangrong Worksheet บนหน้าจอ'],
+    ['4','เปิดจากไอคอนที่ติดตั้ง','ระบบร้องขอ Fullscreen อัตโนมัติเมื่ออุปกรณ์รองรับ']
+  ];
+  if(windows)return [
+    ['1','เปิดด้วย Microsoft Edge หรือ Chrome','เปิด URL หลักของระบบ'],
+    ['2','กด “ติดตั้งแอป”','หรือกดไอคอน Install ที่ปลาย Address bar / เมนู Apps → Install'],
+    ['3','เลือก Pin ตามต้องการ','สามารถปักหมุด Start / Taskbar / Desktop ได้'],
+    ['4','เปิดจากไอคอนแอป','ระบบใช้หน้าต่าง PWA และโหมด Fullscreen; ปุ่ม “เต็มจอ” เป็นทางเลือกสำรอง']
+  ];
+  if(mac)return [
+    ['1','เปิดด้วย Chrome / Edge / Safari รุ่นที่รองรับเว็บแอป','เปิด URL หลักของระบบ'],
+    ['2','เลือก Install app / Add to Dock','ทำตามคำสั่งของ Browser'],
+    ['3','เปิดจาก Applications / Dock','ระบบทำงานแบบ PWA และซ่อน UI ของ Browser ตามที่ระบบรองรับ'],
+    ['4','ใช้ปุ่ม “เต็มจอ” หากจำเป็น','Browser บางรุ่นต้องมีการแตะ/คลิกก่อนเข้า Fullscreen']
+  ];
+  return [['1','เปิดด้วย Chrome / Edge','เปิด URL หลัก'],['2','เลือก Install app','ยืนยันการติดตั้ง'],['3','เปิดจากไอคอนแอป','ใช้ปุ่มเต็มจอหาก Browser ไม่เข้า Fullscreen อัตโนมัติ']];
+}
 function installGuide(){
   if(S.installPrompt){
     S.installPrompt.prompt();
     S.installPrompt.userChoice.finally(()=>{S.installPrompt=null});
     return;
   }
-  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  modal(`<div class="modal-header"><div><h3>ติดตั้ง DOC-FULL-NR</h3><div class="muted">ใช้งานเหมือนแอปบนอุปกรณ์ของคุณ</div></div><button class="btn sm" data-close>✕</button></div>
-    <div class="help-steps">
-      ${ios?`<div><div><b>เปิดด้วย Safari</b><p class="muted">ใช้ Safari เพื่อเพิ่มแอปบน iPhone/iPad</p></div></div><div><div><b>กด Share</b><p class="muted">เลือก “Add to Home Screen / เพิ่มไปยังหน้าจอโฮม”</p></div></div>`:
-      `<div><div><b>Chrome / Edge</b><p class="muted">เปิดเมนูเบราว์เซอร์ แล้วเลือก Install app / ติดตั้งแอป</p></div></div><div><div><b>Android</b><p class="muted">เลือก Add to Home screen หรือ Install app</p></div></div>`}
-      <div><div><b>ข้อมูลเดียวกันทุกเครื่อง</b><p class="muted">เข้าสู่ระบบด้วยบัญชีเดิม ข้อมูลจะมาจาก Supabase ชุดเดียวกัน</p></div></div>
-    </div>`);
+  const installed=appDisplayMode()!=='browser',steps=installationSteps();
+  modal(`<div class="modal-header"><div><h3>${installed?'✓ ติดตั้ง DOC-FULL-NR แล้ว':'ติดตั้ง DOC-FULL-NR'}</h3><div class="muted">โทรศัพท์ • แท็บเล็ต • คอมพิวเตอร์ • ใช้บัญชีและข้อมูลชุดเดียวกัน</div></div><button class="btn sm" data-close>✕</button></div>
+    <div class="alert ${installed?'success':''}">${installed?'ขณะนี้กำลังเปิดจากโหมดแอป / PWA':'เมื่อติดตั้งแล้ว ให้เปิดระบบจากไอคอน “Nangrong Worksheet” เพื่อใช้โหมดแอปและ Fullscreen'}</div>
+    <div class="help-steps docnr-install-steps">${steps.map(x=>`<div><strong>${x[0]}</strong><div><b>${esc(x[1])}</b><p class="muted">${esc(x[2])}</p></div></div>`).join('')}</div>
+    <div class="card docnr-install-note"><b>โหมดเต็มหน้าจอ</b><p class="muted">Android/Windows/Browser ที่รองรับ Manifest Fullscreen จะเปิดแบบเต็มจอจากไอคอนแอป หากระบบปฏิบัติการเปิดแบบ Standalone แทน ให้แตะ/คลิกหนึ่งครั้งแล้วระบบจะพยายามเข้า Fullscreen หรือกดปุ่ม “⛶ เต็มจอ” ด้านบน</p><p class="muted">iPhone/iPad ใช้โหมด Add to Home Screen ซึ่งซ่อนแถบ Safari; Web Fullscreen API อาจมีข้อจำกัดตามรุ่น iOS</p></div>
+    <div class="row end"><button class="btn" id="install-fullscreen-help">⛶ ทดลองเต็มจอ</button><button class="btn primary" data-close>เข้าใจแล้ว</button></div>`);
+  const fs=$('#install-fullscreen-help');if(fs)fs.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
 }
 function renderShell(){
   const approval=S.profile?.approval_status||"approved";
@@ -281,7 +316,7 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V17.2</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V17.3</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
@@ -289,6 +324,7 @@ function renderShell(){
         <div class="row"><button class="btn mobile-menu" id="menubtn">☰</button><b id="pagetitle"></b></div>
         <div class="row">
           <button class="btn install sm" id="install">ติดตั้งแอป</button>
+          <button class="btn sm" id="fullscreen" title="เปิด/ปิดเต็มหน้าจอ">⛶ เต็มจอ</button>
           <span class="muted user-name">${esc(S.profile?.full_name||S.session?.user?.email||"")}</span>
           <button class="btn sm" id="logout">ออกจากระบบ</button>
         </div>
@@ -301,6 +337,7 @@ function renderShell(){
   $("#logout").onclick=async()=>{try{window.DOCNR_V16_6?.cleanup?.()}catch{}await sb.auth.signOut()};
   $("#menubtn").onclick=()=>$("#sidebar").classList.toggle("open");
   $("#install").onclick=installGuide;
+  const fsBtn=$("#fullscreen");if(fsBtn)fsBtn.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
   route();
 
   const autoCred=sessionStorage.getItem("docnr_test_credentials");
@@ -327,9 +364,9 @@ async function routeCurrent(){
   const title=ROUTE_TITLES[route]||"";const titleEl=$("#pagetitle");if(titleEl)titleEl.textContent=title;
   try{
     if(route==="exam"){
-      const q=arg?`?subject=${encodeURIComponent(arg)}&from=room`:"";
-      window.open(`./exam.html${q}`,"_blank","noopener");
-      S.route=isAdmin()?"courses":"dashboard";S.routeArg=null;paintNav();
+      const q=arg?`?subject=${encodeURIComponent(arg)}&from=room`:`?from=app`;
+      try{sessionStorage.setItem("docnr-return-route",JSON.stringify({route:isAdmin()?"courses":"dashboard",arg:arg||null}))}catch{}
+      location.href=`./exam.html${q}`;
       return;
     }
     if(BASE_ROUTES.has(route)){

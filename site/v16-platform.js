@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V17.1-COURSE-CODE-PRODUCTION";
+const V15_VERSION="V17.3-FULL-SYSTEM";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -185,7 +185,7 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const p=await getProfile();if(!p)return;
   const brand=$("#sidebar .brand .smalltext");
-  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V17.2`;
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V17.3`;
   // V17: app.js is the single owner of Sidebar and route buttons.
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
@@ -351,7 +351,7 @@ function hubCard(route,icon,title,desc,tone="blue"){
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V17.2</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V17.3</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
   <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 13 หน่วย • สไลด์ • Digital/Paper","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
   <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
   Promise.race([client().rpc("admin_system_health_v17"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
@@ -361,7 +361,7 @@ async function renderAdminDashboard(){
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V17.2</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V17.3</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
   <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","หน่วยที่เปิด • สไลด์ • ใบงาน","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
   <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
 }
@@ -410,7 +410,7 @@ async function enrollmentRowsMine(){const {data,error}=await client().from("subj
 async function renderEnrollSubjects(){return renderCourseRegistrationHome()}
 
 async function renderEnrollmentAdmin(){
-  setTitle("อนุมัติรายวิชา");busy("กำลังโหลดคำขอลงทะเบียน...");const {data,error}=await client().from("subject_enrollments").select("id,subject_id,user_id,status,requested_at,decided_at,note,subjects(code,name),profiles(full_name,student_code,grade_level,room_label,class_name)").order("requested_at",{ascending:false});if(error)throw error;const rows=data||[];
+  setTitle("อนุมัติรายวิชา");busy("กำลังโหลดคำขอลงทะเบียน...");const {data,error}=await client().from("subject_enrollments").select("id,subject_id,user_id,status,requested_at,decided_at,note,subjects(code,name),profiles!subject_enrollments_user_id_fkey(full_name,student_code,grade_level,room_label,class_name)").order("requested_at",{ascending:false});if(error)throw error;const rows=data||[];
   content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">ADMIN APPROVAL</span><h1>อนุมัติการลงทะเบียนรายวิชา</h1><p>ผู้เรียนจะได้รับใบงานและข้อสอบของวิชานั้นหลังอนุมัติ</p></div><div class="v14-stat-pill">รออนุมัติ <b>${rows.filter(x=>x.status==="pending").length}</b></div></div>
   <div class="card v14-filter"><select id="v14-enroll-filter" class="input"><option value="">ทุกสถานะ</option><option value="pending">รออนุมัติ</option><option value="approved">อนุมัติแล้ว</option><option value="rejected">ไม่อนุมัติ</option><option value="withdrawn">ถอน</option></select><input id="v14-enroll-q" class="input" placeholder="ค้นหาชื่อ / รหัส / วิชา"></div>
   <div class="table-wrap"><table><thead><tr><th>นักศึกษา</th><th>รายวิชา</th><th>วันที่ขอ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="v14-enroll-body"></tbody></table></div></section>`;
@@ -446,11 +446,11 @@ async function renderAdminSubject(sid){
     c.from("subjects").select("id,code,name,color_hex,description,semester,academic_year").eq("id",sid).single(),
     c.from("worksheets").select("*").eq("subject_id",sid).order("created_at"),
     c.from("subject_files").select("id,subject_id,worksheet_id,resource_kind,sequence_no,original_name,storage_path,mime_type,size_bytes,created_at").eq("subject_id",sid).order("created_at"),
-    c.from("subject_enrollments").select("id,status,user_id,requested_at,profiles(full_name,student_code,grade_level,room_label,class_name)").eq("subject_id",sid),
+    c.from("subject_enrollments").select("id,status,user_id,requested_at,profiles!subject_enrollments_user_id_fkey(full_name,student_code,grade_level,room_label,class_name)").eq("subject_id",sid),
     c.from("exams").select("id,title,status,open_at,due_at").eq("subject_id",sid).order("created_at",{ascending:false})
   ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error)throw fr.error;if(er.error)throw er.error;
   const s=sr.data,allWorks=wr.data||[],ready=allWorks.filter(w=>w.settings?.template_ready===true),files=fr.data||[],approved=(er.data||[]).filter(e=>e.status==="approved"),pending=(er.data||[]).filter(e=>e.status==="pending"),exams=xr.data||[];const joinCodeR=await c.rpc("admin_subject_join_code",{p_subject_id:sid,p_new_code:null});const joinCode=joinCodeR.data?.join_code||"------";
-  const renderGroup=(mode,label)=>{const list=ready.filter(w=>w.mode===mode).sort((a,b)=>wsSeq(a)-wsSeq(b));return `<section class="v14-ws-section"><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} ใบ • คลังสำเร็จรูปสำหรับดูตัวอย่างและแนบสื่อ การเปิดให้นักศึกษาทำใช้แผง “ปลดล็อกการสอนทีละหน่วย” เท่านั้น</p></div></div><div class="v14-bundle-list">${list.map(w=>{const fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-bundle" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-select"><span>${esc(wsCode(w))}</span></div><div class="v14-bundle-main"><div class="v14-badges"><span>${mode==="paper"?"ใบงานกระดาษ":"ใบงานดิจิทัล"}</span><span class="${w.status}">${w.status==="published"?"เปิดสอนแล้ว":"รอปลดล็อกหน่วย"}</span></div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">${w.open_at?`เปิด ${fmt(w.open_at)}`:"ยังไม่เปิดสอน"}${w.due_at?` • ส่ง ${fmt(w.due_at)}`:""}</div><div class="v14-actions"><button class="btn sm" data-v14-preview="${w.id}">👁 ดูตัวอย่างใบงาน</button><button class="btn sm" data-v14-upload="${w.id}" data-subject="${sid}" data-seq="${wsSeq(w)}">＋ เพิ่มสไลด์/สื่อ</button></div></div><div class="v14-media-pane"><b>📊 สไลด์ / สื่อประกอบ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<div class="v14-media-empty">ยังไม่มีสื่อที่จับคู่</div>`}</div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานสำเร็จรูปประเภทนี้</div>`}</div></section>`};
+  const renderGroup=(mode,label)=>{const list=ready.filter(w=>w.mode===mode).sort((a,b)=>wsSeq(a)-wsSeq(b));return `<section class="v14-ws-section"><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} ใบ • คลังสำเร็จรูปสำหรับดูตัวอย่างและแนบสื่อ การเปิดให้นักศึกษาทำใช้แผง “ปลดล็อกการสอนทีละหน่วย” เท่านั้น</p></div></div><div class="v14-bundle-list">${list.map(w=>{const fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-bundle" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-select"><span>${esc(wsCode(w))}</span></div><div class="v14-bundle-main"><div class="v14-badges"><span>${mode==="paper"?"ใบงานกระดาษ":"ใบงานดิจิทัล"}</span><span class="${w.status}">${w.status==="published"?"เปิดสอนแล้ว":"รอปลดล็อกหน่วย"}</span></div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">${w.open_at?`เปิด ${fmt(w.open_at)}`:"ยังไม่เปิดสอน"}${w.due_at?` • ส่ง ${fmt(w.due_at)}`:""}</div><div class="v14-actions"><button class="btn sm" data-v14-preview="${w.id}">👁 ดูตัวอย่างใบงาน</button>${mode==="paper"?`<button class="btn sm primary" data-v167-print-pack="${w.id}">🖨️ พิมพ์รายบุคคล + Barcode</button>`:""}<button class="btn sm" data-v14-upload="${w.id}" data-subject="${sid}" data-seq="${wsSeq(w)}">＋ เพิ่มสไลด์/สื่อ</button></div></div><div class="v14-media-pane"><b>📊 สไลด์ / สื่อประกอบ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<div class="v14-media-empty">ยังไม่มีสื่อที่จับคู่</div>`}</div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานสำเร็จรูปประเภทนี้</div>`}</div></section>`};
   const roster=approved.sort((a,b)=>String(a.profiles?.student_code||"").localeCompare(String(b.profiles?.student_code||""))).map((e,i)=>`<tr><td>${i+1}</td><td><b>${esc(e.profiles?.student_code||"-")}</b></td><td>${esc(e.profiles?.full_name||"-")}</td><td>${esc(`${e.profiles?.grade_level||""}${e.profiles?.room_label||""}`||e.profiles?.class_name||"-")}</td><td><span class="v14-status approved">สมาชิกห้อง</span></td></tr>`).join("");
   const published=allWorks.filter(w=>w.status==="published").length;
   content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนรายวิชา</button>
@@ -961,7 +961,8 @@ async function renderPaperScanCenter(sid){
     <div class="v16-scan-grid">
       <div class="card v16-camera-card"><div class="v16-paper-frame"><video id="v16-paper-video" playsinline muted></video><div class="v16-paper-guide"><span>วางใบงานให้เห็นครบทั้ง 4 มุม</span></div></div><canvas id="v16-paper-canvas" hidden></canvas>
         <div class="row wrap"><button class="btn primary" id="v16-camera-start">เปิดกล้อง</button><button class="btn" id="v16-camera-stop">หยุดกล้อง</button><button class="btn green" id="v16-capture" disabled>📸 ถ่ายสำเนาทั้งแผ่น</button></div>
-        <div class="v16-scan-help">ระบบพยายามอ่าน Barcode/QR จากภาพกล้องอัตโนมัติ หากอุปกรณ์ไม่รองรับ สามารถกรอกรหัสที่ช่องด้านขวาได้</div>
+        <div id="v16-capture-review" class="v173-capture-review" hidden><img id="v16-capture-image" alt="ตัวอย่างสำเนาใบงานทั้งแผ่น"><div><b>ตรวจสำเนาก่อนบันทึก</b><span>ต้องเห็นกระดาษครบทั้ง 4 มุม ตัวอักษร/Barcode อ่านได้ และไม่มีส่วนสำคัญถูกตัด</span><div class="row wrap"><button class="btn" id="v16-retake" type="button">🔄 ถ่ายใหม่</button><button class="btn primary" id="v16-confirm-capture" type="button">✅ ยืนยันบันทึกสำเนา</button></div></div></div>
+        <div class="v16-scan-help">ระบบพยายามอ่าน Barcode/QR จากภาพกล้องอัตโนมัติ หากอุปกรณ์ไม่รองรับ สามารถกรอกรหัสที่ช่องด้านขวาได้ • หลังถ่ายภาพต้องตรวจตัวอย่างและกดยืนยันก่อนบันทึกจริง</div>
       </div>
       <div class="card"><h2>ตรวจรหัสใบงาน</h2><form id="v16-token-form"><label class="field">Barcode / QR Token<input id="v16-token" class="input" name="token" autocomplete="off" required placeholder="สแกนหรือกรอกรหัส"></label><button class="btn" type="submit">ตรวจข้อมูลจาก Server</button></form><div id="v16-token-info" class="v16-token-info"><div class="v14-empty">ยังไม่ได้อ่านรหัส</div></div></div>
     </div>
@@ -990,17 +991,28 @@ async function renderPaperScanCenter(sid){
     }catch(e){toast("เปิดกล้องไม่สำเร็จ กรุณาอนุญาตสิทธิ์กล้อง",true)}
   };
   $("#v16-camera-stop").onclick=stop;
+  let pendingBlob=null,pendingPreviewUrl=null;
+  const review=$("#v16-capture-review"),reviewImg=$("#v16-capture-image"),confirmCapture=$("#v16-confirm-capture"),retake=$("#v16-retake");
+  const clearPreview=()=>{pendingBlob=null;if(pendingPreviewUrl){URL.revokeObjectURL(pendingPreviewUrl);pendingPreviewUrl=null}if(review)review.hidden=true;if(reviewImg)reviewImg.removeAttribute("src");capture.disabled=!stream||!current||current?.revoked;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น"};
   capture.onclick=async()=>{
     if(!stream||!current)return;if(current.expired&&!ask("Barcode/QR หมดอายุแล้ว ต้องการรับเอกสารและบันทึกเป็น “หมดอายุแต่รับไว้” หรือไม่?"))return;
-    capture.disabled=true;capture.textContent="กำลังบันทึกสำเนา...";
+    capture.disabled=true;capture.textContent="กำลังถ่ายภาพ...";
     const canvas=$("#v16-paper-canvas");canvas.width=video.videoWidth||1920;canvas.height=video.videoHeight||1080;canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height);
-    const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.9));if(!blob){toast("ถ่ายภาพไม่สำเร็จ",true);capture.disabled=false;return}
-    const path=`${current.token.user_id}/paper-scans/${current.worksheet.id}/${Date.now()}.jpg`;
+    const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.92));if(!blob){toast("ถ่ายภาพไม่สำเร็จ",true);capture.disabled=false;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น";return}
+    pendingBlob=blob;pendingPreviewUrl=URL.createObjectURL(blob);if(reviewImg)reviewImg.src=pendingPreviewUrl;if(review)review.hidden=false;capture.textContent="ถ่ายภาพแล้ว • รอยืนยัน";
+    review?.scrollIntoView({behavior:"smooth",block:"center"});
+  };
+  if(retake)retake.onclick=clearPreview;
+  if(confirmCapture)confirmCapture.onclick=async()=>{
+    if(!pendingBlob||!current)return;
+    confirmCapture.disabled=true;confirmCapture.textContent="กำลังบันทึกสำเนา...";
+    const blob=pendingBlob,path=`${current.token.user_id}/paper-scans/${current.worksheet.id}/${Date.now()}.jpg`;
     const up=await c.storage.from("submissions").upload(path,blob,{contentType:"image/jpeg",upsert:false});
-    if(up.error){toast(errorText(up.error),true);capture.disabled=false;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น";return}
-    const rr=await c.rpc("admin_record_paper_scan",{p_token:current.token.token,p_storage_path:path,p_original_name:`${current.worksheet.reference_code||current.worksheet.id}.jpg`,p_mime_type:"image/jpeg",p_size_bytes:blob.size,p_barcode_format:current.token.code_kind||"barcode",p_accept_expired:current.expired,p_metadata:{capture:"full_sheet_camera",device:deviceLabel()}});
-    if(rr.error){await c.storage.from("submissions").remove([path]);toast(errorText(rr.error),true);capture.disabled=false;capture.textContent="📸 ถ่ายสำเนาทั้งแผ่น";return}
-    toast("บันทึกสำเนาทั้งแผ่นและยืนยันใบงานแล้ว");stop();renderPaperScanCenter(sid);
+    if(up.error){toast(errorText(up.error),true);confirmCapture.disabled=false;confirmCapture.textContent="✅ ยืนยันบันทึกสำเนา";return}
+    const canvas=$("#v16-paper-canvas");
+    const rr=await c.rpc("admin_record_paper_scan",{p_token:current.token.token,p_storage_path:path,p_original_name:`${current.worksheet.reference_code||current.worksheet.id}.jpg`,p_mime_type:"image/jpeg",p_size_bytes:blob.size,p_barcode_format:current.token.code_kind||"barcode",p_accept_expired:current.expired,p_metadata:{capture:"full_sheet_camera",full_sheet:true,admin_confirmed_full_sheet:true,captured_width:canvas.width,captured_height:canvas.height,device:deviceLabel()}});
+    if(rr.error){await c.storage.from("submissions").remove([path]);toast(errorText(rr.error),true);confirmCapture.disabled=false;confirmCapture.textContent="✅ ยืนยันบันทึกสำเนา";return}
+    toast("บันทึกสำเนาทั้งแผ่นและยืนยันใบงานแล้ว");clearPreview();stop();renderPaperScanCenter(sid);
   };
   const rt=await realtimeClient();if(rt){state.roomChannel=rt.channel(`paper-scan-${sid}-${Date.now()}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"paper_scans"},()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.subjectId===sid&&!stream)renderPaperScanCenter(sid).catch(()=>{})},900)}).subscribe()}
 }

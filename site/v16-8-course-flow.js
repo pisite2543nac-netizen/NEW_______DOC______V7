@@ -1,6 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const RELEASE = "V17-COURSE-SEQUENTIAL-UNITS";
+const RELEASE = "V17.3-COURSE-SEQUENTIAL-UNITS";
 const SUPABASE_URL = "https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY = "sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF = "thjscmfqunlaqxlievna";
@@ -17,6 +17,7 @@ const localInput = d=>{
 
 const state={
   coursePath:new Map(),
+  adminPath:new Map(),
   loadingStudent:new Set(),
   loadingAdmin:new Set(),
   role:null,
@@ -159,15 +160,18 @@ async function injectStudentPath(){
 function adminUnitCard(unit,sid,nextUnit){
   const works=unit.worksheets||[];
   const resourceCount=works.reduce((n,w)=>n+Number(w.resource_count||0),0);
+  const first=works[0]||null;
   const action=unit.unlocked
     ? `<button class="btn sm" disabled>✅ เปิดแล้ว</button>`
     : Number(unit.unit_no)===Number(nextUnit)
       ? `<button class="btn sm primary" data-v168-unlock="${sid}:${unit.unit_no}">▶ เริ่มสอน / ปลดล็อก</button>`
       : `<button class="btn sm" disabled>🔒 รอหน่วยก่อนหน้า</button>`;
+  const workButtons=works.map(w=>`<div class="v173-unit-work"><span>${w.mode==="paper"?"🖨️":"💻"} ${esc(w.reference_code||"")} • ${esc(w.title||"")}</span><div><button class="btn sm" data-v14-preview="${w.id}">👁 ดูใบงาน</button>${w.mode==="paper"?`<button class="btn sm primary" data-v167-print-pack="${w.id}">🖨️ พิมพ์ + Barcode</button>`:""}</div></div>`).join("");
   return `<article class="v168-admin-unit ${unit.unlocked?"unlocked":"locked"}">
-    <div class="v168-admin-unit-top"><div><span>หน่วย ${unit.unit_no}</span><b>${unit.unlocked?"เปิดสอนแล้ว":"ยังไม่เปิด"}</b></div>${action}</div>
-    <div class="v168-admin-workchips">${works.map(w=>`<span>${w.mode==="paper"?"🖨️":"💻"} ${esc(w.reference_code||"")}</span>`).join("")}</div>
-    <small>${works.length} ใบงาน • ไฟล์สื่อ ${resourceCount} • ${unit.unlocked?`ส่ง ${fmt(unit.due_at)}`:"นักศึกษายังเปิดไม่ได้"}</small>
+    <div class="v168-admin-unit-top"><div><span>หน่วย ${unit.unit_no}</span><b>${unit.unlocked?"เปิดสอนแล้ว":"เตรียมการสอนได้"}</b></div>${action}</div>
+    <div class="v173-unit-actions"><button class="btn sm" data-v168-admin-slide="${sid}:${unit.unit_no}">📊 สไลด์สรุปพร้อมใช้</button>${first?`<button class="btn sm" data-v14-upload="${first.id}" data-subject="${sid}" data-seq="${unit.unit_no}">＋ เพิ่มสไลด์/สื่อของครู</button>`:""}</div>
+    <div class="v173-unit-work-list">${workButtons||`<div class="v14-empty">ยังไม่มีใบงานในหน่วยนี้</div>`}</div>
+    <small>${works.length} ใบงาน • ไฟล์สื่อ ${resourceCount} • ${unit.unlocked?`ส่ง ${fmt(unit.due_at)}`:"นักศึกษายังเปิดไม่ได้จนกว่า Admin จะเริ่มสอน"}</small>
   </article>`;
 }
 async function injectAdminPlan(force=false){
@@ -181,6 +185,7 @@ async function injectAdminPlan(force=false){
     const {data,error}=await client().rpc("admin_subject_unit_plan",{p_subject_id:sid});
     if(error)throw error;
     const units=data?.units||[];
+    state.adminPath.set(sid,data);
     const next=units.find(x=>!x.unlocked)?.unit_no??null;
     page.dataset.v168AdminPlan=sid;
     page.classList.add("v168-sequential-mode");
@@ -246,6 +251,21 @@ function openUnlockDialog(sid,unitNo){
   };
 }
 
+function openAdminSummarySlides(sid,unitNo){
+  const plan=state.adminPath.get(sid),unit=(plan?.units||[]).find(x=>Number(x.unit_no)===Number(unitNo));
+  if(!unit){flash("ไม่พบข้อมูลหน่วยเรียน กรุณาเปิดห้องใหม่",true);return}
+  const works=unit.worksheets||[],goals=[...new Set(works.map(w=>w.learning_goal).filter(Boolean))];
+  overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">TEACHING SLIDES • ADMIN</span><h2>${esc(plan?.subject?.code||"")} ${esc(plan?.subject?.name||"")} • หน่วย ${unitNo}</h2><p>สไลด์สรุปพร้อมใช้สำหรับเตรียมสอน เปิดดูได้แม้ยังไม่ปลดล็อกให้นักศึกษา</p></div><div class="row"><button class="btn sm" data-v168-slide-fullscreen>⛶ เต็มจอ</button><button class="btn sm" data-v168-close>✕</button></div></div>
+    <div class="v168-slides v173-teaching-slides">
+      <section><span>01</span><h3>ชื่อหน่วย / หัวข้อ</h3>${works.map(w=>`<p>${w.mode==="paper"?"🖨️":"💻"} ${esc(w.title||"")}</p>`).join("")||"<p>หน่วยการเรียน</p>"}</section>
+      <section><span>02</span><h3>จุดประสงค์การเรียนรู้</h3>${goals.length?goals.map(g=>`<p>• ${esc(g)}</p>`).join(""):`<p>ศึกษาและปฏิบัติกิจกรรมตามเนื้อหาประจำหน่วย</p>`}</section>
+      <section><span>03</span><h3>กิจกรรมการสอน</h3><p>1) นำเข้าสู่บทเรียน / ทบทวนความรู้เดิม</p><p>2) อธิบายเนื้อหาหลักและตัวอย่าง</p><p>3) ให้ผู้เรียนทำใบงาน Digital และ Paper ที่จัดไว้ในหน่วย</p><p>4) สรุป ตรวจความเข้าใจ และมอบหมายงาน</p></section>
+      <section><span>04</span><h3>ใบงานประจำหน่วย</h3>${works.map(w=>`<p>${w.mode==="paper"?"Paper":"Digital"} • ${esc(w.reference_code||"")} • ${esc(w.title||"")}</p>`).join("")}</section>
+      <section><span>05</span><h3>สถานะการสอน</h3><p>${unit.unlocked?`เปิดสอนแล้ว • เปิด ${fmt(unit.open_at)} • ส่ง ${fmt(unit.due_at)}`:"ยังไม่ปลดล็อกให้นักศึกษา • Admin สามารถเตรียมสไลด์/ใบงานไว้ล่วงหน้าได้"}</p></section>
+    </div>`,true);
+  const fs=$("[data-v168-slide-fullscreen]");if(fs)fs.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
+}
+
 async function openResource(path){
   const {data,error}=await client().storage.from("subject-files").createSignedUrl(path,600);
   if(error||!data?.signedUrl){flash(errText(error||"เปิดไฟล์ไม่ได้"),true);return}
@@ -256,18 +276,21 @@ function openSummarySlides(sid,unitNo){
   if(!unit||!unit.unlocked){flash("หน่วยนี้ยังไม่ถูกปลดล็อก",true);return}
   const works=unit.worksheets||[];
   const goals=[...new Set(works.map(w=>w.learning_goal).filter(Boolean))];
-  overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">BUILT-IN TEACHING SLIDES</span><h2>${esc(path?.subject?.code||"")} • หน่วย ${unitNo}</h2><p>สไลด์สรุปอัตโนมัติจากชุดบทเรียนสำเร็จรูปของหน่วยนี้</p></div><button class="btn sm" data-v168-close>✕</button></div>
+  overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">BUILT-IN TEACHING SLIDES</span><h2>${esc(path?.subject?.code||"")} • หน่วย ${unitNo}</h2><p>สไลด์สรุปอัตโนมัติจากชุดบทเรียนสำเร็จรูปของหน่วยนี้</p></div><div class="row"><button class="btn sm" data-v168-slide-fullscreen>⛶ เต็มจอ</button><button class="btn sm" data-v168-close>✕</button></div></div>
     <div class="v168-slides">
       <section><span>01</span><h3>หัวข้อการเรียน</h3>${works.map(w=>`<p>${w.mode==="paper"?"🖨️":"💻"} ${esc(w.title||"")}</p>`).join("")}</section>
       <section><span>02</span><h3>เป้าหมายการเรียนรู้</h3>${goals.length?goals.map(g=>`<p>• ${esc(g)}</p>`).join(""):`<p>ศึกษาตามหัวข้อและกิจกรรมประจำหน่วย</p>`}</section>
       <section><span>03</span><h3>กิจกรรมในหน่วย</h3><p>ศึกษาสไลด์/สื่อ → ทำใบงานอิเล็กทรอนิกส์ → ทำใบงานปริ้น (ถ้ามี) → ส่งภายในเวลาที่กำหนด</p></section>
       <section><span>04</span><h3>กำหนดเวลา</h3><p>เปิด ${fmt(unit.open_at)}</p><p>กำหนดส่ง ${fmt(unit.due_at)}</p></section>
     </div>`,true);
+  const fs=$("[data-v168-slide-fullscreen]");if(fs)fs.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
 }
 
 document.addEventListener("click",e=>{
   const unlock=e.target.closest?.("[data-v168-unlock]");
   if(unlock){e.preventDefault();e.stopPropagation();const [sid,u]=unlock.dataset.v168Unlock.split(":");openUnlockDialog(sid,Number(u));return}
+  const adminSlide=e.target.closest?.("[data-v168-admin-slide]");
+  if(adminSlide){e.preventDefault();e.stopPropagation();const [sid,u]=adminSlide.dataset.v168AdminSlide.split(":");openAdminSummarySlides(sid,Number(u));return}
   const res=e.target.closest?.("[data-v168-resource]");
   if(res){e.preventDefault();e.stopPropagation();openResource(res.dataset.v168Resource);return}
   const slide=e.target.closest?.("[data-v168-summary-slide]");

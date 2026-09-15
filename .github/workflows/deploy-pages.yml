@@ -36,6 +36,7 @@ jobs:
           python tests/button_contract.py
           python tests/course_code_contract.py
           python tests/branding_contract.py
+          python tests/runtime_v173_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js

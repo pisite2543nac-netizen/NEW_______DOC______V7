@@ -227,3 +227,8 @@ table{background:#fff!important}thead th{background:#f8fafc!important;color:#475
   .v172-dashboard-seal{width:66px;height:66px;flex-basis:66px}
   #sidebar .brand .brand-app-icon{width:50px!important;height:50px!important;flex-basis:50px!important}
 }
+
+
+/* V17.3 real-use course / paper controls */
+.v168-admin-unit .v173-unit-actions{display:flex;flex-wrap:wrap;gap:8px}.v168-admin-unit .v173-unit-work-list{display:grid;gap:8px}
+@media(max-width:780px){.v165-room-code{align-items:stretch}.v165-room-code>.row{width:100%}.v165-room-code>.row .btn{flex:1}}

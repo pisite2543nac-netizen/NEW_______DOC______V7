@@ -126,3 +126,23 @@ img,svg,canvas,video{max-width:100%}
   #pagetitle{display:none}
   .password-row .btn{min-width:68px;padding-left:10px;padding-right:10px}
 }
+
+
+/* DOC-FULL-NR V17.3 — installed PWA fullscreen + copy protection + real-use mobile */
+html,body{min-height:100%;min-height:100dvh}
+html[data-display-mode="fullscreen"],html[data-display-mode="standalone"]{background:#f8fafc}
+body.docnr-installed{min-height:100dvh;overscroll-behavior:none}
+body.docnr-fullscreen .topbar{padding-top:max(8px,env(safe-area-inset-top))}
+.docnr-copy-protected body,.docnr-copy-protected .content,.docnr-copy-protected .sidebar,.docnr-copy-protected .modal,.docnr-copy-protected .v14-overlay,.docnr-copy-protected .exam-shell{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.docnr-copy-protected input,.docnr-copy-protected textarea,.docnr-copy-protected select,.docnr-copy-protected [contenteditable="true"],.docnr-copy-protected .allow-copy,.docnr-copy-protected .v165-room-code-value,.docnr-copy-protected [data-v165-copy-code]{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default}
+.docnr-fullscreen-btn{white-space:nowrap}
+.docnr-install-steps{display:grid;gap:10px;margin:14px 0}
+.docnr-install-steps>div{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start;padding:12px;border:1px solid #dbe5ef;border-radius:14px;background:#f8fafc}
+.docnr-install-steps>div>strong{display:grid;place-items:center;width:30px;height:30px;border-radius:999px;background:#e0f2fe;color:#075985}
+.docnr-install-steps p{margin:3px 0 0}.docnr-install-note{margin-top:10px}
+.v173-capture-review{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:14px;align-items:center;margin-top:12px;padding:12px;border:1px solid #86efac;border-radius:16px;background:#f0fdf4}
+.v173-capture-review[hidden]{display:none!important}.v173-capture-review img{width:100%;max-height:420px;object-fit:contain;background:#fff;border:1px solid #cbd5e1;border-radius:12px}.v173-capture-review>div{display:grid;gap:8px}.v173-capture-review span{color:#475569;line-height:1.5}
+.v173-unit-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.v173-unit-work-list{display:grid;gap:8px;margin-top:10px}
+.v173-unit-work{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #dbe5ef;border-radius:12px;background:#fff}.v173-unit-work>span{min-width:0;overflow-wrap:anywhere}.v173-unit-work>div{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.v168-admin-unit .v173-unit-work-list{margin-top:12px}
+@media(max-width:760px){.v173-capture-review{grid-template-columns:1fr}.v173-capture-review img{max-height:52dvh}.v173-unit-work{align-items:flex-start;flex-direction:column}.v173-unit-work>div{width:100%;justify-content:stretch}.v173-unit-work>div .btn{flex:1}.docnr-fullscreen-btn{padding-left:10px;padding-right:10px}}
+@media print{.docnr-fullscreen-btn,#install,.mobile-menu,.sidebar,.topbar{display:none!important}.docnr-copy-protected body,.docnr-copy-protected *{-webkit-user-select:auto!important;user-select:auto!important}}

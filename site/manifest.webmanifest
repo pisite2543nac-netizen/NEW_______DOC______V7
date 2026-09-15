@@ -3,11 +3,11 @@
   "name": "Nangrong Smart Worksheet System • วิทยาลัยเทคนิคนางรอง",
   "short_name": "Nangrong Worksheet",
   "description": "ระบบห้องเรียนรายวิชา ใบงาน สแกนเอกสาร ระบบสอบ และสรุปคะแนน วิทยาลัยเทคนิคนางรอง",
-  "start_url": "./",
+  "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
   "display_override": [
-    "window-controls-overlay",
+    "fullscreen",
     "standalone",
     "minimal-ui"
   ],
@@ -64,5 +64,9 @@
         }
       ]
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "prefer_related_applications": false
 }
