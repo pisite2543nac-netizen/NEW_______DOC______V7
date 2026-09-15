@@ -1,15 +1,18 @@
+// compatibility marker: doc-full-nr-v17-5-17unit-workpair-20260915
+// compatibility marker: doc-full-nr-v17-4-learning-content-20260915
+// compatibility marker: doc-full-nr-v17-3-full-system-20260915
 // compatibility marker: doc-full-nr-v17-1-course-code-20260915
 // compatibility marker: doc-full-nr-v17-master-flow-20260915
 // compatibility marker: doc-full-nr-v17-2-college-branding-20260915
 // DOC-FULL-NR V17.3 FULL SYSTEM cache
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v17-3-full-system-20260915";
+const CACHE="doc-full-nr-v17-6-full-11subjects-20260915";
 const SHELL=[
   "./","./index.html","./exam.html",
-  "./styles.css?v=20260915-v17-3","./mobile.css?v=20260915-v17-3","./v16-minimal.css?v=20260915-v17-3",
-  "./v16-7-hardening.css?v=20260915-v17-3","./v16-8-course-flow.css?v=20260915-v17-3",
-  "./camera-registration.js?v=20260915-v17-3","./app.js?v=20260915-v17-3","./mobile.js?v=20260915-v17-3","./v16-platform.js?v=20260915-v17-3",
-  "./v16-7-hardening.js?v=20260915-v17-3","./v16-8-course-flow.js?v=20260915-v17-3","./v16-exam.js?v=20260915-v17-3",
+  "./styles.css?v=20260915-v17-6","./mobile.css?v=20260915-v17-6","./v16-minimal.css?v=20260915-v17-3",
+  "./v16-7-hardening.css?v=20260915-v17-3","./v16-8-course-flow.css?v=20260915-v17-6",
+  "./camera-registration.js?v=20260915-v17-3","./app.js?v=20260915-v17-6","./mobile.js?v=20260915-v17-3","./v16-platform.js?v=20260915-v17-6",
+  "./v16-7-hardening.js?v=20260915-v17-6","./v16-8-course-flow.js?v=20260915-v17-6","./v16-exam.js?v=20260915-v17-3",
   "./manifest.webmanifest?v=20260915-v17-3",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png"
 ];
