@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V17.0-UNIFIED-PRODUCTION";
+const V15_VERSION="V17.1-COURSE-CODE-PRODUCTION";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -63,7 +63,7 @@ function toast(message,bad=false){
 function errorText(err){
   const raw=String(err?.message||err?.details||err?.error_description||err||"เกิดข้อผิดพลาด");
   const map={
-    ADMIN_REQUIRED:"ต้องใช้บัญชี Admin",ACTIVE_USER_REQUIRED:"บัญชีนี้ยังไม่พร้อมใช้งาน",NOT_ALLOWED:"ไม่มีสิทธิ์ดำเนินการ",
+    ADMIN_REQUIRED:"ต้องใช้บัญชี Admin",JOIN_CODE_ALREADY_USED:"CODE นี้ถูกใช้กับรายวิชาอื่นแล้ว กรุณาใช้ CODE อื่น",JOIN_CODE_INVALID:"CODE เข้าเรียนต้องเป็น A-Z/0-9 จำนวน 4–12 ตัว",ACTIVE_USER_REQUIRED:"บัญชีนี้ยังไม่พร้อมใช้งาน",NOT_ALLOWED:"ไม่มีสิทธิ์ดำเนินการ",
     NO_TARGETS:"ยังไม่มีผู้เรียนที่ได้รับอนุมัติ/เป้าหมายสำหรับงานนี้",INVALID_SCHEDULE:"วันและเวลาที่กำหนดไม่ถูกต้อง",
     NO_WORKSHEETS_SELECTED:"กรุณาเลือกใบงานอย่างน้อย 1 ใบ",STUDENT_NOT_APPROVED_FOR_SUBJECT:"นักศึกษาคนนี้ยังไม่ได้รับอนุมัติให้เรียนรายวิชานี้",
     STUDENT_NOT_IN_CLASSROOM:"นักศึกษาไม่ได้อยู่ในห้องเรียนนี้",INVALID_QR_TOKEN:"QR ไม่ถูกต้องหรือถูกยกเลิกแล้ว",
@@ -202,7 +202,7 @@ async function navigate(route,arg=null){
   if(await requirePhoneGate(route))return;
   const routes=p.role==="admin"?{
     dashboard:renderAdminDashboard,
-    courses:()=>arg?renderAdminSubject(arg):renderAdminCourses,
+    courses:()=>arg?renderAdminSubject(arg):renderAdminCourses(),
     students:renderStudentsHub,
     workadmin:renderWorkAdminHub,
     attendancehub:renderAttendanceHub,
@@ -217,7 +217,7 @@ async function navigate(route,arg=null){
     dashboard:renderStudentDashboard,
     catalog:renderCourseRegistrationHome,
     enroll:renderEnrollSubjects,
-    courses:()=>arg?renderStudentCourse(arg):renderStudentCourses,
+    courses:()=>arg?renderStudentCourse(arg):renderStudentCourses(),
     work:renderWorkStatus,
     history:renderAcademicHistory,
     attendance:renderAttendance,
@@ -397,8 +397,10 @@ async function renderCourseRegistrationHome(){
   let filter="all";const draw=()=>{const q=$("#v165-course-q")?.value.trim().toLowerCase()||"";$$("[data-v165-course-card]").forEach(card=>{const st=card.dataset.status,matchFilter=filter==="all"||(filter==="available"&&st!=="approved"&&st!=="pending")||st===filter;card.hidden=!(matchFilter&&(!q||card.dataset.search.includes(q)))})};$("#v165-course-q").oninput=draw;$$("[data-v165-course-filter]").forEach(b=>b.onclick=()=>{$$("[data-v165-course-filter]").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.v165CourseFilter;draw()});
 }
 async function showJoinCourseDialog(subjectId,code,name){
-  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">JOIN COURSE</span><h2>เข้าร่วม ${esc(code)} ${esc(name)}</h2><p>กรอกรหัสที่ได้รับจาก Admin</p></div><button class="btn" data-v14-close>✕</button></div><form id="v165-join-form"><label class="field"><span>รหัสเข้าห้องเรียน</span><input class="input v165-code-input" name="code" autocomplete="off" maxlength="12" placeholder="เช่น A1B2C3" required></label><div class="alert">รหัสนี้ใช้เฉพาะการเข้าร่วมรายวิชา ไม่ใช่รหัสผ่านบัญชี</div><div class="row end"><button type="button" class="btn" data-v14-close>ยกเลิก</button><button class="btn primary">ยืนยันเข้าร่วม</button></div></form>`);
-  $("#v165-join-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),joinCode=String(f.get("code")||"").trim().toUpperCase(),btn=e.submitter;if(joinCode.length<4){toast("กรุณากรอกรหัสเข้าห้องเรียน",true);return}btn.disabled=true;btn.textContent="กำลังตรวจรหัส...";const {data,error}=await client().rpc("join_subject_with_code",{p_subject_id:subjectId,p_code:joinCode});if(error){btn.disabled=false;btn.textContent="ยืนยันเข้าร่วม";toast(String(error.message||"").includes("JOIN_CODE_INVALID")?"รหัสเข้าห้องเรียนไม่ถูกต้อง":errorText(error),true);return}closeOverlay();toast(`เข้าร่วม ${data?.subject_code||code} แล้ว`);renderCourseRegistrationHome()};
+  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">JOIN COURSE</span><h2>เข้าร่วม ${esc(code)} ${esc(name)}</h2><p>กรอก CODE ที่ได้รับจาก Admin/ครูผู้สอน</p></div><button class="btn" data-v14-close>✕</button></div><form id="v165-join-form"><label class="field"><span>CODE เข้าเรียน</span><input class="input v165-code-input" name="code" autocomplete="off" inputmode="text" maxlength="12" placeholder="เช่น A1B2C3" required></label><div class="alert">CODE นี้ใช้เฉพาะการเข้าร่วมรายวิชา ไม่ใช่รหัสผ่านบัญชี • เมื่อ CODE ถูกต้องจะเข้าห้องเรียนวิชานี้ทันที</div><div class="row end"><button type="button" class="btn" data-v14-close>ยกเลิก</button><button class="btn primary">ยืนยัน CODE และเข้าเรียน</button></div></form>`);
+  const codeInput=$("#v165-join-form input[name=code]");
+  if(codeInput)codeInput.oninput=()=>{codeInput.value=codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12)};
+  $("#v165-join-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),joinCode=String(f.get("code")||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,""),btn=e.submitter;if(joinCode.length<4){toast("กรุณากรอก CODE เข้าเรียน 4–12 ตัว",true);return}btn.disabled=true;btn.textContent="กำลังตรวจ CODE...";const {data,error}=await client().rpc("join_subject_with_code",{p_subject_id:subjectId,p_code:joinCode});if(error){btn.disabled=false;btn.textContent="ยืนยัน CODE และเข้าเรียน";toast(String(error.message||"").includes("JOIN_CODE_INVALID")?"CODE เข้าเรียนไม่ถูกต้อง กรุณาตรวจสอบกับ Admin":errorText(error),true);return}closeOverlay();toast(`เข้าเรียน ${data?.subject_code||code} สำเร็จ`);if(window.DOCNR_BASE?.navigate)window.DOCNR_BASE.navigate("courses",subjectId);else renderStudentCourse(subjectId)};
 }
 
 // ---------------------------------------------------------------------------
@@ -419,17 +421,20 @@ async function renderEnrollmentAdmin(){
 // Admin subject-first bundle / release
 // ---------------------------------------------------------------------------
 async function renderAdminCourses(){
-  setTitle("ห้องเรียนรายวิชา");busy("กำลังโหลดห้องเรียนรายวิชาและใบงานสำเร็จรูป...");const c=client();const [sr,wr,er,xr]=await Promise.all([
+  setTitle("ห้องเรียนรายวิชา");busy("กำลังโหลดห้องเรียนรายวิชาและ CODE เข้าเรียน...");const c=client();const [sr,wr,er,xr,cr]=await Promise.all([
     c.from("subjects").select("id,code,name,color_hex,semester,academic_year,description").eq("active",true).eq("subject_type","subject").order("code"),
     c.from("worksheets").select("id,subject_id,mode,status,settings,open_at,due_at").order("created_at"),
     c.from("subject_enrollments").select("subject_id,status"),
-    c.from("exams").select("id,subject_id,status")
-  ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(er.error)throw er.error;const ready=(wr.data||[]).filter(w=>w.settings?.template_ready===true);
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">SUBJECT = CLASSROOM</span><h1>ห้องเรียนรายวิชา</h1><p>แต่ละรายวิชาเป็นห้องเรียนหนึ่งห้อง ใช้ชื่อ/รหัสชุดเดียวกัน นักศึกษาที่อนุมัติคือสมาชิกห้อง และใบงานสำเร็จรูปของวิชานั้นจะแสดงอยู่ภายในห้องโดยตรง</p></div><div class="v14-stat-pill">ใบงานสำเร็จรูป <b>${ready.length}</b></div></div>
-  <div class="card v15-room-note"><b>โครงสร้างห้องเรียนรายวิชา</b><span>รายวิชา → สมาชิกนักศึกษา → ใบงานสำเร็จรูป → สไลด์/สื่อ → ปล่อยงาน → ระบบสอบ</span></div>
+    c.from("exams").select("id,subject_id,status"),
+    c.rpc("admin_subject_join_code_registry")
+  ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(er.error)throw er.error;if(cr.error)throw cr.error;const ready=(wr.data||[]).filter(w=>w.settings?.template_ready===true),codes=cr.data?.subjects||[],codeMap=new Map(codes.map(x=>[x.subject_id,x]));
+  const codeRegistry=codes.map(x=>`<article class="v171-code-item"><div><small>${esc(x.subject_code)}</small><b>${esc(x.subject_name)}</b><span>สมาชิก ${Number(x.member_count||0)} คน</span></div><strong>${esc(x.join_code||"------")}</strong><div class="v171-code-actions"><button class="btn sm" data-v165-copy-code="${esc(x.join_code||"")}">📋 คัดลอก</button><button class="btn sm" data-v165-change-code="${x.subject_id}" data-v171-refresh="courses">🔄 เปลี่ยน CODE</button><button class="btn sm primary" data-v14-admin-course="${x.subject_id}">เปิดห้อง</button></div></article>`).join("");
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">SUBJECT = CLASSROOM</span><h1>ห้องเรียนรายวิชา</h1><p>ทุกวิชามี CODE เข้าเรียนของตัวเอง • CODE ถูกบันทึกในระบบและมองเห็นเฉพาะ Admin • Admin บอก CODE ให้นักศึกษาเพื่อเข้าเรียน</p></div><div class="v14-stat-pill">CODE พร้อมใช้ <b>${codes.length}/${(sr.data||[]).length}</b></div></div>
+  <section class="card v171-code-registry"><div class="v171-code-registry-head"><div><span class="v14-kicker">ADMIN COURSE CODE REGISTRY</span><h2>🔐 CODE เข้าเรียนทั้งหมด</h2><p>ใช้หน้านี้เป็นทะเบียน CODE กลางของ Admin • นักศึกษาไม่สามารถเปิดดู CODE เหล่านี้จากระบบได้</p></div><span class="v171-code-ok">✅ ${codes.length} วิชา</span></div><div class="v171-code-grid">${codeRegistry||`<div class="v14-empty">ยังไม่มี CODE รายวิชา</div>`}</div></section>
+  <div class="card v15-room-note"><b>ขั้นตอนใช้งาน</b><span>Admin เลือก CODE → บอกนักศึกษา → นักศึกษาเลือกรายวิชา → กรอก CODE → ระบบอนุมัติสมาชิกและพาเข้าห้องเรียนทันที</span></div>
   <div class="card v14-filter"><input id="v14-course-q" class="input" placeholder="ค้นหารหัสวิชา / ชื่อห้องเรียน"></div>
-  <div id="v14-admin-course-grid" class="v14-course-grid">${(sr.data||[]).map(s=>{const ws=ready.filter(w=>w.subject_id===s.id),paper=ws.filter(w=>w.mode==="paper").length,digital=ws.filter(w=>w.mode==="digital").length,learners=(er.data||[]).filter(e=>e.subject_id===s.id&&e.status==="approved").length,published=(wr.data||[]).filter(w=>w.subject_id===s.id&&w.status==="published").length,examCount=(xr.data||[]).filter(x=>x.subject_id===s.id).length;return `<button class="v14-course-card v15-room-card" data-v14-admin-course="${s.id}" data-search="${esc(`${s.code} ${s.name}`.toLowerCase())}" style="--course:${esc(s.color_hex||"#22d3ee")}"><span class="v15-room-label">🏫 ห้องเรียน</span><span class="code">${esc(s.code)}</span><b>${esc(s.name)}</b><div class="v14-course-counts"><span>👥 ${learners} คน</span><span>📚 ${paper+digital} ใบ</span><span>🚀 ${published} ปล่อยแล้ว</span><span>🧪 ${examCount} ชุดสอบ</span></div><small>เปิดห้อง → รายชื่อนักศึกษา • ใบงาน • สื่อ • ระบบสอบ</small></button>`}).join("")}</div></section>`;
-  $("#v14-course-q").oninput=e=>{const q=e.target.value.trim().toLowerCase();$$('[data-v14-admin-course]').forEach(x=>x.hidden=q&&!x.dataset.search.includes(q))};
+  <div id="v14-admin-course-grid" class="v14-course-grid">${(sr.data||[]).map(s=>{const ws=ready.filter(w=>w.subject_id===s.id),paper=ws.filter(w=>w.mode==="paper").length,digital=ws.filter(w=>w.mode==="digital").length,learners=(er.data||[]).filter(e=>e.subject_id===s.id&&e.status==="approved").length,published=(wr.data||[]).filter(w=>w.subject_id===s.id&&w.status==="published").length,examCount=(xr.data||[]).filter(x=>x.subject_id===s.id).length,cc=codeMap.get(s.id);return `<article class="v14-course-card v15-room-card v171-room-card" data-v171-course-card data-search="${esc(`${s.code} ${s.name}`.toLowerCase())}" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v171-room-top"><span class="v15-room-label">🏫 ห้องเรียน</span><span class="v171-code-pill">CODE <b>${esc(cc?.join_code||"------")}</b></span></div><span class="code">${esc(s.code)}</span><b>${esc(s.name)}</b><div class="v14-course-counts"><span>👥 ${learners} คน</span><span>📚 ${paper+digital} ใบ</span><span>🚀 ${published} เปิดแล้ว</span><span>🧪 ${examCount} ชุดสอบ</span></div><div class="v171-room-actions"><button class="btn sm" data-v165-copy-code="${esc(cc?.join_code||"")}">📋 คัดลอก CODE</button><button class="btn sm" data-v165-change-code="${s.id}" data-v171-refresh="courses">🔄 เปลี่ยน</button><button class="btn primary" data-v14-admin-course="${s.id}">เปิดห้องเรียน</button></div></article>`}).join("")}</div></section>`;
+  $("#v14-course-q").oninput=e=>{const q=e.target.value.trim().toLowerCase();$$('[data-v171-course-card]').forEach(x=>x.hidden=!!(q&&!x.dataset.search.includes(q)))};
 }
 function wsSeq(w){const m=String(w.reference_code||"").match(/-([PD]\d{2})$/);return m?Number(m[1].slice(1)):Number(w.settings?.lesson_sequence||0)||0}
 function wsCode(w){const m=String(w.reference_code||"").match(/-([PD]\d{2})$/);return m?m[1]:(w.mode==="paper"?"P":"D")}
@@ -1015,7 +1020,7 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v15-account]")){await decideAccount(t.dataset.v15Account,t.dataset.accountStatus);return}
   if(t.matches("[data-v165-join-course]")){showJoinCourseDialog(t.dataset.v165JoinCourse,t.dataset.courseCode||"",t.dataset.courseName||"");return}
   if(t.matches("[data-v165-copy-code]")){try{await navigator.clipboard.writeText(t.dataset.v165CopyCode||"");toast("คัดลอกรหัสเข้าห้องเรียนแล้ว")}catch{toast("คัดลอกรหัสไม่สำเร็จ",true)}return}
-  if(t.matches("[data-v165-change-code]")){const sid=t.dataset.v165ChangeCode,custom=prompt("ตั้งรหัสใหม่ 4–12 ตัว (A-Z/0-9)\nกด Cancel เพื่อยกเลิก\nเว้นว่างแล้วกด OK เพื่อสุ่มรหัสใหม่","");if(custom===null)return;const r=custom.trim()?await client().rpc("admin_subject_join_code",{p_subject_id:sid,p_new_code:custom.trim()}):await client().rpc("admin_regenerate_subject_join_code",{p_subject_id:sid});if(r.error){toast(errorText(r.error),true);return}toast("เปลี่ยนรหัสเข้าห้องเรียนแล้ว");renderAdminSubject(sid);return}
+  if(t.matches("[data-v165-change-code]")){const sid=t.dataset.v165ChangeCode,custom=prompt("ตั้ง CODE ใหม่ 4–12 ตัว (A-Z/0-9)\nกด Cancel เพื่อยกเลิก\nเว้นว่างแล้วกด OK เพื่อสุ่ม CODE ใหม่","");if(custom===null)return;const normalized=custom.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");const r=normalized?await client().rpc("admin_subject_join_code",{p_subject_id:sid,p_new_code:normalized}):await client().rpc("admin_regenerate_subject_join_code",{p_subject_id:sid});if(r.error){toast(errorText(r.error),true);return}toast(`บันทึก CODE ใหม่ ${r.data?.join_code||""} แล้ว`);if(t.dataset.v171Refresh==="courses")renderAdminCourses();else renderAdminSubject(sid);return}
   if(t.matches("[data-v14-request-course]")){const r=await client().rpc("request_subject_enrollment",{p_subject_id:t.dataset.v14RequestCourse});if(r.error)toast(errorText(r.error),true);else{toast("ส่งคำขอลงทะเบียนแล้ว");renderEnrollSubjects()}return}
   if(t.matches("[data-v14-withdraw-course]")){if(!ask("ยืนยันถอนคำขอ/ถอนรายวิชานี้? ประวัติงานที่ส่งแล้วจะยังคงอยู่"))return;const r=await client().rpc("withdraw_subject_enrollment",{p_subject_id:t.dataset.v14WithdrawCourse});if(r.error)toast(errorText(r.error),true);else{toast("ถอนรายวิชาแล้ว");renderEnrollSubjects()}return}
   if(t.matches("[data-v14-decide-enroll]")){const st=t.dataset.status;if(!ask(st==="approved"?"อนุมัติให้นักศึกษาคนนี้เรียนรายวิชานี้?":"ไม่อนุมัติคำขอนี้?"))return;const r=await client().rpc("decide_subject_enrollment",{p_enrollment_id:t.dataset.v14DecideEnroll,p_status:st,p_note:null});if(r.error)toast(errorText(r.error),true);else{toast(st==="approved"?"อนุมัติแล้ว":"บันทึกไม่อนุมัติแล้ว");renderEnrollmentAdmin()}return}

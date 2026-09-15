@@ -24,6 +24,7 @@ jobs:
           python tests/static_validation.py
           python tests/unified_contract.py
           python tests/button_contract.py
+          python tests/course_code_contract.py
       - name: JavaScript syntax
         run: |
           node --check site/app.js
