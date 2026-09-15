@@ -25,11 +25,6 @@ jobs:
           python tests/unified_contract.py
           python tests/button_contract.py
           python tests/course_code_contract.py
-          python tests/branding_contract.py
-          python tests/runtime_v173_contract.py
-          python tests/learning_content_v174_contract.py
-          python tests/v175_workpair_contract.py
-          python tests/v176_fullset_contract.py
       - name: JavaScript syntax
         run: |
           node --check site/app.js

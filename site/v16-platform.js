@@ -319,31 +319,10 @@ async function studentWorkRows(){
   const ids=[...new Set((a||[]).map(x=>x.worksheet_id))];if(!ids.length)return [];
   const [wr,sr]=await Promise.all([
     c.from("worksheets").select("id,subject_id,title,reference_code,mode,status,open_at,due_at,allow_late,settings,subjects(id,code,name,color_hex)").in("id",ids),
-    c.from("submissions").select("worksheet_id,status,submitted_at,confirmed_at,is_late,last_saved_at,attempt_count,updated_at").eq("user_id",id).in("worksheet_id",ids)
+    c.from("submissions").select("worksheet_id,status,submitted_at,confirmed_at,is_late,last_saved_at,attempt_count").eq("user_id",id).in("worksheet_id",ids)
   ]);if(wr.error)throw wr.error;if(sr.error)throw sr.error;
   const sm=new Map();for(const s of sr.data||[]){const old=sm.get(s.worksheet_id);if(!old||new Date(s.updated_at||s.last_saved_at||s.submitted_at||0)>=new Date(old.updated_at||old.last_saved_at||old.submitted_at||0))sm.set(s.worksheet_id,s)}
-  const groups=new Map();
-  for(const w of wr.data||[]){
-    const key=String(w.settings?.work_pair_key||w.id),g=groups.get(key)||{key,digital:null,paper:null};
-    if(w.mode==="digital")g.digital=w;else if(w.mode==="paper")g.paper=w;groups.set(key,g);
-  }
-  const finalKeys=new Set(["submitted","confirmed","graded"]);
-  const now=nowMs();
-  return [...groups.values()].map(g=>{
-    const d=g.digital,p=g.paper,w=d||p,ds=d?sm.get(d.id):null,ps=p?sm.get(p.id):null;
-    const due=d?.due_at?new Date(d.due_at).getTime():(w?.due_at?new Date(w.due_at).getTime():null);
-    const open=d?.open_at?new Date(d.open_at).getTime():(w?.open_at?new Date(w.open_at).getTime():null);
-    let status;
-    if(ds?.status==="graded")status={key:"graded",label:"ตรวจแล้ว",cls:"ok"};
-    else if(ds&&finalKeys.has(ds.status))status={key:"sent",label:"ส่งออนไลน์แล้ว",cls:"ok"};
-    else if(ps?.status==="graded")status={key:"graded",label:"ตรวจงานย้อนหลังแล้ว",cls:"ok"};
-    else if(ps&&finalKeys.has(ps.status))status={key:"late",label:"ส่งย้อนหลังแล้ว",cls:"warn"};
-    else if(ds?.status==="draft")status={key:"draft",label:"บันทึกร่าง",cls:"draft"};
-    else if(open&&open>now)status={key:"upcoming",label:"ยังไม่เปิด",cls:"muted"};
-    else if(due&&due<now)status={key:"overdue",label:"เกินกำหนด • พิมพ์ย้อนหลัง",cls:"bad"};
-    else status={key:"pending",label:"ยังไม่ส่ง",cls:"wait"};
-    return {...g,w,digitalSubmission:ds,paperSubmission:ps,status};
-  }).sort((x,y)=>(new Date(x.digital?.due_at||x.w?.due_at||"9999-12-31")-new Date(y.digital?.due_at||y.w?.due_at||"9999-12-31")));
+  return (wr.data||[]).map(w=>({w,s:sm.get(w.id)||null,status:workStatus(w,sm.get(w.id)||null)})).sort((x,y)=>(new Date(x.w.due_at||"9999-12-31")-new Date(y.w.due_at||"9999-12-31")));
 }
 function workStatus(w,s){
   const now=nowMs(),open=w.open_at?new Date(w.open_at).getTime():null,due=w.due_at?new Date(w.due_at).getTime():null;
@@ -354,21 +333,15 @@ function workStatus(w,s){
   if(due&&due<now)return {key:"overdue",label:"เกินกำหนด",cls:"bad"};
   return {key:"pending",label:"ยังไม่ส่ง",cls:"wait"};
 }
-function workCard(row){
-  const w=row.digital||row.paper||row.w,status=row.status,d=row.digital,p=row.paper;
-  const done=["sent","late","graded"].includes(status.key);
-  const overdue=status.key==="overdue";
-  const action=done?`<button class="btn" disabled>✅ บันทึกงานแล้ว</button>`:
-    overdue&&p?`<button class="btn warn" data-v175-late-paper="${p.id}">🖨️ พิมพ์ใบงานส่งย้อนหลัง</button>`:
-    d?`<button class="btn primary" data-v14-open-work="${d.id}">📝 ทำใบงานประจำหน่วย</button>`:
-    `<button class="btn" disabled>ยังไม่มีใบงาน</button>`;
-  return `<article class="v14-work-card v176-workpair-card" style="--course:${esc(w?.subjects?.color_hex||"#22d3ee")}">
-    <div class="v14-work-main"><div class="v14-course-chip">${esc(w?.subjects?.code||"")} ${esc(w?.subjects?.name||"")}</div><h3>${esc(w?.settings?.unit_topic||String(w?.title||"").replace(/^ใบงาน[^:]*:\s*/,""))}</h3>
-    <div class="v14-meta">📝 ใบงานประจำหน่วย • 💻 ส่งตรงเวลา / 🖨️ ส่งย้อนหลัง • กำหนด ${fmt(d?.due_at||w?.due_at)}</div>
-    <div class="v176-pair-codes"><span>${esc(d?.reference_code||"-")}</span><span>${esc(p?.reference_code||"-")}</span></div></div>
-    <div class="v14-work-side"><span class="v14-status ${status.cls}">${esc(status.label)}</span>${!done&&d?.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(d.due_at)}"></b>`:""}${action}</div>
-  </article>`;
-}
+function workCard(row){const {w,status}=row;return `<article class="v14-work-card" style="--course:${esc(w.subjects?.color_hex||"#22d3ee")}">
+  <div class="v14-work-main"><div class="v14-course-chip">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")}</div><h3>${esc(w.title)}</h3>
+  <div class="v14-meta">${w.mode==="paper"?"🖨️ ใบงานกระดาษ":"💻 ใบงานอิเล็กทรอนิกส์"} • ส่ง ${fmt(w.due_at)}</div></div>
+  <div class="v14-work-side"><span class="v14-status ${status.cls}">${esc(status.label)}</span>${!["sent","late","graded"].includes(status.key)&&w.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(w.due_at)}"></b>`:""}
+  <button class="btn primary" data-v14-open-work="${w.id}">${w.mode==="digital"?"เปิดทำใบงาน":"ดูใบงาน"}</button></div></article>`}
+
+// ---------------------------------------------------------------------------
+// Dashboards
+// ---------------------------------------------------------------------------
 function dashboardRouteCard(route,icon,title,desc,tone="blue"){
   return `<button class="v1610-flow-card ${tone}" data-app-route="${esc(route)}"><span class="v1610-flow-icon">${icon}</span><span><b>${esc(title)}</b><small>${esc(desc)}</small></span><i>›</i></button>`;
 }
@@ -378,8 +351,8 @@ function hubCard(route,icon,title,desc,tone="blue"){
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V17.6</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 17 หน่วย • สไลด์ 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V17.3</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 13 หน่วย • สไลด์ • Digital/Paper","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
   <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
   Promise.race([client().rpc("admin_system_health_v17"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
     const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
@@ -388,8 +361,8 @@ async function renderAdminDashboard(){
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V17.6</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","17 หน่วย • สไลด์ 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V17.3</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","หน่วยที่เปิด • สไลด์ • ใบงาน","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
   <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
 }
 async function renderStudentsHub(){
@@ -527,20 +500,23 @@ async function renderStudentCourses(){
 }
 async function renderStudentCourse(sid){
   state.subjectId=sid;state.route="courses";heartbeat();setTitle("ห้องเรียนของฉัน");busy("กำลังเปิดห้องเรียนรายวิชา...");const c=client();
-  const sr=await c.from("subjects").select("id,code,name,color_hex,description").eq("id",sid).single();if(sr.error)throw sr.error;
-  const s=sr.data;
-  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button>
-    <div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"17 หน่วย • สไลด์ 20 หน้า/หน่วย • ใบงานคู่แบบออนไลน์/ย้อนหลัง")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>
-    <div class="card v176-room-rule"><b>รูปแบบห้องเรียนสำเร็จรูป</b><span>แต่ละหน่วยมีสไลด์ 20 หน้าและใบงานปุ่มเดียว • ก่อนกำหนดทำออนไลน์ • หลังหมดเวลาจึงพิมพ์ใบงานย้อนหลังรายบุคคล</span></div>
-  </section>`;
-  subscribeSubjectRoom(sid,"student").catch(()=>{});
+  const [sr,wr,fr,subr]=await Promise.all([
+    c.from("subjects").select("id,code,name,color_hex,description").eq("id",sid).single(),
+    c.from("worksheets").select("id,subject_id,title,reference_code,mode,status,open_at,due_at,settings,subjects(id,code,name,color_hex)").eq("subject_id",sid).eq("status","published").order("open_at"),
+    c.from("subject_files").select("id,worksheet_id,sequence_no,resource_kind,original_name,storage_path").eq("subject_id",sid).order("created_at"),
+    c.from("submissions").select("worksheet_id,status,submitted_at,is_late,last_saved_at").eq("user_id",uid())
+  ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error&&!String(fr.error.message).includes("permission"))throw fr.error;
+  const s=sr.data,sm=new Map((subr.data||[]).map(x=>[x.worksheet_id,x])),works=wr.data||[],files=fr.data||[];
+  const group=(mode,label)=>{const list=works.filter(w=>w.mode===mode);return `<section><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} งานที่ปล่อยแล้ว</p></div></div><div class="v14-work-list">${list.map(w=>{const st=workStatus(w,sm.get(w.id)),fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-learning-set" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-learning-content"><span class="v14-codebox">${esc(wsCode(w))}</span><div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">เปิด ${fmt(w.open_at)} • ส่ง ${fmt(w.due_at)}</div>${!["sent","late","graded"].includes(st.key)&&w.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(w.due_at)}"></b>`:""}</div></div><div class="v14-learning-media"><b>📊 สไลด์ / สื่อ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<small>ยังไม่มีสื่อประกอบชุดนี้</small>`}</div><div class="v14-learning-actions"><span class="v14-status ${st.cls}">${esc(st.label)}</span><button class="btn primary" data-v14-open-work="${w.id}">${mode==="digital"?"เปิดทำใบงาน":"ดูใบงาน"}</button></div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานประเภทนี้ที่ปล่อยให้คุณ</div>`}</div></section>`};
+  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();subscribeSubjectRoom(sid,"student").catch(()=>{});
 }
 async function renderWorkStatus(){
   setTitle("ตารางสถานะงาน");busy("กำลังตรวจงานทั้งหมด...");const rows=await studentWorkRows();const counts={sent:0,late:0,graded:0,draft:0,pending:0,upcoming:0,overdue:0};rows.forEach(x=>counts[x.status.key]++);
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK STATUS • LOGICAL PAIRS</span><h1>งานของฉัน</h1><p>1 หน่วย = 1 งาน • ระบบเลือกใบงานออนไลน์หรือใบงานพิมพ์ย้อนหลังให้อัตโนมัติตามเวลา</p></div></div><div class="v14-kpis four"><div><span>ทั้งหมด</span><b>${rows.length}</b></div><div><span>ส่งแล้ว/ตรวจแล้ว</span><b>${counts.sent+counts.late+counts.graded}</b></div><div><span>กำลังทำ/ยังไม่ส่ง</span><b>${counts.draft+counts.pending}</b></div><div><span>เกินกำหนด</span><b>${counts.overdue}</b></div></div>
-  <div class="card v14-filter"><input id="v14-work-q" class="input" placeholder="ค้นหาวิชา / หน่วย"><select id="v14-work-status" class="input"><option value="">ทุกสถานะ</option><option value="pending">ยังไม่ส่ง</option><option value="draft">บันทึกร่าง</option><option value="sent">ส่งออนไลน์แล้ว</option><option value="late">ส่งย้อนหลังแล้ว</option><option value="graded">ตรวจแล้ว</option><option value="overdue">เกินกำหนด</option><option value="upcoming">ยังไม่เปิด</option></select></div><div id="v14-work-list" class="v14-work-list"></div></section>`;
-  const draw=()=>{const q=$("#v14-work-q").value.trim().toLowerCase(),st=$("#v14-work-status").value;const f=rows.filter(x=>{const w=x.digital||x.paper||x.w;return (!q||`${w?.settings?.unit_topic||""} ${w?.title||""} ${w?.subjects?.code||""} ${w?.subjects?.name||""}`.toLowerCase().includes(q))&&(!st||x.status.key===st)});$("#v14-work-list").innerHTML=f.map(workCard).join("")||`<div class="v14-empty">ไม่พบงานตามตัวกรอง</div>`;startCountdowns()};draw();$("#v14-work-q").oninput=draw;$("#v14-work-status").onchange=draw;
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK STATUS</span><h1>ตารางสถานะงาน</h1><p>เห็นทันทีว่างานไหนส่งแล้ว งานไหนยังค้าง และเหลือเวลาเท่าไร</p></div></div><div class="v14-kpis four"><div><span>ทั้งหมด</span><b>${rows.length}</b></div><div><span>ส่งแล้ว/ตรวจแล้ว</span><b>${counts.sent+counts.late+counts.graded}</b></div><div><span>กำลังทำ/ยังไม่ส่ง</span><b>${counts.draft+counts.pending}</b></div><div><span>เกินกำหนด</span><b>${counts.overdue}</b></div></div>
+  <div class="card v14-filter"><input id="v14-work-q" class="input" placeholder="ค้นหาวิชา / ใบงาน"><select id="v14-work-type" class="input"><option value="">ทุกประเภท</option><option value="paper">ใบงานกระดาษ</option><option value="digital">ใบงานอิเล็กทรอนิกส์</option></select><select id="v14-work-status" class="input"><option value="">ทุกสถานะ</option><option value="pending">ยังไม่ส่ง</option><option value="draft">บันทึกร่าง</option><option value="sent">ส่งแล้ว</option><option value="late">ส่งช้า</option><option value="graded">ตรวจแล้ว</option><option value="overdue">เกินกำหนด</option><option value="upcoming">ยังไม่เปิด</option></select></div><div id="v14-work-list" class="v14-work-list"></div></section>`;
+  const draw=()=>{const q=$("#v14-work-q").value.trim().toLowerCase(),mode=$("#v14-work-type").value,st=$("#v14-work-status").value;const f=rows.filter(x=>(!q||`${x.w.title} ${x.w.subjects?.code} ${x.w.subjects?.name}`.toLowerCase().includes(q))&&(!mode||x.w.mode===mode)&&(!st||x.status.key===st));$("#v14-work-list").innerHTML=f.map(workCard).join("")||`<div class="v14-empty">ไม่พบงานตามตัวกรอง</div>`;startCountdowns()};draw();$("#v14-work-q").oninput=draw;$("#v14-work-type").onchange=draw;$("#v14-work-status").onchange=draw;
 }
+
 // ---------------------------------------------------------------------------
 // Admin private profiles
 // ---------------------------------------------------------------------------
@@ -570,23 +546,20 @@ async function showAdminProfile(id){
   const [pr,er,assignR,subR,attR]=await Promise.all([
     c.from("profiles").select("*").eq("id",id).single(),
     c.from("subject_enrollments").select("status,requested_at,subjects(id,code,name)").eq("user_id",id),
-    c.from("worksheet_assignments").select("worksheet_id,worksheets(id,title,mode,subject_id,settings,subjects(code,name))").eq("user_id",id),
-    c.from("submissions").select("id,status,submitted_at,is_late,worksheet_id,worksheets(id,title,settings,subjects(code,name))").eq("user_id",id).order("updated_at",{ascending:false}),
+    c.from("worksheet_assignments").select("worksheet_id,worksheets(id,title,mode,subject_id,subjects(code,name))").eq("user_id",id),
+    c.from("submissions").select("id,status,submitted_at,is_late,worksheet_id,worksheets(title,subjects(code,name))").eq("user_id",id).order("updated_at",{ascending:false}),
     c.from("attendance_records").select("status,scanned_at,attendance_sessions(session_date,subject_id,subjects(code,name))").eq("user_id",id).order("created_at",{ascending:false})
   ]);
   if(pr.error){toast(errorText(pr.error),true);return}
   const p=pr.data,assignments=assignR.data||[],subs=subR.data||[],atts=attR.data||[];
-  const logicalKey=w=>String(w?.settings?.work_pair_key||w?.id||"");
-  const assigned=[...new Set(assignments.map(x=>logicalKey(x.worksheets)).filter(Boolean))];
-  const completedSet=new Set(subs.filter(x=>["submitted","confirmed","graded"].includes(x.status)).map(x=>logicalKey(x.worksheets)).filter(Boolean));
-  const completed=assigned.filter(x=>completedSet.has(x)).length;
+  const assigned=[...new Set(assignments.map(x=>x.worksheet_id).filter(Boolean))],completedSet=new Set(subs.filter(x=>["submitted","confirmed","graded"].includes(x.status)).map(x=>x.worksheet_id)),completed=assigned.filter(x=>completedSet.has(x)).length;
   const workRate=assigned.length?Math.round(completed*1000/assigned.length)/10:0;
   const counts={present:0,late:0,absent:0,excused:0};atts.forEach(x=>{if(counts[x.status]!==undefined)counts[x.status]++});
   const attDen=counts.present+counts.late+counts.absent,attRate=attDen?Math.round((counts.present+counts.late)*1000/attDen)/10:0;
   const latestSubs=subs.slice(0,20),latestAtt=atts.slice(0,20);
   const subjectWork={};
-  assignments.forEach(a=>{const s=a.worksheets?.subjects,code=s?.code||"-";if(!subjectWork[code])subjectWork[code]={name:s?.name||"",assigned:new Set(),done:new Set()};subjectWork[code].assigned.add(logicalKey(a.worksheets))});
-  subs.forEach(s=>{const code=s.worksheets?.subjects?.code||"-";if(subjectWork[code]&&["submitted","confirmed","graded"].includes(s.status))subjectWork[code].done.add(logicalKey(s.worksheets))});
+  assignments.forEach(a=>{const s=a.worksheets?.subjects,code=s?.code||"-";if(!subjectWork[code])subjectWork[code]={name:s?.name||"",assigned:new Set(),done:new Set()};subjectWork[code].assigned.add(a.worksheet_id)});
+  subs.forEach(s=>{const code=s.worksheets?.subjects?.code||"-";if(subjectWork[code]&&["submitted","confirmed","graded"].includes(s.status))subjectWork[code].done.add(s.worksheet_id)});
   const subjectAtt={};
   atts.forEach(r=>{const code=r.attendance_sessions?.subjects?.code||"-";if(!subjectAtt[code])subjectAtt[code]={name:r.attendance_sessions?.subjects?.name||"",present:0,late:0,absent:0,excused:0};if(subjectAtt[code][r.status]!==undefined)subjectAtt[code][r.status]++});
   let avatar=null;if(p.avatar_path){const r=await c.storage.from("avatars").createSignedUrl(p.avatar_path,600);avatar=r.data?.signedUrl||null}

@@ -781,17 +781,6 @@ function validateRequiredAnswers(questions,answers){
   }
   return missing;
 }
-
-function renderDigitalWorksheetPages(w,answers={}){
-  const qs=w.questions||[],pageCount=Math.max(2,Number(w.settings?.page_count||2));
-  const per=Math.max(1,Math.ceil(qs.length/pageCount));
-  const pages=[];
-  for(let p=0;p<pageCount;p++){
-    const chunk=qs.slice(p*per,(p+1)*per);
-    pages.push(`<section class="v176-digital-page"><div class="v176-page-label">หน้า ${p+1}/${pageCount}</div>${chunk.map((q,j)=>questionInput(q,p*per+j,answers?.[q.id])).join("")||`<div class="v176-page-space">พื้นที่ทำกิจกรรมเพิ่มเติม</div>`}</section>`);
-  }
-  return `<div class="v176-digital-pages">${pages.join("")}</div>`;
-}
 async function openWorksheet(id){
   await syncServerClock();
   const [wr,sr,orr]=await Promise.all([
@@ -830,7 +819,7 @@ async function openWorksheet(id){
     <p>${esc(w.instructions||"")}</p>
     ${files.length?`<div class="file-list"><b>ไฟล์ประกอบ</b>${files.map((f,i)=>`<div class="file-chip"><span>ไฟล์ ${i+1}</span><a class="btn sm" href="${f.url}" target="_blank" rel="noopener">เปิดไฟล์</a></div>`).join("")}</div>`:""}
     <div id="submissionpreview" hidden></div>
-    <form id="ans" novalidate>${renderDigitalWorksheetPages(w,old?.answers||{})}
+    <form id="ans" novalidate>${(w.questions||[]).map((q,i)=>questionInput(q,i,old?.answers?.[q.id])).join("")}
       <div class="field"><label>แนบไฟล์ประกอบเพิ่มเติม (ไม่บังคับ, สูงสุด 20MB)</label><input id="attach" type="file" ${canWork?"":"disabled"}></div>
       <div class="autosave" id="autosave">${w.allow_draft&&canWork&&!canResubmit?"ระบบจะบันทึกร่างอัตโนมัติเมื่อมีการแก้คำตอบ":canResubmit?"โหมดส่งซ้ำ: คำตอบเดิมจะไม่ถูกแทนที่จนกดยืนยันส่งใหม่":" "}</div>
       <div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn" name="action" value="draft" ${canWork&&w.allow_draft&&!canResubmit?"":"disabled"}>บันทึกร่าง</button><button class="btn green" name="action" value="submit" ${canWork?"":"disabled"}>${canResubmit?"ตรวจทานและส่งซ้ำ":"ตรวจทานก่อนส่ง"}</button></div>
@@ -999,9 +988,9 @@ async function system(){
     <div class="grid two">
       <div class="card"><h3>🩺 Backend Contract</h3><div class="alert ${h?.backend_ok?"success":"error"}">${h?.backend_ok?"Backend พร้อมใช้งาน":"พบจุดที่ต้องตรวจ"}</div>
         <div class="profile-data-grid">
-          <div><span>Template</span><b>${h?.standard_templates??"-"}/374</b></div><div><span>Paper / Digital</span><b>${h?.paper_templates??"-"}/187 • ${h?.digital_templates??"-"}/187</b></div>
-          <div><span>รายวิชา / CODE</span><b>${h?.active_subjects??"-"}/11 • ${h?.active_join_codes??"-"}/11</b></div><div><span>17 หน่วยครบ</span><b>${h?.subjects_with_17_units??"-"}/11</b></div>
-          <div><span>Critical RPC</span><b>${h?.critical_rpcs??"-"}/16</b></div><div><span>RLS Tables</span><b>${h?.critical_rls_tables??"-"}/22</b></div>
+          <div><span>Template</span><b>${h?.standard_templates??"-"}/198</b></div><div><span>Paper / Digital</span><b>${h?.paper_templates??"-"}/55 • ${h?.digital_templates??"-"}/143</b></div>
+          <div><span>รายวิชา / CODE</span><b>${h?.active_subjects??"-"}/11 • ${h?.active_join_codes??"-"}/11</b></div><div><span>13 หน่วยครบ</span><b>${h?.subjects_with_13_units??"-"}/11</b></div>
+          <div><span>Critical RPC</span><b>${h?.critical_rpcs??"-"}/15</b></div><div><span>RLS Tables</span><b>${h?.critical_rls_tables??"-"}/22</b></div>
           <div><span>Private Storage</span><b>${h?.private_buckets??"-"}/5</b></div><div><span>Profile Read-only</span>${pass(h?.student_profile_readonly)}</div>
           <div><span>Locked Unit Resources</span>${pass(h?.locked_subject_resources)}</div><div><span>Submission Override Relation</span>${pass(h?.submission_override_relationship)}</div>
         </div><div class="smalltext muted" style="margin-top:10px">Server time: ${esc(h?.server_time||edge?.server_time||"-")}</div>
@@ -1047,25 +1036,52 @@ async function profile(){
 }
 async function printWorksheet(id){
   const {data:w,error}=await sb.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single();if(error)return toast(friendlyError(error),"error");
-  const color=w.subjects?.color_hex||"#9A2F42",subjectCode=w.subjects?.code||"",docRef=w.reference_code||`FMAC01-${subjectCode.replace(/[^0-9A-Za-z]/g,"")}`;
+  const color=w.subjects?.color_hex||"#9A2F42";
+  const subjectCode=w.subjects?.code||"";
+  const docRef=w.reference_code||`FMAC01-${subjectCode.replace(/[^0-9A-Za-z]/g,"")}`;
   const dueText=w.due_at?new Date(w.due_at).toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}):"____________";
-  const maxScore=(w.questions||[]).reduce((n,q)=>n+Number(q.points||0),0)||10,showScore=isAdmin(),link=`${location.origin}${location.pathname}?worksheet=${encodeURIComponent(w.id)}`;
-  const qs=w.questions||[],pageCount=Math.max(2,Number(w.settings?.page_count||2)),per=Math.max(1,Math.ceil(qs.length/pageCount)),pages=[];
-  for(let p=0;p<pageCount;p++)pages.push(qs.slice(p*per,(p+1)*per));
-  const sheet=(page,pageNo)=>`<div class="formal-sheet v176-formal-page" style="--subject-color:${color}">
-    <div class="formal-topline"></div><div class="formal-header"><div class="formal-school"><img class="formal-logo" src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><div class="formal-school-name">วิทยาลัยเทคนิคนางรอง</div><div class="formal-dept">แผนกวิชาคอมพิวเตอร์และเทคโนโลยีสารสนเทศ</div><div class="formal-title">ใบงานปฏิบัติการ <span>(Laboratory Worksheet)</span></div></div></div>
-    <div class="formal-docbox"><div><span>รหัสเอกสาร</span> <b>FM-AC-01</b></div><div><span>ฉบับที่</span> <b>01</b> <span class="formal-page">หน้า ${pageNo}/${pageCount}</span></div><div class="formal-expire"><b>วันหมดอายุใบงาน:</b> ${esc(dueText)}</div>${pageNo===1?`<svg id="barcode"></svg><div class="formal-ref">${esc(docRef)}</div>`:`<div class="formal-ref">${esc(docRef)} • ต่อ</div>`}</div></div>
-    <div class="formal-subject-band"><div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(w.subjects?.name||"")}</div><div class="smalltext">${esc(w.title||"")}</div></div>${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}</div>
-    <div class="formal-student-grid"><div>ชื่อ-นามสกุล <span class="formal-line"></span></div><div>รหัสประจำตัว <span class="formal-line short"></span></div><div>ระดับชั้น <span class="formal-line short"></span></div><div>วันที่ <span class="formal-line short"></span></div></div>
-    ${pageNo===1?`<div class="formal-instruction"><b>คำชี้แจง</b> ${esc(w.instructions||"ให้นักศึกษาศึกษาเนื้อหาในหน่วยการเรียนรู้ และตอบคำถามให้ครบถ้วน")}</div>`:""}
-    <div class="formal-questions">${page.map((q,j)=>`<div class="formal-question"><div class="formal-qnum">${(pageNo-1)*per+j+1}</div><div class="formal-qbody"><div>${esc(q.text)}</div><div class="formal-answer-space"></div></div></div>`).join("")||`<div class="formal-question"><div class="formal-qnum">•</div><div class="formal-qbody"><div>พื้นที่บันทึกเพิ่มเติม</div><div class="formal-answer-space"></div></div></div>`}</div>
-    ${pageNo===1?`<div class="formal-code-row"><div id="qr"></div><div class="smalltext"><b>QR สำหรับเปิดใบงานออนไลน์</b><br>${esc(docRef)}</div></div>`:""}
-    <div class="formal-footer">วิทยาลัยเทคนิคนางรอง • ${esc(docRef)} • หน้า ${pageNo}/${pageCount}</div></div>`;
-  modal(`<div class="no-print row end formal-actions"><button class="btn primary" id="printnow">พิมพ์ / Save PDF</button><button class="btn" data-close>ปิด</button></div>${pages.map((p,i)=>sheet(p,i+1)).join("")}`,{wide:true});
-  if(window.QRCode&&$("#qr"))new QRCode($("#qr"),{text:link,width:82,height:82});
-  try{if(window.JsBarcode&&$("#barcode"))JsBarcode("#barcode",docRef,{format:"CODE128",width:1.15,height:42,displayValue:false,margin:0})}catch{}
+  const maxScore=(w.questions||[]).reduce((n,q)=>n+Number(q.points||0),0)||10;
+  const showScore=isAdmin();
+  const link=`${location.origin}${location.pathname}?worksheet=${encodeURIComponent(w.id)}`;
+  modal(`<div class="no-print row end formal-actions"><button class="btn primary" id="printnow">พิมพ์ / Save PDF</button><button class="btn" data-close>ปิด</button></div>
+    <div class="formal-sheet" style="--subject-color:${color}">
+      <div class="formal-topline"></div>
+      <div class="formal-header">
+        <div class="formal-school">
+          <img class="formal-logo" src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง">
+          <div><div class="formal-school-name">วิทยาลัยเทคนิคนางรอง</div><div class="formal-dept">แผนกวิชาคอมพิวเตอร์และเทคโนโลยีสารสนเทศ</div><div class="formal-title">ใบงานปฏิบัติการ <span>(Laboratory Worksheet)</span></div></div>
+        </div>
+        <div class="formal-docbox">
+          <div><span>รหัสเอกสาร</span> <b>FM-AC-01</b></div>
+          <div><span>ฉบับที่</span> <b>01</b> <span class="formal-page">หน้า 1/1</span></div>
+          <div class="formal-expire"><b>วันหมดอายุใบงาน:</b> ${esc(dueText)}</div>
+          <svg id="barcode"></svg>
+          <div class="formal-ref">${esc(docRef)}</div>
+        </div>
+      </div>
+
+      <div class="formal-subject-band">
+        <div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(w.subjects?.name||"")}</div><div class="smalltext">${esc(w.title||"")}</div></div>
+        ${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}
+      </div>
+
+      <div class="formal-student-grid">
+        <div>ชื่อ-นามสกุล <span class="formal-line"></span></div><div>รหัสประจำตัว <span class="formal-line short"></span></div>
+        <div>ระดับชั้น <span class="formal-line short"></span></div><div>วันที่ <span class="formal-line short"></span></div>
+      </div>
+
+      <div class="formal-instruction"><b>คำชี้แจง</b> ${esc(w.instructions||"ให้นักศึกษาศึกษาเนื้อหาในหน่วยการเรียนรู้ และตอบคำถามต่อไปนี้ให้ถูกต้องและครบถ้วนตามหลักวิชาการ โดยเขียนด้วยลายมือที่อ่านง่ายและเป็นระเบียบเรียบร้อย")}</div>
+
+      <div class="formal-questions">${(w.questions||[]).map((q,i)=>`<div class="formal-question"><div class="formal-qnum">${i+1}</div><div class="formal-qbody"><div>${esc(q.text)}</div><div class="formal-answer-space"></div></div></div>`).join("")}</div>
+
+      <div class="formal-code-row"><div id="qr"></div><div class="smalltext"><b>QR สำหรับเปิดใบงานออนไลน์</b><br>${esc(docRef)}</div></div>
+      <div class="formal-footer">วิทยาลัยเทคนิคนางรอง &nbsp; • &nbsp; แผนกวิชาคอมพิวเตอร์และเทคโนโลยีสารสนเทศ &nbsp; • &nbsp; ${esc(docRef)}</div>
+    </div>`,{wide:true});
+  if(window.QRCode)new QRCode($("#qr"),{text:link,width:82,height:82});
+  try{if(window.JsBarcode)JsBarcode("#barcode",docRef,{format:"CODE128",width:1.15,height:42,displayValue:false,margin:0})}catch{}
   $("#printnow").onclick=()=>{document.body.classList.add("printing");window.print();setTimeout(()=>document.body.classList.remove("printing"),500)};
 }
+
 async function paperTokensDialog(wid){
   const ar=await sb.from("worksheet_assignments").select("user_id").eq("worksheet_id",wid);if(ar.error)return toast(friendlyError(ar.error),"error");
   const ids=(ar.data||[]).map(x=>x.user_id);
