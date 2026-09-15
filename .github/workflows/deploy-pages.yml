@@ -32,14 +32,13 @@ jobs:
       - name: Validate release
         run: |
           python tests/static_validation.py
+          python tests/unified_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js
           node --check site/v16-platform.js
           node --check site/v16-7-hardening.js
           node --check site/v16-8-course-flow.js
-          node --check site/v16-9-clean-dashboard.js
-          node --check site/v16-9-runtime-rescue.js
           node --check site/v16-exam.js
           node --check site/sw.js
       - name: Decode PWA app icons

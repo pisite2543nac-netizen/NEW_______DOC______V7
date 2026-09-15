@@ -31,7 +31,7 @@ const optionHtml=(items,placeholder)=>`<option value="">-- ${placeholder} --</op
 const authEmailFor=v=>{const s=String(v||"").trim();if(s.includes("@"))return s.toLowerCase();if(s.toLowerCase()===OWNER_USERNAME.toLowerCase())return OWNER_EMAIL;return `${s.toLowerCase()}@docfullnr.local`};
 const serverMs=()=>Date.now()+S.serverOffsetMs;
 const serverDate=()=>new Date(serverMs());
-async function syncServerClock(){if(!S.session)return;try{const {data,error}=await sb.rpc("server_now");if(!error&&data)S.serverOffsetMs=new Date(data).getTime()-Date.now()}catch{}}
+async function syncServerClock(){if(!S.session)return;try{const result=await Promise.race([sb.rpc("server_now"),new Promise(resolve=>setTimeout(()=>resolve({data:null,error:new Error("SERVER_TIME_TIMEOUT")}),3500))]);const {data,error}=result||{};if(!error&&data)S.serverOffsetMs=new Date(data).getTime()-Date.now()}catch{}}
 function randomPassword(){const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";const x=new Uint32Array(14);crypto.getRandomValues(x);return [...x].map(n=>a[n%a.length]).join("")}
 async function adminOp(body){const {data,error}=await sb.functions.invoke("admin-operations",{body});if(error||data?.error)throw new Error(data?.error||error?.message||"Admin operation failed");return data}
 function downloadText(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
@@ -112,7 +112,7 @@ async function loadProfile(retries=8){
 async function init(){
   const {data}=await sb.auth.getSession();
   S.session=data.session;
-  if(S.session){await loadProfile();await syncServerClock();}
+  if(S.session){await loadProfile();syncServerClock().catch(()=>{});}
 
   sb.auth.onAuthStateChange((_event,session)=>{
     S.session=session;
@@ -222,9 +222,15 @@ function signupDialog(){
 }
 
 function navItems(){
-  return isAdmin()
-    ? [["dashboard","แดชบอร์ด"],["users","ผู้ใช้งาน"],["grading","ตรวจงาน"],["overrides","สิทธิ์ส่งเพิ่ม"],["reports","รายงาน"],["audit","Audit log"],["system","ตั้งค่าระบบ"],["profile","โปรไฟล์ของฉัน"]]
-    : [["dashboard","ลงทะเบียนเรียน"],["profile","โปรไฟล์ของฉัน"]];
+  // V16.10 keeps the sidebar intentionally small. Advanced work is opened
+  // from the dashboard flow cards through DOCNR_BASE.navigate().
+  return [["dashboard","หน้าแรก"],["profile","โปรไฟล์ของฉัน"]];
+}
+const BASE_ROUTE_TITLES={dashboard:"หน้าแรก",users:"ผู้ใช้งาน",grading:"ตรวจงาน",overrides:"สิทธิ์ส่งเพิ่ม",reports:"รายงาน",audit:"Audit log",system:"ตั้งค่าระบบ",profile:"โปรไฟล์ของฉัน"};
+function navigateBase(route){
+  const allowed=isAdmin()?new Set(["dashboard","users","grading","overrides","reports","audit","system","profile"]):new Set(["dashboard","profile"]);
+  if(!allowed.has(route))return false;
+  S.route=route;$("#sidebar")?.classList.remove("open");renderShell();return true;
 }
 function installGuide(){
   if(S.installPrompt){
@@ -254,10 +260,11 @@ function renderShell(){
     $("#suspendedlogout").onclick=()=>sb.auth.signOut();return
   }
   const items=navItems();
-  if(!items.some(x=>x[0]===S.route))S.route="dashboard";
+  const hiddenBase=isAdmin()?new Set(["users","grading","overrides","reports","audit","system"]):new Set();
+  if(!items.some(x=>x[0]===S.route)&&!hiddenBase.has(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V16.6</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V16.10</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",users:"👥",grading:"📝",overrides:"⏳",reports:"📊",audit:"🧾",system:"⚙️",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${S.route===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
@@ -290,8 +297,10 @@ function renderShell(){
   }
 }
 async function route(){
-  await syncServerClock();
-  const title=Object.fromEntries(navItems())[S.route]||"";
+  // Time sync must never block the shell/dashboard. Server-side RPCs still
+  // remain authoritative for due dates and exams.
+  syncServerClock().catch(()=>{});
+  const title=BASE_ROUTE_TITLES[S.route]||"";
   $("#pagetitle").textContent=title;
   const f={dashboard,users,classrooms,subjects,worksheets,grading,overrides,reports,audit,system,profile,myworks,scan}[S.route]||dashboard;
   try{await f()}catch(e){
@@ -301,85 +310,18 @@ async function route(){
 }
 
 async function dashboard(){
-  if(isAdmin()){
-    const [u,w,s,sub,c,studentsRes,subjectsRes,submissionRes]=await Promise.all([
-      sb.from("profiles").select("*",{count:"exact",head:true}),
-      sb.from("worksheets").select("*",{count:"exact",head:true}),
-      sb.from("subjects").select("*",{count:"exact",head:true}),
-      sb.from("submissions").select("*",{count:"exact",head:true}),
-      sb.from("classrooms").select("*",{count:"exact",head:true}),
-      sb.from("profiles").select("id,full_name,username,student_code,grade_level,room_label,class_name,department,major").eq("role","user").order("full_name"),
-      sb.from("subjects").select("id,code,name,color_hex").eq("active",true).order("code"),
-      sb.from("submissions").select("id,user_id,status,submitted_at,updated_at,worksheets(subject_id,title,subjects(code,name,color_hex)),submission_grades(score,max_score,grade,grading_status)").order("updated_at",{ascending:false}).limit(1000)
-    ]);
-    const healthy=![u.error,w.error,s.error,sub.error,c.error,studentsRes.error,subjectsRes.error].some(Boolean);
-    const students=studentsRes.data||[], subjects=subjectsRes.data||[], submissions=submissionRes.data||[];
-    $("#content").innerHTML=`<div class="section-head"><div><h1>แดชบอร์ด</h1><div class="muted">DOC-FULL-NR Smart Worksheet • Production</div></div><span class="badge ${healthy?"green":"red"}"><span class="status-dot"></span>&nbsp; ${healthy?"Supabase พร้อมใช้งาน":"ตรวจการเชื่อมต่อ"}</span></div>
-      <div class="grid">
-        <div class="card stat"><div class="muted">ผู้ใช้</div><div class="n">${u.count||0}</div></div>
-        <div class="card stat"><div class="muted">ห้องเรียน</div><div class="n">${c.count||0}</div></div>
-        <div class="card stat"><div class="muted">รายวิชา</div><div class="n">${s.count||0}</div></div>
-        <div class="card stat"><div class="muted">ใบงาน</div><div class="n">${w.count||0}</div></div>
-      </div>
-
-      <div class="dashboard-search" style="margin-top:16px">
-        <div class="dashboard-search-note">ค้นหาผู้เรียนและผลการส่งใบงาน • คะแนนจะแสดงเมื่อมีการตรวจงานแล้ว</div>
-        <div class="dashboard-filter-grid">
-          <div class="field"><label>ค้นหา</label><input id="dash-q" class="input" placeholder="ชื่อ / เลขนักศึกษา / แผนก / สาขา"></div>
-          <div class="field"><label>รายวิชา</label><select id="dash-subject" class="input"><option value="">ทุกวิชา</option>${subjects.map(x=>`<option value="${x.id}">${esc(x.code)} ${esc(x.name)}</option>`).join("")}</select></div>
-          <div class="field"><label>ระดับชั้น</label><select id="dash-level" class="input"><option value="">ทุกระดับชั้น</option>${REG_LEVELS.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")}</select></div>
-          <div class="field"><label>ห้อง</label><select id="dash-room" class="input"><option value="">ทุกห้อง</option>${REG_ROOMS.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")}</select></div>
-          <div class="field"><label>แผนกวิชา</label><select id="dash-dept" class="input"><option value="">ทุกแผนก</option>${REG_DEPARTMENTS.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")}</select></div>
-          <div class="field"><label>สาขาวิชา</label><select id="dash-major" class="input"><option value="">ทุกสาขา</option>${REG_MAJORS.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")}</select></div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:14px">
-        <div class="row between"><div><h3>ผลการค้นหา</h3><div class="muted smalltext" id="dash-count"></div></div></div>
-        <div class="table-wrap"><table><thead><tr><th>เลขนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ระดับชั้น</th><th>ห้อง</th><th>แผนกวิชา</th><th>สาขาวิชา</th><th>รายวิชา/ใบงานล่าสุด</th><th>คะแนน</th></tr></thead><tbody id="dash-results"></tbody></table></div>
-      </div>
-
-      <div class="grid two" style="margin-top:14px">
-        <div class="card"><h3>งานที่ส่งทั้งหมด</h3><div class="stat"><div class="n">${sub.count||0}</div></div><p class="muted">Digital / Paper รวมกัน</p></div>
-        <div class="card"><h3>ลำดับเริ่มใช้งานจริง</h3><div class="help-steps"><div><div>สร้างห้องเรียน</div></div><div><div>สร้างผู้เรียนและกำหนดห้อง</div></div><div><div>เปิดใบงานตั้งเวลาแล้ว Publish</div></div><div><div>ผู้เรียนส่ง → Admin ตรวจ → Report</div></div></div></div>
-      </div>`;
-
-    const gradeOf=sg=>{
-      const g=Array.isArray(sg)?sg[0]:sg;
-      if(!g||g.score===null||g.score===undefined)return "-";
-      const score=`${g.score}${g.max_score!==null&&g.max_score!==undefined?`/${g.max_score}`:""}`;
-      return g.grade?`${score} (${esc(g.grade)})`:score;
-    };
-    const redraw=()=>{
-      const q=$("#dash-q").value.trim().toLowerCase(),subject=$("#dash-subject").value,level=$("#dash-level").value,room=$("#dash-room").value,dept=$("#dash-dept").value,major=$("#dash-major").value;
-      const rows=students.filter(p=>{
-        const text=[p.full_name,p.student_code,p.username,p.department,p.major].join(" ").toLowerCase();
-        if(q&&!text.includes(q))return false;
-        if(level&&p.grade_level!==level)return false;
-        if(room&&p.room_label!==room)return false;
-        if(dept&&p.department!==dept)return false;
-        if(major&&p.major!==major)return false;
-        if(subject&&!submissions.some(x=>x.user_id===p.id&&x.worksheets?.subject_id===subject))return false;
-        return true;
-      });
-      $("#dash-count").textContent=`พบ ${rows.length} คน`;
-      $("#dash-results").innerHTML=rows.map(p=>{
-        const userSubs=submissions.filter(x=>x.user_id===p.id&&(!subject||x.worksheets?.subject_id===subject));
-        const latest=userSubs[0];
-        const ws=latest?.worksheets;
-        const color=ws?.subjects?.color_hex||"#64748b";
-        return `<tr><td><b>${esc(p.student_code||p.username||"-")}</b></td><td>${esc(p.full_name||"-")}</td><td>${esc(p.grade_level||"-")}</td><td>${esc(p.room_label||p.class_name||"-")}</td><td>${esc(p.department||"-")}</td><td>${esc(p.major||"-")}</td><td>${ws?`<span class="subject-chip" style="--subject-color:${color}">${esc(ws.subjects?.code||"")} ${esc(ws.title||"")}</span>`:"-"}</td><td><b>${gradeOf(latest?.submission_grades)}</b></td></tr>`;
-      }).join("")||`<tr><td colspan="8" class="empty">ไม่พบข้อมูลตามตัวกรอง</td></tr>`;
-    };
-    ["#dash-q","#dash-subject","#dash-level","#dash-room","#dash-dept","#dash-major"].forEach(sel=>$(sel).addEventListener(sel==="#dash-q"?"input":"change",redraw));
-    redraw();
-  }else{
-    const {data,error}=await sb.from("worksheets").select("id,title,due_at,mode,subjects(code,name,color_hex)").eq("status","published").order("created_at",{ascending:false}).limit(12);
-    if(error)throw error;
-    $("#content").innerHTML=`<div class="section-head"><div><h1>หน้าหลัก</h1><div class="muted">ใบงานที่ได้รับมอบหมาย</div></div></div>
-      <div class="card"><h3>ใบงานล่าสุด</h3>${(data||[]).length?(data||[]).map(w=>worksheetMiniCard(w)).join(""):`<div class="empty">ยังไม่มีใบงานที่เผยแพร่ให้บัญชีนี้</div>`}</div>`;
-    $$("[data-open]").forEach(b=>b.onclick=()=>openWorksheet(b.dataset.open));
-  }
+  const host=$("#content");if(!host)return;
+  // The unified feature router owns the production dashboard. The base shell
+  // only provides a fast, non-network handoff so an old async dashboard can
+  // never overwrite the V16.10 dashboard after it has rendered.
+  host.innerHTML=`<section class="v1610-boot-card"><div class="v14-spinner"></div><div><b>กำลังเปิดศูนย์การเรียนรู้</b><span>โหลดเมนูการทำงานหลัก...</span></div></section>`;
+  let tries=0;
+  const handoff=()=>{
+    if(window.DOCNR_V16_6?.navigate){window.DOCNR_V16_6.navigate("dashboard");return}
+    if(++tries<30){setTimeout(handoff,100);return}
+    host.innerHTML=`<div class="alert error"><b>โมดูลการเรียนรู้ยังโหลดไม่สำเร็จ</b><div>กรุณาตรวจอินเทอร์เน็ตแล้วกดรีเฟรช ระบบจะไม่ค้างอยู่บนหน้ากำลังโหลด</div><button class="btn" onclick="location.reload()">รีเฟรช</button></div>`;
+  };
+  handoff();
 }
 
 function worksheetMiniCard(w,status=""){
@@ -1068,7 +1010,10 @@ async function paperTokensDialog(wid){
 window.DOCNR_BASE = Object.freeze({
   openWorksheet,
   printWorksheet,
-  paperTokensDialog
+  paperTokensDialog,
+  navigate:navigateBase,
+  route:()=>S.route,
+  version:"V16.10-UNIFIED"
 });
 
 init();

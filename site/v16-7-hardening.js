@@ -372,7 +372,6 @@ const observer=new MutationObserver(()=>{
   injectPaperPrintButtons();
   injectPaperScanHardening();
   injectProfileReadonly();
-  injectHealthButton();
 });
 observer.observe(document.documentElement,{childList:true,subtree:true});
 
@@ -382,7 +381,7 @@ installUnhandledErrorGuard();
 injectPaperPrintButtons();
 injectPaperScanHardening();
 injectProfileReadonly();
-injectHealthButton();
+// V16.10: health is surfaced in the unified Dashboard; do not add a redundant topbar button.
 
 window.DOCNR_HARDENING = Object.freeze({
   version:DOCNR_HARDENING_VERSION,

@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V16.6-STABLE-FULL-SYSTEM";
+const V15_VERSION="V16.10-UNIFIED-PRODUCTION";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -185,27 +185,22 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const nav=$("#sidebar .nav");if(!nav)return;
   const p=await getProfile();if(!p)return;
-  let wanted;
-  if(p.role==="admin"){
-    wanted=[
-      ["accounts","🧑‍🎓 คำขอบัญชี"],["courses","🏫 ห้องเรียนรายวิชา"],["enrollments","✅ อนุมัติรายวิชา"],["profiles","🪪 โปรไฟล์นักศึกษา"],
-      ["attendance","📷 เช็คชื่อ / หัวหน้าห้อง"],["presence","📡 สถานะออนไลน์"],["promotion","📈 เลื่อนชั้น / ปีการศึกษา"],["exam","🧪 ระบบสอบ"]
-    ];
-  }else{
-    wanted=[["enroll","🎓 ลงทะเบียนรายวิชา"],["courses","🏫 ห้องเรียนของฉัน"],["work","📋 ตารางสถานะงาน"],["history","🗓️ ประวัติการศึกษา"],["attendance","📷 QR / การเข้าเรียน"],["exam","🧪 ระบบสอบ"]];
-    try{const {data}=await client().rpc("my_leader_classrooms");if((data||[]).length)wanted.splice(4,0,["presence","📡 สถานะห้องเรียน"])}catch{}
-  }
-  if(!nav.querySelector("[data-v14-divider]")){
-    const d=document.createElement("div");d.dataset.v14Divider="1";d.className="v14-nav-divider";d.textContent="SMART LEARNING";
-    const before=nav.querySelector('[data-route="profile"]');before?nav.insertBefore(d,before):nav.appendChild(d);
-  }
+  // Keep this mutation idempotent: MutationObserver calls ensureNav often.
+  // Only one extension-owned shortcut is allowed in the sidebar.
+  nav.querySelector('[data-v14-divider]')?.remove();
   const before=nav.querySelector('[data-route="profile"]');
-  const keep=new Set(wanted.map(x=>x[0]));
-  $$('[data-v14-route]',nav).forEach(x=>{if(!keep.has(x.dataset.v14Route))x.remove()});
-  for(const [r,l] of wanted){let b=nav.querySelector(`[data-v14-route="${r}"]`);if(!b){b=navBtn(r,l);before?nav.insertBefore(b,before):nav.appendChild(b)}else{const parts=String(l||"").trim().split(/\s+/),icon=/^[^\p{L}\p{N}]/u.test(parts[0]||"")?parts.shift():"•",label=parts.join(" ")||l;const iconEl=b.querySelector(".nav-card-icon"),labelEl=b.querySelector(".nav-card-label");if(!iconEl||!labelEl){b.innerHTML=`<span class="nav-card-icon">${esc(icon)}</span><span class="nav-card-label">${esc(label)}</span>`}else{if(iconEl.textContent!==icon)iconEl.textContent=icon;if(labelEl.textContent!==label)labelEl.textContent=label}}}
-  const brand=$("#sidebar .brand .smalltext");if(brand&&brand.textContent!==`${p.role==="admin"?"ADMIN":"USER"} • V16.6`)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V16.6`;
-  const ws=nav.querySelector('[data-route="worksheets"]');if(ws&&p.role==="admin")ws.remove();
-  const mw=nav.querySelector('[data-route="myworks"]');if(mw&&p.role!=="admin")mw.remove();
+  const route=p.role==="admin"?"courses":"enroll";
+  const label=p.role==="admin"?"📚 รายวิชา / การสอน":"📚 รายวิชาเรียน";
+  let b=nav.querySelector(`[data-v14-route="${route}"]`);
+  $$('[data-v14-route]',nav).forEach(x=>{if(x!==b)x.remove()});
+  if(!b){b=navBtn(route,label);b.dataset.v16PrimaryNav="1";before?nav.insertBefore(b,before):nav.appendChild(b)}
+  else{
+    b.dataset.v16PrimaryNav="1";
+    const parts=label.trim().split(/\s+/),icon=parts.shift(),text=parts.join(" ");
+    const ie=b.querySelector('.nav-card-icon'),le=b.querySelector('.nav-card-label');
+    if(ie&&ie.textContent!==icon)ie.textContent=icon;if(le&&le.textContent!==text)le.textContent=text;
+  }
+  const brand=$("#sidebar .brand .smalltext");if(brand&&brand.textContent!==`${p.role==="admin"?"ADMIN":"USER"} • V16.10`)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V16.10`;
 }
 function scheduleEnsureNav(){if(state.navTimer)return;state.navTimer=setTimeout(()=>{state.navTimer=null;ensureNav().catch(()=>{});ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},80)}
 const shellObserver=new MutationObserver(scheduleEnsureNav);
@@ -343,39 +338,62 @@ function workCard(row){const {w,status}=row;return `<article class="v14-work-car
 // ---------------------------------------------------------------------------
 // Dashboards
 // ---------------------------------------------------------------------------
-async function renderAdminDashboard(){
-  setTitle("ศูนย์ควบคุม");busy("กำลังสรุประบบ...");
-  const c=client();const [pc,ac,sc,wc,ec,oc,xc]=await Promise.all([
-    c.from("profiles").select("id",{count:"exact",head:true}).eq("role","user").eq("active",true).eq("approval_status","approved"),
-    c.from("profiles").select("id",{count:"exact",head:true}).eq("role","user").eq("approval_status","pending"),
-    c.from("subjects").select("id",{count:"exact",head:true}).eq("active",true).eq("subject_type","subject"),
-    c.from("worksheets").select("id",{count:"exact",head:true}).contains("settings",{template_ready:true}),
-    c.from("subject_enrollments").select("id",{count:"exact",head:true}).eq("status","pending"),
-    c.from("user_presence").select("user_id,last_seen_at"),
-    c.from("exams").select("id",{count:"exact",head:true})
-  ]);
-  const online=(oc.data||[]).filter(x=>x.last_seen_at&&new Date(x.last_seen_at).getTime()>=nowMs()-90000).length;
-  content().innerHTML=`<section class="v14-page"><div class="v14-hero"><div><span class="v14-kicker">DOC-FULL-NR • ${V15_VERSION}</span><h1>ศูนย์ควบคุมการเรียนรู้</h1><p>วิทยาลัยเทคนิคนางรอง • ระบบรายวิชา ใบงาน เช็คชื่อ สอบ และเลื่อนชั้น</p></div><div class="v14-live"><i></i> Production Connected</div></div>
-  <div class="v14-kpis"><div><span>นักศึกษาใช้งาน</span><b>${pc.count||0}</b></div><div><span>รออนุมัติบัญชี</span><b>${ac.count||0}</b></div><div><span>รายวิชา</span><b>${sc.count||0}</b></div><div><span>ใบงานสำเร็จรูป</span><b>${wc.count||0}</b><small>ต้องคง 198</small></div><div><span>รออนุมัติวิชา</span><b>${ec.count||0}</b></div><div><span>ออนไลน์ล่าสุด</span><b>${online}</b></div><div><span>ชุดข้อสอบ</span><b>${xc.count||0}</b></div></div>
-  <div class="v14-action-grid v161-menu-grid">
-    <button data-v14-route="accounts"><span>🧑‍🎓</span><b>อนุมัติบัญชี</b><small>ตรวจคำขอบัญชีนักศึกษาก่อนเปิดสิทธิ์ใช้งาน</small></button>
-    <button data-v14-route="courses"><span>🎓</span><b>ห้องเรียนรายวิชา</b><small>นักศึกษา ใบงาน สื่อ คะแนน และเครื่องมืออยู่ในห้องเดียวกัน</small></button>
-    <button data-v14-route="enrollments"><span>✅</span><b>อนุมัติลงทะเบียนเรียน</b><small>กำหนดว่านักศึกษาคนใดเป็นสมาชิกวิชาใด</small></button>
-    <button data-v14-route="attendance"><span>📷</span><b>เช็คชื่อ / หัวหน้าห้อง</b><small>QR 15 นาที • สรุปยอด • ลา/สาย • Real-time</small></button>
-    <button data-v14-route="presence"><span>📡</span><b>สถานะออนไลน์</b><small>ดูผู้ใช้งานที่กำลังออนไลน์แบบ Real-time</small></button>
-    <button data-v14-route="profiles"><span>🪪</span><b>โปรไฟล์นักศึกษา</b><small>ข้อมูลทางการศึกษาและข้อมูลส่วนตัวสำหรับ Admin</small></button>
-    <button data-v14-route="promotion"><span>📈</span><b>เลื่อนชั้น</b><small>ตรวจรายชื่อ อนุมัติ และเก็บประวัติการศึกษา</small></button>
-    <button data-v14-route="exam"><span>🧪</span><b>Exam Center</b><small>คลังข้อสอบ สอบกลาง/ปลายภาค และผลสอบ</small></button>
-    <button data-v16-base-route="users"><span>👥</span><b>ผู้ใช้งาน</b><small>จัดการบัญชีและข้อมูลนักศึกษาโดย Admin</small></button>
-    <button data-v16-base-route="grading"><span>📝</span><b>ตรวจงาน</b><small>ตรวจ Submission ให้คะแนนและสถานะงาน</small></button>
-    <button data-v16-base-route="overrides"><span>⏳</span><b>สิทธิ์ส่งเพิ่ม</b><small>ขยายเวลาหรือเพิ่มสิทธิ์ส่งงานรายบุคคล</small></button>
-    <button data-v16-base-route="reports"><span>📊</span><b>รายงาน</b><small>ดูรายงานผลและ Export สำหรับ Admin</small></button>
-    <button data-v16-base-route="audit"><span>🧾</span><b>Audit Log</b><small>ตรวจประวัติการดำเนินการสำคัญของระบบ</small></button>
-    <button data-v16-base-route="system"><span>⚙️</span><b>ตั้งค่าระบบ</b><small>สถานะระบบ การลงทะเบียน และการตั้งค่าหลัก</small></button>
-  </div>
-  <div class="card v14-system-strip"><div><b>เบอร์โทรศัพท์นักศึกษา</b><div class="muted">บันทึกเป็นข้อมูลติดต่อในโปรไฟล์เท่านั้น • ไม่ใช้ OTP และไม่บังคับยืนยัน SMS</div></div><span class="v14-status approved">Profile only</span></div></section>`;
+function dashboardFlowCard(key,icon,title,desc,tone="blue"){
+  return `<button class="v1610-flow-card ${tone}" data-v1610-flow="${key}"><span class="v1610-flow-icon">${icon}</span><span><b>${esc(title)}</b><small>${esc(desc)}</small></span><i>›</i></button>`;
 }
-async function renderStudentDashboard(){return renderCourseRegistrationHome()}
+function openDashboardFlow(name,role){
+  const admin={
+    teaching:{title:"การสอนและรายวิชา",desc:"เริ่มจากรายวิชา แล้วจัดการ CODE หน่วยเรียน สื่อ ใบงาน คะแนน และสำเนากระดาษ",items:[
+      ["🏫","รายวิชา / ห้องเรียน","เปิดห้องรายวิชาและปลดล็อกทีละหน่วย","custom:courses"],
+      ["✅","สมาชิกวิชา","ตรวจสมาชิกและการลงทะเบียน","custom:enrollments"],
+      ["🪪","ข้อมูลนักศึกษา","ดู/แก้ข้อมูลการศึกษาโดย Admin","custom:profiles"]]},
+    students:{title:"นักศึกษาและสิทธิ์",desc:"บัญชีและสิทธิ์การใช้งาน",items:[
+      ["🧑‍🎓","อนุมัติบัญชี","อนุมัติบัญชีก่อนเข้าใช้งาน","custom:accounts"],
+      ["👥","ผู้ใช้งาน","สร้าง/แก้/ระงับบัญชี","base:users"],
+      ["🪪","โปรไฟล์นักศึกษา","ข้อมูลนักศึกษาและสถานะการศึกษา","custom:profiles"]]},
+    work:{title:"งาน คะแนน และรายงาน",desc:"ตรวจงานและสรุปผลจากข้อมูลจริง",items:[
+      ["📝","ตรวจงาน","ตรวจ Submission และให้คะแนน","base:grading"],
+      ["⏳","สิทธิ์ส่งเพิ่ม","ขยายเวลา/เพิ่มครั้งส่งรายบุคคล","base:overrides"],
+      ["📊","รายงาน","สรุปผลและ Export","base:reports"]]},
+    attendance:{title:"เช็คชื่อและห้องเรียน",desc:"QR 15 นาที สาย/ลา/ขาด และสถานะออนไลน์",items:[
+      ["📷","เช็คชื่อ","เปิด Session และจัดการ Attendance","custom:attendance"],
+      ["📡","สถานะออนไลน์","ดูผู้ใช้งานออนไลน์","custom:presence"]]},
+    exam:{title:"ระบบสอบ",desc:"คลังข้อสอบ สอบกลาง/ปลายภาค และ Audit",items:[
+      ["🧪","Exam Center","เปิดระบบสอบของรายวิชา","custom:exam"]]},
+    system:{title:"ปีการศึกษาและระบบ",desc:"งานบริหารที่ใช้น้อยรวมไว้ที่เดียว",items:[
+      ["📈","เลื่อนชั้น / ปีการศึกษา","Prepare → Review → Approve → Apply","custom:promotion"],
+      ["🧾","Audit Log","ประวัติการดำเนินการสำคัญ","base:audit"],
+      ["⚙️","ตั้งค่าระบบ","สถานะและการตั้งค่าหลัก","base:system"]]}
+  };
+  const user={
+    subjects:{title:"รายวิชาทั้งหมด / ใส่ CODE",desc:"เลือกวิชาและใช้ CODE จากครูเพื่อเข้าเรียน",items:[["📚","รายวิชาทั้งหมด","เลือกวิชาและใส่ CODE","custom:enroll"]]},
+    learning:{title:"วิชาที่เรียนอยู่",desc:"หน่วยที่ครูเปิด สไลด์ และใบงาน",items:[["🏫","วิชาที่เรียนอยู่","เปิดห้องเรียนรายวิชา","custom:courses"]]},
+    work:{title:"งานของฉัน",desc:"ดูงานที่เปิดแล้วและสถานะการส่ง",items:[["📋","ตารางสถานะงาน","งานค้าง/ส่งแล้ว/กำหนดเวลา","custom:work"]]},
+    attendance:{title:"เช็คชื่อ",desc:"QR และประวัติการเข้าเรียน",items:[["📷","การเข้าเรียน","เปิดหน้าเช็คชื่อ","custom:attendance"]]},
+    exam:{title:"ข้อสอบ",desc:"เข้า Exam Center เมื่อครูเปิด",items:[["🧪","ระบบสอบ","เปิด Exam Center","custom:exam"]]},
+    profile:{title:"ข้อมูลของฉัน",desc:"โปรไฟล์อ่านอย่างเดียวและประวัติการศึกษา",items:[["🪪","โปรไฟล์","ข้อมูลส่วนตัวแบบอ่านอย่างเดียว","base:profile"],["🗓️","ประวัติการศึกษา","ดูประวัติชั้น/ปี","custom:history"]]}
+  };
+  const f=(role==="admin"?admin:user)[name];if(!f)return;
+  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">WORK FLOW</span><h2>${esc(f.title)}</h2><p>${esc(f.desc)}</p></div><button class="btn" data-v14-close>✕</button></div><div class="v1610-flow-menu">${f.items.map(x=>`<button data-v1610-action="${x[3]}"><span>${x[0]}</span><b>${esc(x[1])}</b><small>${esc(x[2])}</small></button>`).join("")}</div>`,false);
+}
+async function renderAdminDashboard(){
+  setTitle("หน้าแรก");
+  const p=await getProfile();
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">DOC-FULL-NR • V16.10 UNIFIED</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>รวมงานเป็น Flow เดียว ปุ่มทุกจุดเรียก Router โดยตรง ไม่คลิกเมนูที่ซ่อนอยู่</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจระบบ</b><small>หน้า Dashboard ใช้งานได้โดยไม่ต้องรอการตรวจนี้</small></div></div>
+  <div class="v1610-flow-grid">${dashboardFlowCard("teaching","📚","การสอนและรายวิชา","CODE • 13 หน่วย • สไลด์ • Digital/Paper","cyan")}${dashboardFlowCard("students","👨‍🎓","นักศึกษาและสิทธิ์","บัญชี • สิทธิ์ • โปรไฟล์","green")}${dashboardFlowCard("work","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook/Report","violet")}${dashboardFlowCard("attendance","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • Online","orange")}${dashboardFlowCard("exam","🧪","ระบบสอบ","50 ข้อ • 75 นาที • Audit","red")}${dashboardFlowCard("system","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
+  <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวันแนะนำ: รายวิชา → เปิดหน่วย → สอน/สื่อ → ใบงาน → เช็คชื่อ → สอบ → คะแนน</span></div></section>`;
+  // Health is informative only; it must never block the dashboard.
+  Promise.race([client().rpc("admin_system_health_v1610"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
+    const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
+    el.classList.toggle("ok",!!ok);el.innerHTML=ok?`<i></i><b>Backend พร้อมใช้งาน</b><small>${Number(r.data.active_subjects||0)} วิชา • ${Number(r.data.standard_templates||0)} ใบงาน • RPC ${Number(r.data.critical_rpcs||0)}/15</small>`:`<i></i><b>Dashboard พร้อมใช้งาน</b><small>Health Contract ยังตรวจไม่ครบ แต่เมนูหลักยังทำงานได้</small>`;
+  }).catch(()=>{});
+}
+async function renderStudentDashboard(){
+  setTitle("หน้าแรก");const p=await getProfile();
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">SMART LEARNING • V16.10</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เริ่มจากเลือกวิชาและใส่ CODE จากครู จากนั้นระบบจะแสดงเฉพาะหน่วยที่ครูปลดล็อกแล้ว</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  <div class="v1610-flow-grid">${dashboardFlowCard("subjects","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและรับสิทธิ์เข้าเรียน","cyan")}${dashboardFlowCard("learning","🏫","วิชาที่เรียนอยู่","หน่วยที่เปิด • สไลด์ • ใบงาน","green")}${dashboardFlowCard("work","📋","งานของฉัน","งานค้าง • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardFlowCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardFlowCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardFlowCard("profile","👤","ข้อมูลของฉัน","อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
+  <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → ดูสื่อ/ทำใบงาน → ส่งงาน</span></div></section>`;
+}
 function courseEnrollmentState(enroll){return enroll?.status||"none"}
 function courseStatusLabel(st){return st==="approved"?"กำลังเรียน":st==="pending"?"รออนุมัติ":st==="rejected"?"เคยไม่อนุมัติ":st==="withdrawn"?"ถอนแล้ว":"เปิดรับสมัคร"}
 async function renderCourseRegistrationHome(){
@@ -1009,7 +1027,9 @@ async function openPaperScanCopy(path){
 // ---------------------------------------------------------------------------
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,a");if(!t)return;
-  if(t.matches("[data-v16-base-route]")){const b=$(`#sidebar .nav [data-route="${t.dataset.v16BaseRoute}"]`);if(b){b.click()}else toast("เมนูนี้ยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
+  if(t.matches("[data-v16-base-route]")){const r=t.dataset.v16BaseRoute;clearPresenceChannel();clearRoomChannel();state.route=`base:${r}`;state.subjectId=null;heartbeat();if(window.DOCNR_BASE?.navigate){window.DOCNR_BASE.navigate(r)}else toast("Router หลักยังโหลดไม่เสร็จ กรุณาลองใหม่",true);return}
+  if(t.matches("[data-v1610-flow]")){const p=await getProfile();openDashboardFlow(t.dataset.v1610Flow,p?.role||"user");return}
+  if(t.matches("[data-v1610-action]")){const action=t.dataset.v1610Action;closeOverlay();if(action.startsWith("custom:")){navigate(action.slice(7));return}if(action.startsWith("base:")){const r=action.slice(5);clearPresenceChannel();clearRoomChannel();state.route=`base:${r}`;state.subjectId=null;heartbeat();if(window.DOCNR_BASE?.navigate)window.DOCNR_BASE.navigate(r);else toast("Router หลักยังโหลดไม่เสร็จ",true);return}}
   if(t.matches("[data-v161-notification]")){client().rpc("mark_notification_read",{p_notification_id:t.dataset.v161Notification});return}
   if(t.matches("[data-v15-account]")){await decideAccount(t.dataset.v15Account,t.dataset.accountStatus);return}
   if(t.matches("[data-v165-join-course]")){showJoinCourseDialog(t.dataset.v165JoinCourse,t.dataset.courseCode||"",t.dataset.courseName||"");return}
@@ -1047,8 +1067,8 @@ document.addEventListener("change",async e=>{
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v16.5";
-  await syncServerTime();startHeartbeat();scheduleEnsureNav();setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{})},900);
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v16.10";
+  syncServerTime().catch(()=>{});startHeartbeat();scheduleEnsureNav();setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{})},900);
   setTimeout(async()=>{const p=await getProfile(true);if(!p)return;if(p.role!=="admin"&&(!p.active||p.approval_status!=="approved"))return;await ensureNav();const active=$("#sidebar .nav [data-route].active");if(active?.dataset.route==="dashboard"||!active)navigate("dashboard")},700);
 }
 

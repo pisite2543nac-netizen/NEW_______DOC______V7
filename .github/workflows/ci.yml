@@ -1,4 +1,4 @@
-name: DOC-FULL-NR V16.6 CI
+name: DOC-FULL-NR V16.10 UNIFIED CI
 
 on:
   pull_request:
@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: '22'
       - name: Static production validation
-        run: python tests/static_validation.py
+        run: |
+          python tests/static_validation.py
+          python tests/unified_contract.py
       - name: JavaScript syntax
         run: |
           node --check site/app.js
@@ -30,8 +32,6 @@ jobs:
           node --check site/v16-platform.js
           node --check site/v16-7-hardening.js
           node --check site/v16-8-course-flow.js
-          node --check site/v16-9-clean-dashboard.js
-          node --check site/v16-9-runtime-rescue.js
           node --check site/v16-exam.js
       - uses: denoland/setup-deno@v2
         with:
@@ -42,3 +42,4 @@ jobs:
           deno check supabase/functions/register-user-camera/index.ts
           deno check supabase/functions/admin-create-user/index.ts
           deno check supabase/functions/admin-operations/index.ts
+          deno check supabase/functions/bootstrap-admin/index.ts

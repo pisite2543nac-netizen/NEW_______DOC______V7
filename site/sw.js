@@ -1,10 +1,12 @@
-// compatibility marker: doc-full-nr-v16-6-stable-20260914
+// DOC-FULL-NR V16.10 unified production cache
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v16-9-rescue-r2-20260915";
+const CACHE="doc-full-nr-v16-10-unified-20260915";
 const SHELL=[
   "./","./index.html","./exam.html",
-  "./styles.css?v=20260914-v16-6","./mobile.css?v=20260914-v16-6","./v16-minimal.css?v=20260914-v16-6",
-  "./camera-registration.js?v=20260914-v16-6","./app.js?v=20260914-v16-6","./mobile.js?v=20260914-v16-6","./v16-platform.js?v=20260914-v16-6","./v16-exam.js?v=20260914-v16-6","./v16-9-runtime-rescue.js?v=20260915-v16-9-r2",
+  "./styles.css?v=20260914-v16-6","./mobile.css?v=20260914-v16-6","./v16-minimal.css?v=20260915-v16-10",
+  "./v16-7-hardening.css?v=20260915-v16-7","./v16-8-course-flow.css?v=20260915-v16-8",
+  "./camera-registration.js?v=20260914-v16-6","./app.js?v=20260915-v16-10","./mobile.js?v=20260914-v16-6","./v16-platform.js?v=20260915-v16-10",
+  "./v16-7-hardening.js?v=20260915-v16-10","./v16-8-course-flow.js?v=20260915-v16-8","./v16-exam.js?v=20260914-v16-6",
   "./manifest.webmanifest?v=20260914-v16-6",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png"
 ];
