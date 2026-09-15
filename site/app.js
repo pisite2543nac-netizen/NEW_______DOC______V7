@@ -5,7 +5,7 @@ const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const sb=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 
 const S={
-  session:null, profile:null, route:"dashboard", installPrompt:null,
+  session:null, profile:null, route:"dashboard", routeArg:null, installPrompt:null,
   editor:null, pendingWorksheet:new URLSearchParams(location.search).get("worksheet"),
   autosaveTimer:null, serverOffsetMs:0
 };
@@ -222,15 +222,33 @@ function signupDialog(){
 }
 
 function navItems(){
-  // V16.10 keeps the sidebar intentionally small. Advanced work is opened
-  // from the dashboard flow cards through DOCNR_BASE.navigate().
-  return [["dashboard","หน้าแรก"],["profile","โปรไฟล์ของฉัน"]];
+  return isAdmin()
+    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["students","นักศึกษาและสิทธิ์"],["workadmin","งาน คะแนน รายงาน"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
+    : [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["work","งานของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
 }
-const BASE_ROUTE_TITLES={dashboard:"หน้าแรก",users:"ผู้ใช้งาน",grading:"ตรวจงาน",overrides:"สิทธิ์ส่งเพิ่ม",reports:"รายงาน",audit:"Audit log",system:"ตั้งค่าระบบ",profile:"โปรไฟล์ของฉัน"};
-function navigateBase(route){
-  const allowed=isAdmin()?new Set(["dashboard","users","grading","overrides","reports","audit","system","profile"]):new Set(["dashboard","profile"]);
-  if(!allowed.has(route))return false;
-  S.route=route;$("#sidebar")?.classList.remove("open");renderShell();return true;
+const ROUTE_TITLES={
+  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",workadmin:"งาน คะแนน และรายงาน",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",academic:"ปีการศึกษาและระบบ",
+  catalog:"รายวิชาทั้งหมด",work:"งานของฉัน",attendance:"เช็คชื่อ",profile:"ข้อมูลของฉัน",
+  accounts:"อนุมัติบัญชี",enrollments:"สมาชิกวิชา",profiles:"โปรไฟล์นักศึกษา",presence:"สถานะออนไลน์",promotion:"เลื่อนชั้น / ปีการศึกษา",history:"ประวัติการศึกษา",
+  users:"ผู้ใช้งาน",grading:"ตรวจงาน",overrides:"สิทธิ์ส่งเพิ่ม",reports:"รายงาน",audit:"Audit log",system:"ตั้งค่าระบบ",enroll:"รายวิชาทั้งหมด"
+};
+const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","presence","promotion","history","enroll"]);
+const BASE_ROUTES=new Set(["users","grading","overrides","reports","audit","system","profile"]);
+const ADMIN_ROUTES=new Set(["dashboard","courses","students","workadmin","attendancehub","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
+const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","work","attendance","exam","profile","history","presence"]);
+const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
+function activeNavRoute(route){return ROUTE_GROUP[route]||route}
+function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:USER_ROUTES).has(route)}
+function paintNav(){
+  const active=activeNavRoute(S.route);
+  $$("#sidebar .nav [data-route]").forEach(b=>b.classList.toggle("active",b.dataset.route===active));
+}
+async function navigateUnified(route,arg=null){
+  route=String(route||"dashboard");
+  if(!routeAllowed(route))route="dashboard";
+  S.route=route;S.routeArg=arg;$("#sidebar")?.classList.remove("open");paintNav();
+  await routeCurrent();
+  return true;
 }
 function installGuide(){
   if(S.installPrompt){
@@ -260,12 +278,11 @@ function renderShell(){
     $("#suspendedlogout").onclick=()=>sb.auth.signOut();return
   }
   const items=navItems();
-  const hiddenBase=isAdmin()?new Set(["users","grading","overrides","reports","audit","system"]):new Set();
-  if(!items.some(x=>x[0]===S.route)&&!hiddenBase.has(S.route))S.route="dashboard";
+  if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V16.10</div></div></div>
-      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",users:"👥",grading:"📝",overrides:"⏳",reports:"📊",audit:"🧾",system:"⚙️",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${S.route===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="DOC-FULL-NR"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V17.0</div></div></div>
+      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
       <header class="topbar">
@@ -280,8 +297,8 @@ function renderShell(){
     </main>
   </div>`;
 
-  $$("[data-route]").forEach(b=>b.onclick=()=>{S.route=b.dataset.route;$("#sidebar")?.classList.remove("open");renderShell()});
-  $("#logout").onclick=()=>sb.auth.signOut();
+  $$("[data-route]").forEach(b=>b.onclick=()=>navigateUnified(b.dataset.route));
+  $("#logout").onclick=async()=>{try{window.DOCNR_V16_6?.cleanup?.()}catch{}await sb.auth.signOut()};
   $("#menubtn").onclick=()=>$("#sidebar").classList.toggle("open");
   $("#install").onclick=installGuide;
   route();
@@ -296,24 +313,48 @@ function renderShell(){
     setTimeout(()=>openWorksheet(id),250);
   }
 }
-async function route(){
-  // Time sync must never block the shell/dashboard. Server-side RPCs still
-  // remain authoritative for due dates and exams.
+async function waitFeatureRouter(timeoutMs=6000){
+  const start=Date.now();
+  while(Date.now()-start<timeoutMs){
+    if(window.DOCNR_V16_6?.navigate)return window.DOCNR_V16_6;
+    await sleep(50);
+  }
+  return null;
+}
+async function routeCurrent(){
   syncServerClock().catch(()=>{});
-  const title=BASE_ROUTE_TITLES[S.route]||"";
-  $("#pagetitle").textContent=title;
-  const f={dashboard,users,classrooms,subjects,worksheets,grading,overrides,reports,audit,system,profile,myworks,scan}[S.route]||dashboard;
-  try{await f()}catch(e){
-    console.error(e);
-    $("#content").innerHTML=`<div class="alert error"><b>เกิดข้อผิดพลาด</b><div>${esc(friendlyError(e))}</div></div>`;
+  const route=S.route||"dashboard",arg=S.routeArg;
+  const title=ROUTE_TITLES[route]||"";const titleEl=$("#pagetitle");if(titleEl)titleEl.textContent=title;
+  try{
+    if(route==="exam"){
+      const q=arg?`?subject=${encodeURIComponent(arg)}&from=room`:"";
+      window.open(`./exam.html${q}`,"_blank","noopener");
+      S.route=isAdmin()?"courses":"dashboard";S.routeArg=null;paintNav();
+      return;
+    }
+    if(BASE_ROUTES.has(route)){
+      const f={users,grading,overrides,reports,audit,system,profile}[route];
+      if(!f)throw new Error("ROUTE_NOT_IMPLEMENTED");
+      await f();return;
+    }
+    if(FEATURE_ROUTES.has(route)){
+      const feature=await waitFeatureRouter();
+      if(!feature)throw new Error("FEATURE_ROUTER_NOT_READY");
+      await feature.navigate(route,arg);return;
+    }
+    throw new Error("ROUTE_NOT_IMPLEMENTED");
+  }catch(e){
+    console.error("DOC-FULL-NR route",route,e);
+    const host=$("#content");if(host)host.innerHTML=`<div class="alert error"><b>เปิดเมนูไม่สำเร็จ</b><div>${esc(friendlyError(e))}</div><div class="row"><button class="btn primary" data-app-route="${esc(route)}">ลองใหม่</button><button class="btn" data-app-route="dashboard">กลับหน้าแรก</button></div></div>`;
   }
 }
+async function route(){return routeCurrent()}
 
 async function dashboard(){
   const host=$("#content");if(!host)return;
   // The unified feature router owns the production dashboard. The base shell
   // only provides a fast, non-network handoff so an old async dashboard can
-  // never overwrite the V16.10 dashboard after it has rendered.
+  // never overwrite the V17.0 dashboard after it has rendered.
   host.innerHTML=`<section class="v1610-boot-card"><div class="v14-spinner"></div><div><b>กำลังเปิดศูนย์การเรียนรู้</b><span>โหลดเมนูการทำงานหลัก...</span></div></section>`;
   let tries=0;
   const handoff=()=>{
@@ -900,12 +941,29 @@ async function overrides(){
   $$('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!ask("ยกเลิกสิทธิ์นี้?"))return;try{await adminOp({action:"revoke_override",override_id:b.dataset.revoke});toast("ยกเลิกสิทธิ์แล้ว");overrides()}catch(err){toast(friendlyError(err),"error")}});
 }
 async function system(){
-  let health=null;try{health=await adminOp({action:"health"})}catch{}
-  const {data:cfg}=await sb.from("system_settings").select("key,value").in("key",["registration","school"]);const reg=cfg?.find(x=>x.key==="registration")?.value||{};const school=cfg?.find(x=>x.key==="school")?.value||{};
-  $("#content").innerHTML=`<div class="section-head"><div><h1>ตั้งค่าระบบ</h1><div class="muted">ศูนย์ควบคุมก่อนใช้งานจริง</div></div></div><div class="grid two"><div class="card"><h3>สถานะระบบ</h3><div class="alert ${health?.ok?"success":"error"}">${health?.ok?"Backend พร้อมใช้งาน":"ตรวจ Backend อีกครั้ง"}</div><div class="smalltext">Server time: ${esc(health?.server_time||"-")}</div><div class="smalltext">Profiles: ${health?.counts?.profiles??"-"} • Subjects: ${health?.counts?.subjects??"-"} • Worksheets: ${health?.counts?.worksheets??"-"}</div><button class="btn primary" id="initdemo" style="margin-top:14px">เตรียมชุดทดสอบอัตโนมัติ</button><p class="muted smalltext">สร้างห้องทดสอบ + User2000 + ใบงานทดสอบที่ Publish แล้ว โดยไม่ลบข้อมูลเดิม</p></div><div class="card"><h3>การลงทะเบียน</h3><div class="alert ${reg.enabled?"success":"warn"}">${reg.enabled?"เปิดรับลงทะเบียน":"ปิดรับลงทะเบียน"}</div><form id="regsettings"><div class="checks"><label><input type="checkbox" name="enabled" ${reg.enabled?"checked":""}> เปิดรับลงทะเบียน</label></div><div class="field"><label>เปลี่ยนรหัสลงทะเบียน (เว้นว่าง = ใช้เดิม)</label><input name="registration_code" minlength="6"></div><button class="btn primary">บันทึก</button></form></div></div><div class="card" style="margin-top:14px"><h3>ข้อมูลระบบ</h3><div><b>${esc(school.system_name||"DOC-FULL-NR Smart Worksheet")}</b></div><div class="muted">${esc(school.name||"วิทยาลัยเทคนิคนางรอง")} • ${esc(school.timezone||"Asia/Bangkok")}</div></div>`;
+  let h=null,edge=null;
+  try{const r=await sb.rpc("admin_system_health_v17");if(!r.error)h=r.data}catch{}
+  try{edge=await adminOp({action:"health"})}catch{}
+  const {data:cfg}=await sb.from("system_settings").select("key,value").in("key",["registration","school"]);
+  const reg=cfg?.find(x=>x.key==="registration")?.value||{},school=cfg?.find(x=>x.key==="school")?.value||{};
+  const pass=(v)=>v?`<span class="badge green">PASS</span>`:`<span class="badge red">FAIL</span>`;
+  $("#content").innerHTML=`<div class="section-head"><div><h1>System Health / ตั้งค่าระบบ</h1><div class="muted">ตรวจ Contract ที่หน้าเว็บใช้งานจริง • Health ไม่บล็อก Dashboard</div></div><button class="btn" data-app-route="academic">← กลับปีการศึกษาและระบบ</button></div>
+    <div class="grid two">
+      <div class="card"><h3>🩺 Backend Contract</h3><div class="alert ${h?.backend_ok?"success":"error"}">${h?.backend_ok?"Backend พร้อมใช้งาน":"พบจุดที่ต้องตรวจ"}</div>
+        <div class="profile-data-grid">
+          <div><span>Template</span><b>${h?.standard_templates??"-"}/198</b></div><div><span>Paper / Digital</span><b>${h?.paper_templates??"-"}/55 • ${h?.digital_templates??"-"}/143</b></div>
+          <div><span>รายวิชา / CODE</span><b>${h?.active_subjects??"-"}/11 • ${h?.active_join_codes??"-"}/11</b></div><div><span>13 หน่วยครบ</span><b>${h?.subjects_with_13_units??"-"}/11</b></div>
+          <div><span>Critical RPC</span><b>${h?.critical_rpcs??"-"}/15</b></div><div><span>RLS Tables</span><b>${h?.critical_rls_tables??"-"}/22</b></div>
+          <div><span>Private Storage</span><b>${h?.private_buckets??"-"}/5</b></div><div><span>Profile Read-only</span>${pass(h?.student_profile_readonly)}</div>
+          <div><span>Locked Unit Resources</span>${pass(h?.locked_subject_resources)}</div><div><span>Submission Override Relation</span>${pass(h?.submission_override_relationship)}</div>
+        </div><div class="smalltext muted" style="margin-top:10px">Server time: ${esc(h?.server_time||edge?.server_time||"-")}</div>
+      </div>
+      <div class="card"><h3>การลงทะเบียน</h3><div class="alert ${reg.enabled?"success":"warn"}">${reg.enabled?"เปิดรับลงทะเบียน":"ปิดรับลงทะเบียน"}</div><form id="regsettings"><div class="checks"><label><input type="checkbox" name="enabled" ${reg.enabled?"checked":""}> เปิดรับลงทะเบียน</label></div><div class="field"><label>เปลี่ยนรหัสลงทะเบียน (เว้นว่าง = ใช้เดิม)</label><input name="registration_code" minlength="6"></div><button class="btn primary">บันทึก</button></form><p class="muted smalltext">ไม่มี OTP • การอนุมัติบัญชีและการเข้ารายวิชาเป็นคนละขั้นตอน</p></div>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>ข้อมูลระบบ</h3><div><b>${esc(school.system_name||"DOC-FULL-NR Smart Worksheet")}</b></div><div class="muted">${esc(school.name||"วิทยาลัยเทคนิคนางรอง")} • ${esc(school.timezone||"Asia/Bangkok")} • V17 Master Flow</div></div>`;
   $("#regsettings").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await adminOp({action:"set_registration",enabled:f.get("enabled")==="on",registration_code:String(f.get("registration_code")||"")});toast("บันทึกการลงทะเบียนแล้ว");system()}catch(err){toast(friendlyError(err),"error")}};
-  $("#initdemo").onclick=async()=>{const testPassword=randomPassword();try{const r=await adminOp({action:"initialize_system",test_username:"User2000",test_user_password:testPassword,room_name:"ห้องทดสอบระบบ"});modal(`<div class="modal-header"><div><h3>ชุดทดสอบพร้อมแล้ว</h3></div><button class="btn sm" data-close>✕</button></div><div class="alert success">สร้าง/อัปเดตห้อง ผู้ใช้ และใบงานทดสอบสำเร็จ</div><div class="field"><label>Username ทดสอบ</label><input value="${esc(r.test_username)}" readonly></div><div class="field"><label>Password ทดสอบ</label><input value="${esc(testPassword)}" readonly></div><div class="field"><label>ใบงาน</label><input value="${esc(r.worksheet_title||"")}" readonly></div><div class="row end"><button class="btn" id="savecred">บันทึกข้อมูลทดสอบเป็น TXT</button><button class="btn primary" data-close>พร้อมทดสอบ</button></div>`);$("#savecred").onclick=()=>downloadText("DOC-FULL-NR-TEST-ACCOUNT.txt",`Username: ${r.test_username}\nPassword: ${testPassword}\nใช้สำหรับทดสอบระบบเท่านั้น\n`) }catch(err){toast(friendlyError(err),"error")}};
 }
+
 async function profile(){
   let avatar=null;
   if(S.profile?.avatar_path){
@@ -932,6 +990,7 @@ async function profile(){
       </div>
     </div>
     <div class="alert" style="margin-top:16px">🔒 นักศึกษาไม่สามารถแก้ชื่อ รหัส ชั้น ห้อง แผนก สาขา หรือข้อมูลโปรไฟล์เองได้ เพื่อป้องกันข้อมูลทางการศึกษาถูกเปลี่ยนโดยไม่ได้รับอนุญาต</div>
+    ${!isAdmin()?`<div class="row" style="margin-top:12px"><button class="btn" type="button" data-app-route="history">🗓️ ดูประวัติการศึกษา</button></div>`:""}
     <div class="divider"></div>
     <h3>ความปลอดภัยของบัญชี</h3>
     <form id="changepass"><div class="field"><label>เปลี่ยนรหัสผ่านใหม่ อย่างน้อย 8 ตัว</label><input name="password" type="password" minlength="8" required></div><button class="btn warn">เปลี่ยนรหัสผ่าน</button></form>
@@ -1005,15 +1064,20 @@ async function paperTokensDialog(wid){
   $("#tokencsv").onclick=()=>downloadCSV([["ชื่อ","รหัสนักศึกษา","ห้อง","Token"],...rows.map(x=>[x.full_name,x.student_code,x.class_name,x.token])],`paper-tokens-${wid}.csv`);
 }
 
+document.addEventListener("click",e=>{
+  const b=e.target.closest?.("[data-app-route]");
+  if(!b)return;
+  e.preventDefault();e.stopPropagation();
+  navigateUnified(b.dataset.appRoute,b.dataset.appArg||null);
+},true);
+
 // Stable extension bridge for DOC-FULL-NR V14. Only deliberately exposed UI actions
 // are placed on window; Supabase secrets and internal state remain module-scoped.
 window.DOCNR_BASE = Object.freeze({
+  navigate:navigateUnified,
   openWorksheet,
   printWorksheet,
-  paperTokensDialog,
-  navigate:navigateBase,
-  route:()=>S.route,
-  version:"V16.10-UNIFIED"
+  paperTokensDialog
 });
 
 init();

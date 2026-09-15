@@ -1,5 +1,5 @@
 {
-  "release": "V16.10 UNIFIED PRODUCTION",
+  "release": "V17 MASTER FUNCTIONAL FLOW",
   "date": "2026-09-15",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -8,7 +8,7 @@
   "supabase_project": "DOC-FULL-NR-UNIVERSAL",
   "supabase_ref": "thjscmfqunlaqxlievna",
   "deployment": "Static PWA /site via GitHub Pages",
-  "frontend_owner": "app.js (shell/base router) + v16-platform.js (feature router/dashboard) + v16-7-hardening.js + v16-8-course-flow.js + v16-exam.js",
+  "frontend_owner": "app.js is the only shell/router owner; v16-platform.js renders feature routes; v16-7-hardening.js and v16-8-course-flow.js are non-router enhancers; v16-exam.js owns exam page only",
   "base_roles": [
     "admin",
     "user"
@@ -16,13 +16,13 @@
   "ready_templates": 198,
   "paper_templates": 55,
   "digital_templates": 143,
-  "release_marker": "V16.10-UNIFIED-PRODUCTION",
+  "release_marker": "V17-MASTER-FLOW",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "50 MCQ / 4 choices / 75 minutes / 20 points; question bank; per-attempt shuffle; anti-cheat event audit; student score hidden",
-  "version": "16.10",
-  "notes": "Unified production release: removes V16.9 overlay/rescue router competition, direct base-router bridge, non-blocking boot, clean dashboard flows, V16.8 sequential units and V16.7 paper/profile hardening retained.",
+  "version": "17.0",
+  "notes": "Master functional flow release: one button = one action = one router = one backend contract. Removes hidden-button navigation and competing dashboard/rescue routers.",
   "gradebook": "work 40 + behavior 20 + midterm 20 + final 20; work denominator = actually assigned worksheets",
   "paper_scan": "admin full-sheet evidence scan; QR/barcode server verification; private storage copy; expiry/revocation metadata",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
@@ -31,6 +31,7 @@
   "work_detail_visibility": "Admin web only; hidden from print/download summary.",
   "phone_policy": "profiles.phone is contact data only; no OTP/SMS gate; student profile remains read-only",
   "nickname_storage": "profiles.display_name",
-  "backend_health_rpc": "admin_system_health_v1610",
-  "router_contract": "single shell/base router bridge + one feature router; no V16.9 overlay/rescue in production index"
+  "backend_health_rpc": "admin_system_health_v17",
+  "router_contract": "single owner app.js; direct data-app-route bridge; no V16.9 overlay/rescue and no hidden-menu click navigation in production",
+  "master_flow": "auth -> role dashboard -> direct functional hub -> backend/RPC -> deterministic render/error; course CODE -> enrollment -> 13 sequential units -> resources/work -> attendance/exam/grade/report/promotion"
 }

@@ -1,6 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const RELEASE = "V16.8-COURSE-SEQUENTIAL-UNITS";
+const RELEASE = "V17-COURSE-SEQUENTIAL-UNITS";
 const SUPABASE_URL = "https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY = "sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF = "thjscmfqunlaqxlievna";
@@ -190,7 +190,7 @@ async function injectAdminPlan(force=false){
     section.className="card v168-admin-plan";
     section.innerHTML=`<div class="v168-admin-plan-head">
       <div><span class="v14-kicker">SEQUENTIAL TEACHING</span><h2>🎯 ปลดล็อกการสอนทีละหน่วย</h2><p>เมื่อกดเริ่มสอน ระบบจะเปิดทั้งใบงานอิเล็กทรอนิกส์ + ใบงานปริ้นของเลขหน่วยเดียวกัน และมอบหมายให้นักศึกษาที่เข้าเรียนด้วย CODE โดยอัตโนมัติ</p></div>
-      <div class="v168-next-actions"><div class="v168-next-unit">${next?`หน่วยถัดไป <b>${next}</b>`:"<b>เปิดครบแล้ว</b>"}</div><button class="btn sm" data-v168-flow-health>🩺 ตรวจ Flow</button></div>
+      <div class="v168-next-actions"><div class="v168-next-unit">${next?`หน่วยถัดไป <b>${next}</b>`:"<b>เปิดครบแล้ว</b>"}</div></div>
     </div>
     <div class="v168-admin-unit-grid">${units.map(u=>adminUnitCard(u,sid,next)).join("")}</div>
     <div class="v168-sequence-rule">🔒 Server บังคับลำดับจริง: เปิดหน่วยถัดไปไม่ได้จนกว่าหน่วยก่อนหน้าจะถูกเปิดครบ</div>`;
@@ -246,21 +246,6 @@ function openUnlockDialog(sid,unitNo){
   };
 }
 
-async function checkCourseFlowHealth(){
-  const {data,error}=await client().rpc("admin_course_flow_health_v168");
-  if(error){flash(errText(error),true);return}
-  const ok=!!data?.course_flow_ok;
-  overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">COURSE FLOW HEALTH</span><h2>${ok?"✅ Flow รายวิชาพร้อม":"⚠️ พบจุดที่ต้องตรวจ"}</h2><p>${esc(data?.version||RELEASE)}</p></div><button class="btn sm" data-v168-close>✕</button></div>
-    <div class="v168-health-grid">
-      <div><span>รายวิชาหลัก</span><b>${Number(data?.active_subjects||0)}</b></div>
-      <div><span>CODE ที่ใช้งาน</span><b>${Number(data?.active_join_codes||0)}</b></div>
-      <div><span>ใบงานสำเร็จรูป</span><b>${Number(data?.standard_templates||0)}</b></div>
-      <div><span>วิชาที่มี 13 หน่วยครบ</span><b>${Number(data?.subjects_with_13_units||0)}</b></div>
-      <div><span>RPC สำคัญ</span><b>${Number(data?.required_rpcs||0)}/4</b></div>
-      <div><span>ล็อกสื่อก่อนเปิดหน่วย</span><b>${data?.locked_resource_policy_ok?"PASS":"FAIL"}</b></div>
-    </div>`);
-}
-
 async function openResource(path){
   const {data,error}=await client().storage.from("subject-files").createSignedUrl(path,600);
   if(error||!data?.signedUrl){flash(errText(error||"เปิดไฟล์ไม่ได้"),true);return}
@@ -287,15 +272,12 @@ document.addEventListener("click",e=>{
   if(res){e.preventDefault();e.stopPropagation();openResource(res.dataset.v168Resource);return}
   const slide=e.target.closest?.("[data-v168-summary-slide]");
   if(slide){e.preventDefault();e.stopPropagation();const [sid,u]=slide.dataset.v168SummarySlide.split(":");openSummarySlides(sid,Number(u));return}
-  const health=e.target.closest?.("[data-v168-flow-health]");
-  if(health){e.preventDefault();e.stopPropagation();checkCourseFlowHealth();return}
 },true);
 
 let pending=false;
 function scan(){
   pending=false;
-  decorateNav();
-  decorateCatalog();
+  // V17: app.js owns Sidebar/Catalog routing; this file only enhances course unit content.
   injectAdminPlan().catch(()=>{});
   injectStudentPath().catch(()=>{});
 }

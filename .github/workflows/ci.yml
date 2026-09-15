@@ -1,4 +1,4 @@
-name: DOC-FULL-NR V16.10 UNIFIED CI
+name: DOC-FULL-NR V17 MASTER FLOW CI
 
 on:
   pull_request:
@@ -23,6 +23,7 @@ jobs:
         run: |
           python tests/static_validation.py
           python tests/unified_contract.py
+          python tests/button_contract.py
       - name: JavaScript syntax
         run: |
           node --check site/app.js

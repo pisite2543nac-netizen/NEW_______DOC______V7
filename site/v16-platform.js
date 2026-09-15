@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V16.10-UNIFIED-PRODUCTION";
+const V15_VERSION="V17.0-UNIFIED-PRODUCTION";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -183,24 +183,12 @@ async function startNotificationRealtime(){
 }
 function navBtn(route,label){const b=document.createElement("button");b.type="button";b.dataset.v14Route=route;b.className="v14-nav nav-card-btn";const parts=String(label||"").trim().split(/\s+/),icon=/^[^\p{L}\p{N}]/u.test(parts[0]||"")?parts.shift():"•";b.innerHTML=`<span class="nav-card-icon">${esc(icon)}</span><span class="nav-card-label">${esc(parts.join(" ")||label)}</span>`;return b}
 async function ensureNav(){
-  const nav=$("#sidebar .nav");if(!nav)return;
   const p=await getProfile();if(!p)return;
-  // Keep this mutation idempotent: MutationObserver calls ensureNav often.
-  // Only one extension-owned shortcut is allowed in the sidebar.
-  nav.querySelector('[data-v14-divider]')?.remove();
-  const before=nav.querySelector('[data-route="profile"]');
-  const route=p.role==="admin"?"courses":"enroll";
-  const label=p.role==="admin"?"📚 รายวิชา / การสอน":"📚 รายวิชาเรียน";
-  let b=nav.querySelector(`[data-v14-route="${route}"]`);
-  $$('[data-v14-route]',nav).forEach(x=>{if(x!==b)x.remove()});
-  if(!b){b=navBtn(route,label);b.dataset.v16PrimaryNav="1";before?nav.insertBefore(b,before):nav.appendChild(b)}
-  else{
-    b.dataset.v16PrimaryNav="1";
-    const parts=label.trim().split(/\s+/),icon=parts.shift(),text=parts.join(" ");
-    const ie=b.querySelector('.nav-card-icon'),le=b.querySelector('.nav-card-label');
-    if(ie&&ie.textContent!==icon)ie.textContent=icon;if(le&&le.textContent!==text)le.textContent=text;
-  }
-  const brand=$("#sidebar .brand .smalltext");if(brand&&brand.textContent!==`${p.role==="admin"?"ADMIN":"USER"} • V16.10`)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V16.10`;
+  const brand=$("#sidebar .brand .smalltext");
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V17.0`;
+  // V17: app.js is the single owner of Sidebar and route buttons.
+  // Remove extension-owned navigation left by older cached DOMs.
+  $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
 }
 function scheduleEnsureNav(){if(state.navTimer)return;state.navTimer=setTimeout(()=>{state.navTimer=null;ensureNav().catch(()=>{});ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},80)}
 const shellObserver=new MutationObserver(scheduleEnsureNav);
@@ -212,28 +200,44 @@ async function navigate(route,arg=null){
   clearPresenceChannel();clearRoomChannel();state.route=route;state.subjectId=null;heartbeat();
   const p=await getProfile(true);if(!p)return;
   if(await requirePhoneGate(route))return;
-  $$("#sidebar .nav button").forEach(x=>x.classList.remove("active"));
-  const b=$(`#sidebar .nav [data-v14-route="${route}"]`);if(b)b.classList.add("active");
-  if(route==="exam"){window.open("./exam.html","_blank","noopener");return}
   const routes=p.role==="admin"?{
-    dashboard:renderAdminDashboard,accounts:renderAccountApprovals,courses:()=>arg?renderAdminSubject(arg):renderAdminCourses,enrollments:renderEnrollmentAdmin,
-    profiles:renderAdminProfiles,attendance:renderAttendance,presence:renderPresence,promotion:renderPromotion
-  }:{dashboard:renderStudentDashboard,enroll:renderEnrollSubjects,courses:()=>arg?renderStudentCourse(arg):renderStudentCourses,work:renderWorkStatus,history:renderAcademicHistory,attendance:renderAttendance,presence:renderPresence};
-  const fn=routes[route]||routes.dashboard;try{await fn()}catch(e){console.error("V15 route",route,e);if(content())content().innerHTML=`<div class="alert error"><b>เกิดข้อผิดพลาด</b><div>${esc(errorText(e))}</div><button class="btn" data-v14-retry="${esc(route)}">ลองใหม่</button></div>`}
+    dashboard:renderAdminDashboard,
+    courses:()=>arg?renderAdminSubject(arg):renderAdminCourses,
+    students:renderStudentsHub,
+    workadmin:renderWorkAdminHub,
+    attendancehub:renderAttendanceHub,
+    academic:renderAcademicHub,
+    accounts:renderAccountApprovals,
+    enrollments:renderEnrollmentAdmin,
+    profiles:renderAdminProfiles,
+    attendance:renderAttendance,
+    presence:renderPresence,
+    promotion:renderPromotion
+  }:{
+    dashboard:renderStudentDashboard,
+    catalog:renderCourseRegistrationHome,
+    enroll:renderEnrollSubjects,
+    courses:()=>arg?renderStudentCourse(arg):renderStudentCourses,
+    work:renderWorkStatus,
+    history:renderAcademicHistory,
+    attendance:renderAttendance,
+    presence:renderPresence
+  };
+  const fn=routes[route];
+  if(!fn)throw new Error(`FEATURE_ROUTE_NOT_IMPLEMENTED:${route}`);
+  try{await fn()}catch(e){
+    console.error("DOC-FULL-NR feature route",route,e);
+    if(content())content().innerHTML=`<div class="alert error"><b>เปิดเมนูไม่สำเร็จ</b><div>${esc(errorText(e))}</div><div class="row"><button class="btn primary" data-app-route="${esc(route)}">ลองใหม่</button><button class="btn" data-app-route="dashboard">กลับหน้าแรก</button></div></div>`;
+    throw e;
+  }
 }
 
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,a");if(!t)return;
   const custom=t.closest("[data-v14-route]");
-  if(custom){e.preventDefault();e.stopImmediatePropagation();await navigate(custom.dataset.v14Route);return}
-  const retry=t.closest("[data-v14-retry]");if(retry){e.preventDefault();navigate(retry.dataset.v14Retry);return}
-  const base=t.closest("[data-route]");
-  if(base){const p=await getProfile();const r=base.dataset.route;
-    if(r==="dashboard"){e.preventDefault();e.stopImmediatePropagation();navigate("dashboard");return}
-    if(p?.role==="admin"&&r==="worksheets"){e.preventDefault();e.stopImmediatePropagation();navigate("courses");return}
-    if(p?.role!=="admin"&&r==="myworks"){e.preventDefault();e.stopImmediatePropagation();navigate("courses");return}
-    state.route=`base:${r}`;heartbeat();
-  }
+  if(custom){e.preventDefault();e.stopImmediatePropagation();window.DOCNR_BASE?.navigate?.(custom.dataset.v14Route);return}
+  const retry=t.closest("[data-v14-retry]");if(retry){e.preventDefault();window.DOCNR_BASE?.navigate?.(retry.dataset.v14Retry);return}
+  // V17: data-route belongs exclusively to app.js. This module never intercepts Sidebar clicks.
 },true);
 
 
@@ -338,71 +342,54 @@ function workCard(row){const {w,status}=row;return `<article class="v14-work-car
 // ---------------------------------------------------------------------------
 // Dashboards
 // ---------------------------------------------------------------------------
-function dashboardFlowCard(key,icon,title,desc,tone="blue"){
-  return `<button class="v1610-flow-card ${tone}" data-v1610-flow="${key}"><span class="v1610-flow-icon">${icon}</span><span><b>${esc(title)}</b><small>${esc(desc)}</small></span><i>›</i></button>`;
+function dashboardRouteCard(route,icon,title,desc,tone="blue"){
+  return `<button class="v1610-flow-card ${tone}" data-app-route="${esc(route)}"><span class="v1610-flow-icon">${icon}</span><span><b>${esc(title)}</b><small>${esc(desc)}</small></span><i>›</i></button>`;
 }
-function openDashboardFlow(name,role){
-  const admin={
-    teaching:{title:"การสอนและรายวิชา",desc:"เริ่มจากรายวิชา แล้วจัดการ CODE หน่วยเรียน สื่อ ใบงาน คะแนน และสำเนากระดาษ",items:[
-      ["🏫","รายวิชา / ห้องเรียน","เปิดห้องรายวิชาและปลดล็อกทีละหน่วย","custom:courses"],
-      ["✅","สมาชิกวิชา","ตรวจสมาชิกและการลงทะเบียน","custom:enrollments"],
-      ["🪪","ข้อมูลนักศึกษา","ดู/แก้ข้อมูลการศึกษาโดย Admin","custom:profiles"]]},
-    students:{title:"นักศึกษาและสิทธิ์",desc:"บัญชีและสิทธิ์การใช้งาน",items:[
-      ["🧑‍🎓","อนุมัติบัญชี","อนุมัติบัญชีก่อนเข้าใช้งาน","custom:accounts"],
-      ["👥","ผู้ใช้งาน","สร้าง/แก้/ระงับบัญชี","base:users"],
-      ["🪪","โปรไฟล์นักศึกษา","ข้อมูลนักศึกษาและสถานะการศึกษา","custom:profiles"]]},
-    work:{title:"งาน คะแนน และรายงาน",desc:"ตรวจงานและสรุปผลจากข้อมูลจริง",items:[
-      ["📝","ตรวจงาน","ตรวจ Submission และให้คะแนน","base:grading"],
-      ["⏳","สิทธิ์ส่งเพิ่ม","ขยายเวลา/เพิ่มครั้งส่งรายบุคคล","base:overrides"],
-      ["📊","รายงาน","สรุปผลและ Export","base:reports"]]},
-    attendance:{title:"เช็คชื่อและห้องเรียน",desc:"QR 15 นาที สาย/ลา/ขาด และสถานะออนไลน์",items:[
-      ["📷","เช็คชื่อ","เปิด Session และจัดการ Attendance","custom:attendance"],
-      ["📡","สถานะออนไลน์","ดูผู้ใช้งานออนไลน์","custom:presence"]]},
-    exam:{title:"ระบบสอบ",desc:"คลังข้อสอบ สอบกลาง/ปลายภาค และ Audit",items:[
-      ["🧪","Exam Center","เปิดระบบสอบของรายวิชา","custom:exam"]]},
-    system:{title:"ปีการศึกษาและระบบ",desc:"งานบริหารที่ใช้น้อยรวมไว้ที่เดียว",items:[
-      ["📈","เลื่อนชั้น / ปีการศึกษา","Prepare → Review → Approve → Apply","custom:promotion"],
-      ["🧾","Audit Log","ประวัติการดำเนินการสำคัญ","base:audit"],
-      ["⚙️","ตั้งค่าระบบ","สถานะและการตั้งค่าหลัก","base:system"]]}
-  };
-  const user={
-    subjects:{title:"รายวิชาทั้งหมด / ใส่ CODE",desc:"เลือกวิชาและใช้ CODE จากครูเพื่อเข้าเรียน",items:[["📚","รายวิชาทั้งหมด","เลือกวิชาและใส่ CODE","custom:enroll"]]},
-    learning:{title:"วิชาที่เรียนอยู่",desc:"หน่วยที่ครูเปิด สไลด์ และใบงาน",items:[["🏫","วิชาที่เรียนอยู่","เปิดห้องเรียนรายวิชา","custom:courses"]]},
-    work:{title:"งานของฉัน",desc:"ดูงานที่เปิดแล้วและสถานะการส่ง",items:[["📋","ตารางสถานะงาน","งานค้าง/ส่งแล้ว/กำหนดเวลา","custom:work"]]},
-    attendance:{title:"เช็คชื่อ",desc:"QR และประวัติการเข้าเรียน",items:[["📷","การเข้าเรียน","เปิดหน้าเช็คชื่อ","custom:attendance"]]},
-    exam:{title:"ข้อสอบ",desc:"เข้า Exam Center เมื่อครูเปิด",items:[["🧪","ระบบสอบ","เปิด Exam Center","custom:exam"]]},
-    profile:{title:"ข้อมูลของฉัน",desc:"โปรไฟล์อ่านอย่างเดียวและประวัติการศึกษา",items:[["🪪","โปรไฟล์","ข้อมูลส่วนตัวแบบอ่านอย่างเดียว","base:profile"],["🗓️","ประวัติการศึกษา","ดูประวัติชั้น/ปี","custom:history"]]}
-  };
-  const f=(role==="admin"?admin:user)[name];if(!f)return;
-  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">WORK FLOW</span><h2>${esc(f.title)}</h2><p>${esc(f.desc)}</p></div><button class="btn" data-v14-close>✕</button></div><div class="v1610-flow-menu">${f.items.map(x=>`<button data-v1610-action="${x[3]}"><span>${x[0]}</span><b>${esc(x[1])}</b><small>${esc(x[2])}</small></button>`).join("")}</div>`,false);
+function hubCard(route,icon,title,desc,tone="blue"){
+  return `<button class="v1610-flow-card ${tone}" data-app-route="${esc(route)}"><span class="v1610-flow-icon">${icon}</span><span><b>${esc(title)}</b><small>${esc(desc)}</small></span><i>›</i></button>`;
 }
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">DOC-FULL-NR • V16.10 UNIFIED</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>รวมงานเป็น Flow เดียว ปุ่มทุกจุดเรียก Router โดยตรง ไม่คลิกเมนูที่ซ่อนอยู่</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจระบบ</b><small>หน้า Dashboard ใช้งานได้โดยไม่ต้องรอการตรวจนี้</small></div></div>
-  <div class="v1610-flow-grid">${dashboardFlowCard("teaching","📚","การสอนและรายวิชา","CODE • 13 หน่วย • สไลด์ • Digital/Paper","cyan")}${dashboardFlowCard("students","👨‍🎓","นักศึกษาและสิทธิ์","บัญชี • สิทธิ์ • โปรไฟล์","green")}${dashboardFlowCard("work","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook/Report","violet")}${dashboardFlowCard("attendance","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • Online","orange")}${dashboardFlowCard("exam","🧪","ระบบสอบ","50 ข้อ • 75 นาที • Audit","red")}${dashboardFlowCard("system","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
-  <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวันแนะนำ: รายวิชา → เปิดหน่วย → สอน/สื่อ → ใบงาน → เช็คชื่อ → สอบ → คะแนน</span></div></section>`;
-  // Health is informative only; it must never block the dashboard.
-  Promise.race([client().rpc("admin_system_health_v1610"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">DOC-FULL-NR • V17 MASTER FLOW</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 13 หน่วย • สไลด์ • Digital/Paper","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
+  <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
+  Promise.race([client().rpc("admin_system_health_v17"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
     const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
-    el.classList.toggle("ok",!!ok);el.innerHTML=ok?`<i></i><b>Backend พร้อมใช้งาน</b><small>${Number(r.data.active_subjects||0)} วิชา • ${Number(r.data.standard_templates||0)} ใบงาน • RPC ${Number(r.data.critical_rpcs||0)}/15</small>`:`<i></i><b>Dashboard พร้อมใช้งาน</b><small>Health Contract ยังตรวจไม่ครบ แต่เมนูหลักยังทำงานได้</small>`;
+    el.classList.toggle("ok",!!ok);el.innerHTML=ok?`<i></i><b>Backend พร้อมใช้งาน</b><small>${Number(r.data.active_subjects||0)} วิชา • ${Number(r.data.standard_templates||0)} ใบงาน • RPC ${Number(r.data.critical_rpcs||0)}/15</small>`:`<i></i><b>Dashboard พร้อมใช้งาน</b><small>Health Contract ตรวจไม่ครบ • เปิด System Health เพื่อตรวจรายละเอียด</small>`;
   }).catch(()=>{});
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">SMART LEARNING • V16.10</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เริ่มจากเลือกวิชาและใส่ CODE จากครู จากนั้นระบบจะแสดงเฉพาะหน่วยที่ครูปลดล็อกแล้ว</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
-  <div class="v1610-flow-grid">${dashboardFlowCard("subjects","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและรับสิทธิ์เข้าเรียน","cyan")}${dashboardFlowCard("learning","🏫","วิชาที่เรียนอยู่","หน่วยที่เปิด • สไลด์ • ใบงาน","green")}${dashboardFlowCard("work","📋","งานของฉัน","งานค้าง • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardFlowCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardFlowCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardFlowCard("profile","👤","ข้อมูลของฉัน","อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
-  <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → ดูสื่อ/ทำใบงาน → ส่งงาน</span></div></section>`;
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">SMART LEARNING • V17 MASTER FLOW</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","หน่วยที่เปิด • สไลด์ • ใบงาน","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
+  <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
+}
+async function renderStudentsHub(){
+  setTitle("นักศึกษาและสิทธิ์");
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">STUDENT & ACCESS FLOW</span><h1>👨‍🎓 นักศึกษาและสิทธิ์</h1><p>รวมบัญชี สิทธิ์เข้าใช้งาน สมาชิกวิชา และข้อมูลนักศึกษาไว้ใน Flow เดียว</p></div></div><div class="v1610-flow-grid">${hubCard("accounts","🟢","อนุมัติบัญชี","Pending → Approved / Rejected / Suspended","green")}${hubCard("users","👥","จัดการผู้ใช้","สร้าง • แก้ข้อมูล • ระงับ • Reset Password","cyan")}${hubCard("enrollments","🔐","สมาชิกและสิทธิ์รายวิชา","ตรวจสมาชิก/คำขอรายวิชา","orange")}${hubCard("profiles","🪪","โปรไฟล์นักศึกษา","ข้อมูลการศึกษาแก้โดย Admin เท่านั้น","violet")}</div></section>`;
+}
+async function renderWorkAdminHub(){
+  setTitle("งาน คะแนน และรายงาน");
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK • GRADE • REPORT FLOW</span><h1>📝 งาน คะแนน และรายงาน</h1><p>ตรวจ Submission ให้คะแนน จัดสิทธิ์ส่งเพิ่ม และสรุปผลจากข้อมูลจริง</p></div></div><div class="v1610-flow-grid">${hubCard("grading","📝","ตรวจงาน","Submission • Answer • Files • Rubric • Grade","violet")}${hubCard("overrides","⏳","สิทธิ์ส่งเพิ่ม","ขยายเวลา • ส่งซ้ำ • Extra Attempts","orange")}${hubCard("courses","📊","Gradebook รายวิชา","เข้า Course → สรุปคะแนน 40/20/20/20","cyan")}${hubCard("reports","📤","รายงาน / Export","Submission • คะแนน • CSV/Excel","green")}</div></section>`;
+}
+async function renderAttendanceHub(){
+  setTitle("เช็คชื่อและห้องเรียน");
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">ATTENDANCE FLOW</span><h1>📷 เช็คชื่อและห้องเรียน</h1><p>QR • Session 15 นาที • Late/Absent/Excused • หัวหน้าห้อง • Realtime Presence</p></div></div><div class="v1610-flow-grid">${hubCard("attendance","📷","Attendance","เปิด Session • Scan QR • สรุปยอด","orange")}${hubCard("presence","📡","สถานะออนไลน์","ดู Online/Away/Offline แบบ Realtime","cyan")}${hubCard("students","👨‍🎓","หัวหน้าห้อง / สมาชิก","จัดสิทธิ์นักศึกษาและสมาชิกห้อง","green")}${hubCard("courses","🏫","กลับรายวิชา","เลือกวิชาสำหรับงานเช็คชื่อ","slate")}</div></section>`;
+}
+async function renderAcademicHub(){
+  setTitle("ปีการศึกษาและระบบ");
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">ACADEMIC & SYSTEM FLOW</span><h1>⚙️ ปีการศึกษาและระบบ</h1><p>Promotion, Academic History, Audit และ System Health รวมในจุดเดียว</p></div></div><div class="v1610-flow-grid">${hubCard("promotion","📈","เลื่อนชั้น / ปีการศึกษา","Prepare → Review → Approve → Apply","green")}${hubCard("audit","🧾","Audit Log","ตรวจประวัติการดำเนินการสำคัญ","violet")}${hubCard("system","🩺","System Health / Settings","ตรวจ Backend, RLS, Storage, Registration","cyan")}${hubCard("reports","📊","รายงานสรุป","Export ข้อมูลเพื่อปิดภาคเรียน","orange")}</div></section>`;
 }
 function courseEnrollmentState(enroll){return enroll?.status||"none"}
 function courseStatusLabel(st){return st==="approved"?"กำลังเรียน":st==="pending"?"รออนุมัติ":st==="rejected"?"เคยไม่อนุมัติ":st==="withdrawn"?"ถอนแล้ว":"เปิดรับสมัคร"}
 async function renderCourseRegistrationHome(){
-  setTitle("ลงทะเบียนเรียน");busy("กำลังโหลดรายวิชาที่เปิดรับ...");
+  setTitle("รายวิชาทั้งหมด");busy("กำลังโหลดรายวิชาทั้งหมด...");
   const c=client(),p=await getProfile();
   const [subjects,enrolls,works]=await Promise.all([allSubjects(),enrollmentRowsMine(),studentWorkRows().catch(()=>[])]);
   const em=new Map(enrolls.map(x=>[x.subject_id,x])),approved=enrolls.filter(x=>x.status==="approved").length;
   content().innerHTML=`<section class="v14-page v165-enrollment-home">
-    <div class="v165-course-home-head"><div><span class="v14-kicker">COURSE REGISTRATION</span><h1>เลือกลงทะเบียนเรียน</h1><p>สวัสดี ${esc(p?.full_name||"")} • เลือกรายวิชาแล้วกรอกรหัสเข้าห้องที่ได้รับจาก Admin</p></div><div class="v165-my-course-count"><b>${approved}</b><span>วิชาที่กำลังเรียน</span></div></div>
+    <div class="v165-course-home-head"><div><span class="v14-kicker">COURSE REGISTRATION</span><h1>รายวิชาเรียนทั้งหมด</h1><p>สวัสดี ${esc(p?.full_name||"")} • เลือกรายวิชาแล้วกรอกรหัสเข้าห้องที่ได้รับจาก Admin</p></div><div class="v165-my-course-count"><b>${approved}</b><span>วิชาที่กำลังเรียน</span></div></div>
     <div class="card v165-course-search"><input id="v165-course-q" class="input" placeholder="🔎 ค้นหารหัสวิชา / ชื่อวิชา"><div class="v165-course-tabs"><button class="active" data-v165-course-filter="all">ทั้งหมด</button><button data-v165-course-filter="available">เปิดรับสมัคร</button><button data-v165-course-filter="approved">กำลังเรียน</button><button data-v165-course-filter="pending">รออนุมัติ</button></div></div>
     <div class="v165-course-gallery" id="v165-course-gallery">${subjects.map((s,i)=>{const e=em.get(s.id),st=courseEnrollmentState(e),cw=works.filter(x=>x.w?.subject_id===s.id),done=cw.filter(x=>["sent","late","graded"].includes(x.status?.key)).length,total=cw.length;return `<article class="v165-course-tile" data-v165-course-card data-search="${esc(`${s.code} ${s.name}`.toLowerCase())}" data-status="${esc(st)}"><div class="v165-course-cover" style="--course:${esc(s.color_hex||["#79a8c7","#7aa895","#a48db3","#b49c72"][i%4])}"><span>📘</span><small>${esc(s.code)}</small></div><div class="v165-course-body"><div class="v165-course-badges"><span>${courseStatusLabel(st)}</span>${s.semester?`<span>ภาค ${esc(s.semester)}</span>`:""}</div><h3>${esc(s.name)}</h3><p>${esc(s.description||`ปีการศึกษา ${s.academic_year||"-"}`)}</p>${st==="approved"?`<div class="v165-progress-note">งานที่ดำเนินการ ${done}/${total}</div>`:""}<div class="v165-course-actions">${st==="approved"?`<button class="btn primary" data-v14-open-course="${s.id}">เข้าเรียน</button>`:`<button class="btn primary" data-v165-join-course="${s.id}" data-course-code="${esc(s.code)}" data-course-name="${esc(s.name)}">ใส่รหัสเข้าร่วม</button>`}</div></div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีรายวิชาที่เปิดรับ</div>`}</div>
     <div class="v165-enroll-help"><span>🔐</span><div><b>รหัสเข้าห้องเรียนรับจาก Admin/ครูผู้สอน</b><p>เมื่อกรอกรหัสถูกต้อง ระบบจะเพิ่มคุณเป็นสมาชิกห้องเรียนรายวิชานั้นทันที และรับใบงานที่เผยแพร่แล้วโดยอัตโนมัติ</p></div></div>
@@ -447,7 +434,7 @@ async function renderAdminCourses(){
 function wsSeq(w){const m=String(w.reference_code||"").match(/-([PD]\d{2})$/);return m?Number(m[1].slice(1)):Number(w.settings?.lesson_sequence||0)||0}
 function wsCode(w){const m=String(w.reference_code||"").match(/-([PD]\d{2})$/);return m?m[1]:(w.mode==="paper"?"P":"D")}
 function subjectRoomName(s){return `${s?.code||""} ${s?.name||""}`.trim()}
-function openSubjectExam(subjectId){window.open(`./exam.html?subject=${encodeURIComponent(subjectId||"")}&from=room`,"_blank","noopener")}
+function openSubjectExam(subjectId){window.DOCNR_BASE?.navigate?.("exam",subjectId||null)}
 async function renderAdminSubject(sid){
   state.subjectId=sid;state.route="courses";heartbeat();setTitle("ห้องเรียนรายวิชา");busy("กำลังเปิดห้องเรียนและชุดใบงาน...");const c=client();
   const [sr,wr,fr,er,xr]=await Promise.all([
@@ -458,7 +445,7 @@ async function renderAdminSubject(sid){
     c.from("exams").select("id,title,status,open_at,due_at").eq("subject_id",sid).order("created_at",{ascending:false})
   ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error)throw fr.error;if(er.error)throw er.error;
   const s=sr.data,allWorks=wr.data||[],ready=allWorks.filter(w=>w.settings?.template_ready===true),files=fr.data||[],approved=(er.data||[]).filter(e=>e.status==="approved"),pending=(er.data||[]).filter(e=>e.status==="pending"),exams=xr.data||[];const joinCodeR=await c.rpc("admin_subject_join_code",{p_subject_id:sid,p_new_code:null});const joinCode=joinCodeR.data?.join_code||"------";
-  const renderGroup=(mode,label)=>{const list=ready.filter(w=>w.mode===mode).sort((a,b)=>wsSeq(a)-wsSeq(b));return `<section class="v14-ws-section"><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} ใบ • ใบงานสำเร็จรูปของห้องนี้ ใช้เลือกและกำหนดปล่อยงานได้ทันที</p></div><button class="btn sm" data-v14-select-mode="${mode}">เลือกทั้งหมด</button></div><div class="v14-bundle-list">${list.map(w=>{const fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-bundle" style="--course:${esc(s.color_hex||"#22d3ee")}"><label class="v14-select"><input type="checkbox" data-v14-wselect value="${w.id}"><span>${esc(wsCode(w))}</span></label><div class="v14-bundle-main"><div class="v14-badges"><span>${mode==="paper"?"ใบงานกระดาษ":"ใบงานดิจิทัล"}</span><span class="${w.status}">${w.status==="published"?"เผยแพร่แล้ว":"พร้อมกำหนดใช้"}</span></div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">${w.open_at?`เปิด ${fmt(w.open_at)}`:"ยังไม่กำหนดเวลา"}${w.due_at?` • ส่ง ${fmt(w.due_at)}`:""}</div><div class="v14-actions"><button class="btn sm" data-v14-preview="${w.id}">👁 ดูตัวอย่างใบงาน</button><button class="btn sm" data-v14-upload="${w.id}" data-subject="${sid}" data-seq="${wsSeq(w)}">＋ เพิ่มสไลด์/สื่อ</button></div></div><div class="v14-media-pane"><b>📊 สไลด์ / สื่อประกอบ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<div class="v14-media-empty">ยังไม่มีสื่อที่จับคู่</div>`}</div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานสำเร็จรูปประเภทนี้</div>`}</div></section>`};
+  const renderGroup=(mode,label)=>{const list=ready.filter(w=>w.mode===mode).sort((a,b)=>wsSeq(a)-wsSeq(b));return `<section class="v14-ws-section"><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} ใบ • คลังสำเร็จรูปสำหรับดูตัวอย่างและแนบสื่อ การเปิดให้นักศึกษาทำใช้แผง “ปลดล็อกการสอนทีละหน่วย” เท่านั้น</p></div></div><div class="v14-bundle-list">${list.map(w=>{const fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-bundle" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-select"><span>${esc(wsCode(w))}</span></div><div class="v14-bundle-main"><div class="v14-badges"><span>${mode==="paper"?"ใบงานกระดาษ":"ใบงานดิจิทัล"}</span><span class="${w.status}">${w.status==="published"?"เปิดสอนแล้ว":"รอปลดล็อกหน่วย"}</span></div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">${w.open_at?`เปิด ${fmt(w.open_at)}`:"ยังไม่เปิดสอน"}${w.due_at?` • ส่ง ${fmt(w.due_at)}`:""}</div><div class="v14-actions"><button class="btn sm" data-v14-preview="${w.id}">👁 ดูตัวอย่างใบงาน</button><button class="btn sm" data-v14-upload="${w.id}" data-subject="${sid}" data-seq="${wsSeq(w)}">＋ เพิ่มสไลด์/สื่อ</button></div></div><div class="v14-media-pane"><b>📊 สไลด์ / สื่อประกอบ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<div class="v14-media-empty">ยังไม่มีสื่อที่จับคู่</div>`}</div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานสำเร็จรูปประเภทนี้</div>`}</div></section>`};
   const roster=approved.sort((a,b)=>String(a.profiles?.student_code||"").localeCompare(String(b.profiles?.student_code||""))).map((e,i)=>`<tr><td>${i+1}</td><td><b>${esc(e.profiles?.student_code||"-")}</b></td><td>${esc(e.profiles?.full_name||"-")}</td><td>${esc(`${e.profiles?.grade_level||""}${e.profiles?.room_label||""}`||e.profiles?.class_name||"-")}</td><td><span class="v14-status approved">สมาชิกห้อง</span></td></tr>`).join("");
   const published=allWorks.filter(w=>w.status==="published").length;
   content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนรายวิชา</button>
@@ -475,7 +462,7 @@ async function renderAdminSubject(sid){
   <section id="v15-room-roster" class="card v15-room-roster"><div class="v14-section-head compact"><div><h2>👥 นักศึกษาในห้องเรียน</h2><p>สมาชิกห้อง = นักศึกษาที่ Admin อนุมัติให้เรียนรายวิชานี้</p></div><button class="btn sm" data-v14-route="enrollments">จัดการคำขอลงทะเบียน</button></div>
     <div class="table-wrap"><table><thead><tr><th>#</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ระดับ/ห้อง</th><th>สถานะ</th></tr></thead><tbody>${roster||`<tr><td colspan="5" class="empty">ยังไม่มีนักศึกษาที่ได้รับอนุมัติเข้าห้องนี้</td></tr>`}</tbody></table></div>
   </section>
-  <div class="card v14-releasebar" id="v15-room-ready"><div><b>📚 ใบงานสำเร็จรูปประจำห้องเรียน</b><div class="muted">เลือกใบงานจากห้องนี้ได้หลายใบ แล้วกำหนดวัน/เวลาเพื่อแจกให้นักศึกษาสมาชิกห้อง ${approved.length} คนพร้อมกัน</div></div><button class="btn primary" id="v14-bulk-release">🚀 ปล่อยใบงานที่เลือก</button></div>
+  <div class="card v14-releasebar" id="v15-room-ready"><div><b>📚 คลังใบงานสำเร็จรูปประจำห้องเรียน</b><div class="muted">ดูตัวอย่างและแนบสื่อได้ที่นี่ • การแจกงานให้นักศึกษา ${approved.length} คนใช้การปลดล็อกทีละหน่วยด้านบนเท่านั้น เพื่อกันทำงานล่วงหน้า</div></div></div>
   ${renderGroup("paper","🖨️ ใบงานสำหรับพิมพ์ P01–P05")}
   ${renderGroup("digital","💻 ใบงานอิเล็กทรอนิกส์ D01–D13")}
   <section class="v16-room-tools">
@@ -493,12 +480,6 @@ async function previewWorksheet(id){
   overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">DIGITAL PREVIEW</span><h2>${esc(w.title)}</h2><p>${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")} • ${max} คะแนน</p></div><button class="btn" data-v14-close>ปิด</button></div><div class="v14-preview">${qs.map((q,i)=>`<div class="v14-question"><b>${i+1}. ${esc(q.text||q.prompt||"")}</b><small>${Number(q.points||0)} คะแนน</small>${Array.isArray(q.choices||q.options)?`<div>${(q.choices||q.options).map(o=>`<label><input type="radio" disabled> ${esc(typeof o==="object"?(o.label||o.text||o.value):o)}</label>`).join("")}</div>`:`<textarea disabled placeholder="พื้นที่คำตอบของนักศึกษา"></textarea>`}</div>`).join("")||`<div class="v14-empty">ยังไม่มีคำถาม</div>`}</div>`,true);
 }
 function localInputValue(d){const x=d?new Date(d):new Date();return new Date(x.getTime()-x.getTimezoneOffset()*60000).toISOString().slice(0,16)}
-async function releaseSelected(sid){
-  const ids=$$('[data-v14-wselect]:checked').map(x=>x.value);if(!ids.length){toast("กรุณาติ๊กเลือกใบงานอย่างน้อย 1 ใบ",true);return}
-  const start=new Date(nowMs()),due=new Date(nowMs()+7*86400000);
-  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">BULK RELEASE</span><h2>ปล่อยใบงาน ${ids.length} ใบพร้อมกัน</h2><p>ผู้เรียนที่ได้รับอนุมัติในรายวิชาจะได้รับทุกใบที่เลือก</p></div><button class="btn" data-v14-close>✕</button></div><form id="v14-release-form"><div class="v14-form-grid"><label>วัน/เวลาเปิด<input class="input" name="open" type="datetime-local" value="${localInputValue(start)}" required></label><label>กำหนดส่ง<input class="input" name="due" type="datetime-local" value="${localInputValue(due)}" required></label><label>จำนวนครั้ง<input class="input" name="attempts" type="number" min="1" max="20" value="1" required></label></div><div class="v14-checks"><label><input name="late" type="checkbox"> อนุญาตส่งช้า</label><label><input name="resubmit" type="checkbox"> อนุญาตส่งซ้ำ</label></div><div class="alert">เลือกไว้ <b>${ids.length}</b> ใบ • การปล่อยงานจะบันทึก Audit Log</div><div class="row end"><button type="button" class="btn" data-v14-close>ยกเลิก</button><button class="btn primary">ยืนยันปล่อยงาน</button></div></form>`);
-  $("#v14-release-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),open=new Date(String(f.get("open"))),dueAt=new Date(String(f.get("due")));if(!(dueAt>open)){toast("กำหนดส่งต้องอยู่หลังเวลาเปิด",true);return}const btn=e.submitter;btn.disabled=true;btn.textContent="กำลังปล่อยงาน...";const {data,error}=await client().rpc("publish_subject_worksheets",{p_subject_id:sid,p_worksheet_ids:ids,p_open_at:open.toISOString(),p_due_at:dueAt.toISOString(),p_allow_late:f.get("late")==="on",p_allow_resubmit:f.get("resubmit")==="on",p_max_attempts:Number(f.get("attempts")||1)});if(error){btn.disabled=false;btn.textContent="ยืนยันปล่อยงาน";toast(errorText(error),true);return}closeOverlay();toast(`ปล่อย ${data?.worksheet_count||ids.length} ใบ ให้ผู้เรียน ${data?.approved_learners??0} คนแล้ว`);renderAdminSubject(sid)};
-}
 async function uploadSubjectFile(subjectId,worksheetId,seq){
   const input=document.createElement("input");input.type="file";input.accept=".ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.mp4";input.multiple=true;
   input.onchange=async()=>{for(const file of [...input.files]){if(file.size>50*1024*1024){toast(`${file.name} เกิน 50MB`,true);continue}const path=`${subjectId}/${worksheetId}/${Date.now()}-${safeName(file.name)}`;const c=client();const up=await c.storage.from("subject-files").upload(path,file,{upsert:false,contentType:file.type||undefined});if(up.error){toast(errorText(up.error),true);continue}const ins=await c.from("subject_files").insert({subject_id:subjectId,worksheet_id:worksheetId,resource_kind:"slide",sequence_no:Number(seq)||null,storage_path:path,original_name:file.name,mime_type:file.type||null,size_bytes:file.size,created_by:uid()});if(ins.error){await c.storage.from("subject-files").remove([path]);toast(errorText(ins.error),true);continue}toast(`อัปโหลด ${file.name} แล้ว`)}renderAdminSubject(subjectId)};input.click();
@@ -1028,8 +1009,8 @@ async function openPaperScanCopy(path){
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,a");if(!t)return;
   if(t.matches("[data-v16-base-route]")){const r=t.dataset.v16BaseRoute;clearPresenceChannel();clearRoomChannel();state.route=`base:${r}`;state.subjectId=null;heartbeat();if(window.DOCNR_BASE?.navigate){window.DOCNR_BASE.navigate(r)}else toast("Router หลักยังโหลดไม่เสร็จ กรุณาลองใหม่",true);return}
-  if(t.matches("[data-v1610-flow]")){const p=await getProfile();openDashboardFlow(t.dataset.v1610Flow,p?.role||"user");return}
-  if(t.matches("[data-v1610-action]")){const action=t.dataset.v1610Action;closeOverlay();if(action.startsWith("custom:")){navigate(action.slice(7));return}if(action.startsWith("base:")){const r=action.slice(5);clearPresenceChannel();clearRoomChannel();state.route=`base:${r}`;state.subjectId=null;heartbeat();if(window.DOCNR_BASE?.navigate)window.DOCNR_BASE.navigate(r);else toast("Router หลักยังโหลดไม่เสร็จ",true);return}}
+  if(t.matches("[data-v1610-flow]")){e.preventDefault();return}
+  if(t.matches("[data-v1610-action]")){const action=t.dataset.v1610Action;closeOverlay();if(action.startsWith("custom:")){window.DOCNR_BASE?.navigate?.(action.slice(7));return}if(action.startsWith("base:")){const r=action.slice(5);clearPresenceChannel();clearRoomChannel();state.route=`base:${r}`;state.subjectId=null;heartbeat();if(window.DOCNR_BASE?.navigate)window.DOCNR_BASE.navigate(r);else toast("Router หลักยังโหลดไม่เสร็จ",true);return}}
   if(t.matches("[data-v161-notification]")){client().rpc("mark_notification_read",{p_notification_id:t.dataset.v161Notification});return}
   if(t.matches("[data-v15-account]")){await decideAccount(t.dataset.v15Account,t.dataset.accountStatus);return}
   if(t.matches("[data-v165-join-course]")){showJoinCourseDialog(t.dataset.v165JoinCourse,t.dataset.courseCode||"",t.dataset.courseName||"");return}
@@ -1038,8 +1019,8 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v14-request-course]")){const r=await client().rpc("request_subject_enrollment",{p_subject_id:t.dataset.v14RequestCourse});if(r.error)toast(errorText(r.error),true);else{toast("ส่งคำขอลงทะเบียนแล้ว");renderEnrollSubjects()}return}
   if(t.matches("[data-v14-withdraw-course]")){if(!ask("ยืนยันถอนคำขอ/ถอนรายวิชานี้? ประวัติงานที่ส่งแล้วจะยังคงอยู่"))return;const r=await client().rpc("withdraw_subject_enrollment",{p_subject_id:t.dataset.v14WithdrawCourse});if(r.error)toast(errorText(r.error),true);else{toast("ถอนรายวิชาแล้ว");renderEnrollSubjects()}return}
   if(t.matches("[data-v14-decide-enroll]")){const st=t.dataset.status;if(!ask(st==="approved"?"อนุมัติให้นักศึกษาคนนี้เรียนรายวิชานี้?":"ไม่อนุมัติคำขอนี้?"))return;const r=await client().rpc("decide_subject_enrollment",{p_enrollment_id:t.dataset.v14DecideEnroll,p_status:st,p_note:null});if(r.error)toast(errorText(r.error),true);else{toast(st==="approved"?"อนุมัติแล้ว":"บันทึกไม่อนุมัติแล้ว");renderEnrollmentAdmin()}return}
-  if(t.matches("[data-v14-admin-course]")){navigate("courses",t.dataset.v14AdminCourse);return}
-  if(t.matches("[data-v14-open-course]")){navigate("courses",t.dataset.v14OpenCourse);return}
+  if(t.matches("[data-v14-admin-course]")){window.DOCNR_BASE?.navigate?.("courses",t.dataset.v14AdminCourse);return}
+  if(t.matches("[data-v14-open-course]")){window.DOCNR_BASE?.navigate?.("courses",t.dataset.v14OpenCourse);return}
   if(t.matches("[data-v14-preview]")){previewWorksheet(t.dataset.v14Preview);return}
   if(t.matches("[data-v14-upload]")){uploadSubjectFile(t.dataset.subject,t.dataset.v14Upload,t.dataset.seq);return}
   if(t.matches("[data-v14-file]")){openSubjectFile(t.dataset.v14File);return}
@@ -1049,8 +1030,6 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v16-view-scan]")){openPaperScanCopy(t.dataset.v16ViewScan);return}
   if(t.matches("[data-v15-jump]")){document.querySelector(t.dataset.v15Jump)?.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(t.matches("[data-v14-open-work]")){if(window.DOCNR_BASE?.openWorksheet)window.DOCNR_BASE.openWorksheet(t.dataset.v14OpenWork);else toast("ตัวเปิดใบงานหลักยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
-  if(t.matches("[data-v14-select-mode]")){const mode=t.dataset.v14SelectMode;const boxes=$$(`[data-v14-wselect]`).filter(x=>x.closest(".v14-ws-section")?.querySelector(`[data-v14-select-mode="${mode}"]`));const all=boxes.every(x=>x.checked);boxes.forEach(x=>x.checked=!all);t.textContent=all?"เลือกทั้งหมด":"ยกเลิกทั้งหมด";return}
-  if(t.id==="v14-bulk-release"){releaseSelected(state.subjectId);return}
   if(t.matches("[data-v14-profile]")){showAdminProfile(t.dataset.v14Profile);return}
   if(t.matches("[data-v14-session]")){loadAttendanceRoster(t.dataset.v14Session);return}
   if(t.matches("[data-v14-leader-user]")){const active=t.dataset.active==="true",r=await client().rpc("set_classroom_leader",{p_classroom_id:t.dataset.class,p_user_id:t.dataset.v14LeaderUser,p_active:active});if(r.error)toast(errorText(r.error),true);else{toast(active?"แต่งตั้งหัวหน้าห้องแล้ว":"ยกเลิกหัวหน้าห้องแล้ว");loadLeaderRoster()}return}
@@ -1067,11 +1046,18 @@ document.addEventListener("change",async e=>{
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v16.10";
-  syncServerTime().catch(()=>{});startHeartbeat();scheduleEnsureNav();setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{})},900);
-  setTimeout(async()=>{const p=await getProfile(true);if(!p)return;if(p.role!=="admin"&&(!p.active||p.approval_status!=="approved"))return;await ensureNav();const active=$("#sidebar .nav [data-route].active");if(active?.dataset.route==="dashboard"||!active)navigate("dashboard")},700);
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v17-master-flow";
+  syncServerTime().catch(()=>{});startHeartbeat();
+  scheduleEnsureNav();
+  setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},700);
+  // app.js owns initial navigation and every subsequent route transition.
+}
+function cleanup(){
+  stopScanner();clearPresenceChannel();clearRoomChannel();clearInterval(state.attendanceTimer);
+  if(state.notificationChannel&&state.rtClient){try{state.rtClient.removeChannel(state.notificationChannel)}catch{}}
+  state.notificationChannel=null;
 }
 
-window.DOCNR_V16_6=Object.freeze({navigate,version:V15_VERSION});
-window.addEventListener("pagehide",()=>{stopScanner();clearPresenceChannel();clearRoomChannel();clearInterval(state.attendanceTimer);if(state.notificationChannel&&state.rtClient){try{state.rtClient.removeChannel(state.notificationChannel)}catch{}}});
+window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V17-MASTER-FLOW"});
+window.addEventListener("pagehide",cleanup);
 boot().catch(e=>console.error("DOC-FULL-NR V16.6 boot",e));

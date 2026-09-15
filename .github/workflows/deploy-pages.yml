@@ -33,6 +33,7 @@ jobs:
         run: |
           python tests/static_validation.py
           python tests/unified_contract.py
+          python tests/button_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js
