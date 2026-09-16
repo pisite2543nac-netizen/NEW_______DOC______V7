@@ -514,7 +514,12 @@ async function subjectDialog(id=null){
 }
 
 async function users(){
-  const [{data:items,error},{data:rooms}]=await Promise.all([sb.from("profiles").select("*").order("created_at",{ascending:false}),sb.from("classrooms").select("*").eq("active",true).order("name")]);if(error)throw error;
+  const [{data:items,error},{data:rooms},{data:leaders,error:leadersError}]=await Promise.all([
+    sb.from("profiles").select("*").order("created_at",{ascending:false}),
+    sb.from("classrooms").select("*").eq("active",true).order("name"),
+    sb.from("classroom_leaders").select("classroom_id,user_id,active").eq("active",true)
+  ]);if(error)throw error;if(leadersError)console.warn("classroom_leaders",leadersError);
+  const activeLeaders=new Map((leaders||[]).map(x=>[x.user_id,x.classroom_id]));
   const uniq=(key)=>[...new Set((items||[]).map(x=>x[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"th"));
   const opts=(key,label)=>`<option value="">${label}</option>${uniq(key).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")}`;
   $("#content").innerHTML=`<div class="section-head"><div><h1>ผู้ใช้งาน</h1><div class="muted">สร้างบัญชีและกำหนดห้องเรียน</div></div><button class="btn primary" id="createuser">+ สร้างผู้ใช้</button></div>
@@ -525,11 +530,12 @@ async function users(){
     $("#userbody").innerHTML=(items||[]).filter(x=>(!level||x.grade_level===level)&&(!room||x.room_label===room)&&(!dept||x.department===dept)&&(!major||x.major===major)&&(!status||(x.approval_status||"approved")===status)&&(!z||[x.full_name,x.display_name,x.username,x.student_code,x.phone,x.class_name,x.grade_level,x.room_label,x.department,x.major].some(v=>String(v||"").toLowerCase().includes(z)))).map(x=>`<tr>
       <td><b>${esc(x.full_name||"-")}</b><div class="smalltext muted">ชื่อเล่น: ${esc(x.display_name&&x.display_name!==x.full_name?x.display_name:"-")}</div></td><td>${esc(x.username||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td><td>${esc(x.department||"-")}<div class="smalltext muted">${esc(x.major||"")}</div></td>
       <td><span class="badge ${x.role==="admin"?"warn":""}">${esc(x.role)}</span></td><td><span class="badge ${x.approval_status==="approved"&&x.active?"green":x.approval_status==="pending"?"warn":"red"}">${x.approval_status==="approved"&&x.active?"อนุมัติแล้ว":x.approval_status==="pending"?"รออนุมัติ":x.approval_status==="rejected"?"ไม่อนุมัติ":"ระงับ"}</span></td>
-      <td><div class="row"><button class="btn sm primary" data-edit-user="${x.id}">แก้ข้อมูล</button><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.id!==uid()?`<button class="btn sm ${x.approval_status==="approved"&&x.active?"red":"green"}" data-user-toggle="${x.id}" data-status="${esc(x.approval_status||"pending")}">${x.approval_status==="approved"&&x.active?"ระงับบัญชี":"อนุมัติบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
+      <td><div class="row"><button class="btn sm primary" data-edit-user="${x.id}">แก้ข้อมูล</button><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.role!=="admin"?`<button class="btn sm class-leader-btn ${activeLeaders.has(x.id)?"is-leader":""}" data-class-leader-user="${x.id}">${activeLeaders.has(x.id)?"👑 หัวหน้าห้อง":"👑 เพิ่มสิทธิหัวหน้าห้อง"}</button>`:""}${x.id!==uid()?`<button class="btn sm ${x.approval_status==="approved"&&x.active?"red":"green"}" data-user-toggle="${x.id}" data-status="${esc(x.approval_status||"pending")}">${x.approval_status==="approved"&&x.active?"ระงับบัญชี":"อนุมัติบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
     </tr>`).join("")||`<tr><td colspan="8" class="empty">ไม่พบผู้ใช้</td></tr>`;
     $$("[data-room-user]").forEach(b=>b.onclick=()=>assignUserRoom(b.dataset.roomUser,items.find(x=>x.id===b.dataset.roomUser),rooms||[]));
     $$("[data-user-toggle]").forEach(b=>b.onclick=async()=>{const approved=b.dataset.status==="approved";const status=approved?"suspended":"approved";const reason=approved?(prompt("เหตุผลการระงับบัญชี (ไม่บังคับ)","")||null):null;const {error}=await sb.rpc("decide_account_approval",{p_user_id:b.dataset.userToggle,p_status:status,p_reason:reason});if(error)return toast(friendlyError(error),"error");toast(status==="approved"?"อนุมัติบัญชีแล้ว":"ระงับบัญชีแล้ว");users()});
     $$('[data-edit-user]').forEach(b=>b.onclick=()=>editUserDialog(items.find(x=>x.id===b.dataset.editUser)));
+    $$('[data-class-leader-user]').forEach(b=>b.onclick=()=>classLeaderDialog(b.dataset.classLeaderUser,items.find(x=>x.id===b.dataset.classLeaderUser),rooms||[],activeLeaders));
     $$('[data-reset-pass]').forEach(b=>b.onclick=async()=>{const p=prompt("กำหนดรหัสผ่านใหม่ อย่างน้อย 8 ตัว");if(!p)return;if(p.length<8)return toast("รหัสผ่านต้องอย่างน้อย 8 ตัว","error");try{await adminOp({action:"reset_password",user_id:b.dataset.resetPass,password:p});toast("ตั้งรหัสผ่านใหม่แล้ว")}catch(err){toast(friendlyError(err),"error")}});
   };
   renderRows();["#usersearch","#userlevel","#userroom","#userdept","#usermajor","#userstatus"].forEach(id=>{const el=$(id);if(el){el.oninput=renderRows;el.onchange=renderRows}});
@@ -586,6 +592,28 @@ function editUserDialog(user){
   const form=$("#eu");thaiOnlyInput(form.elements.full_name);if(isUser){thaiOnlyInput(form.elements.display_name);bindMajorToLevel(form,user.major)}
   form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form),btn=$("#eubtn");const body={action:"update_user",user_id:user.id,full_name:String(f.get("full_name")||"").trim()};if(isUser)Object.assign(body,{display_name:String(f.get("display_name")||"").trim(),birth_date:String(f.get("birth_date")||""),student_code:String(f.get("student_code")||"").trim(),grade_level:String(f.get("grade_level")||""),room_label:String(f.get("room_label")||""),department:String(f.get("department")||""),major:String(f.get("major")||""),phone:String(f.get("phone")||"").trim(),seat_number:String(f.get("seat_number")||"").trim()||null});else body.contact_email=String(f.get("contact_email")||"").trim()||null;
     btn.disabled=true;btn.textContent="กำลังบันทึก...";try{await adminOp(body);closeModal();toast("บันทึกข้อมูลผู้ใช้แล้ว");users()}catch(err){btn.disabled=false;btn.textContent="บันทึกข้อมูล";toast(friendlyError(err),"error")}};
+}
+
+
+async function classLeaderDialog(userId,user,rooms,activeLeaders){
+  if(!userId||!user||user.role==="admin")return toast("กำหนดหัวหน้าห้องได้เฉพาะบัญชีนักศึกษา","error");
+  const {data:memberships,error}=await sb.from("classroom_memberships").select("classroom_id,active,classrooms(id,name)").eq("user_id",userId).eq("active",true);
+  if(error)return toast(friendlyError(error),"error");
+  const currentRooms=(memberships||[]).filter(x=>x.classroom_id);
+  if(!currentRooms.length){
+    modal(`<div class="modal-header"><div><h3>👑 เพิ่มสิทธิหัวหน้าห้อง</h3><div class="muted">${esc(user.full_name||user.username||"")}</div></div><button class="btn sm" data-close>✕</button></div><div class="alert warn"><b>ยังไม่ได้กำหนดห้องเรียน</b><div>กรุณากด “กำหนดห้อง” ให้กับนักศึกษาคนนี้ก่อน แล้วจึงเพิ่มสิทธิหัวหน้าห้อง</div></div><div class="row end"><button class="btn primary" data-close>เข้าใจแล้ว</button></div>`);
+    return;
+  }
+  const activeClass=activeLeaders.get(userId)||"";
+  const cards=currentRooms.map(m=>{const rid=m.classroom_id,rname=m.classrooms?.name||rooms.find(r=>r.id===rid)?.name||"ห้องเรียน",isLeader=activeClass===rid;return `<div class="class-leader-option"><div><span>ห้องเรียน</span><b>${esc(rname)}</b><small>${isLeader?"สถานะปัจจุบัน: หัวหน้าห้อง":"สถานะปัจจุบัน: สมาชิกห้อง"}</small></div><button type="button" class="btn ${isLeader?"red":"primary"}" data-toggle-class-leader="${rid}" data-active="${isLeader?"false":"true"}">${isLeader?"ยกเลิกหัวหน้าห้อง":"👑 แต่งตั้งเป็นหัวหน้าห้อง"}</button></div>`}).join("");
+  modal(`<div class="modal-header"><div><h3>👑 สิทธิหัวหน้าห้อง</h3><div class="muted">${esc(user.student_code||"")} • ${esc(user.full_name||user.username||"")}</div></div><button class="btn sm" data-close>✕</button></div><div class="alert">หัวหน้าห้องเป็นสิทธิ์เสริมของนักศึกษา ไม่เปลี่ยน Role หลักจาก user และใช้สำหรับความสามารถที่ระบบอนุญาตเฉพาะหัวหน้าห้อง</div><div class="class-leader-list">${cards}</div>`);
+  $$('[data-toggle-class-leader]',$('#modalbg')).forEach(btn=>btn.onclick=async()=>{
+    const classroomId=btn.dataset.toggleClassLeader,active=btn.dataset.active==="true";
+    btn.disabled=true;btn.textContent=active?"กำลังแต่งตั้ง...":"กำลังยกเลิก...";
+    const {error}=await sb.rpc("set_classroom_leader",{p_classroom_id:classroomId,p_user_id:userId,p_active:active});
+    if(error){btn.disabled=false;toast(friendlyError(error),"error");return}
+    closeModal();toast(active?"แต่งตั้งหัวหน้าห้องแล้ว":"ยกเลิกหัวหน้าห้องแล้ว");users();
+  });
 }
 
 async function assignUserRoom(userId,user,rooms){

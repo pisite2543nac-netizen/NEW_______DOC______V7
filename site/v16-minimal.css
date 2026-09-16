@@ -373,3 +373,14 @@ html[data-theme="dark"] .v186-hero-side>div{background:#18271f}
 .v186-cell-btn:hover{transform:translateY(-1px);box-shadow:var(--v16-shadow)}
 @media(max-width:1220px){.v186-filter-grid{grid-template-columns:repeat(2,minmax(160px,1fr))}.v186-summary-shell{grid-template-columns:1fr}.v186-actions{flex-direction:column;align-items:flex-start}}
 @media(max-width:760px){.v186-hero{grid-template-columns:1fr;padding:18px}.v186-filter-head{display:grid}.v186-filter-grid{grid-template-columns:1fr}.v186-filter-grid .wide{grid-column:span 1}.v186-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}.v186-actions{padding:12px 14px}.v186-action-buttons{width:100%}.v186-action-buttons .btn{flex:1 1 220px}.v186-print-head h2{font-size:1.35rem!important}}
+
+
+/* V18.8.6 admin class leader quick action */
+.class-leader-btn{border-color:#d8c06a!important;background:#fffaf0!important;color:#8a6410!important}
+.class-leader-btn:hover{background:#fff4cc!important;border-color:#d2ae3e!important}
+.class-leader-btn.is-leader{background:#fff0b8!important;border-color:#c99d22!important;color:#6f5008!important;font-weight:800!important}
+.class-leader-list{display:grid;gap:12px;margin-top:14px}
+.class-leader-option{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid var(--v16-border);border-radius:14px;background:var(--v16-card)}
+.class-leader-option>div{display:grid;gap:4px}.class-leader-option span,.class-leader-option small{color:var(--v16-muted);font-size:.78rem}.class-leader-option b{font-size:1rem;color:var(--v16-text)}
+html[data-theme="dark"] .class-leader-btn{background:#332a12!important;color:#f3d778!important;border-color:#655323!important}html[data-theme="dark"] .class-leader-btn.is-leader{background:#493b16!important;color:#ffe496!important;border-color:#806925!important}
+@media(max-width:700px){.class-leader-option{display:grid}.class-leader-option .btn{width:100%}}
