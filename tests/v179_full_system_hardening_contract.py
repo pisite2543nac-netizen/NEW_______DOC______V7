@@ -8,15 +8,15 @@ exam=(ROOT/'site/v16-exam.js').read_text('utf-8')
 sw=(ROOT/'site/sw.js').read_text('utf-8')
 mig=(ROOT/'supabase/migrations/20260916_v17_9_full_system_transaction_integrity.sql').read_text('utf-8')
 checks={
-'release':'v17-9-system-hardened-production' in idx,
-'cache':'doc-full-nr-v17-9-system-hardened-20260916' in sw,
-'grade hardened':'admin_grade_submission_v179' in app and 'hardenedRpc' in app,
-'integrity UI':'admin_integrity_report_v179' in app and 'Data Integrity' in app,
-'exam start hardened':'start_exam_v179' in exam,
-'exam submit idempotent':'submit_exam_attempt_v179' in exam and 'p_request_key' in exam,
+'release':'v18-1-complete-learning-system-production' in idx,
+'cache':'doc-full-nr-v18-1-complete-learning-system-20260916' in sw,
+'grade hardened':'admin_grade_submission_v18' in app and 'hardenedRpc' in app,
+'integrity UI':'admin_integrity_report_v18' in app and 'Data Integrity' in app,
+'exam start hardened':'start_exam_v18' in exam,
+'exam submit idempotent':'submit_exam_attempt_v18' in exam and 'p_request_key' in exam,
 'exam grade hardened':'admin_grade_exam_attempt_v179' in mig,
 'attendance hardened':'scan_attendance_qr_v179' in plat,
-'paper scan hardened':'admin_record_paper_scan_v179' in plat,
+'paper scan hardened':'admin_record_paper_scan_page_v18' in plat and 'admin_finalize_paper_scan_packet_v18' in plat,
 'unit unlock hardened':'admin_unlock_subject_unit_v179' in course,
 'digital hard deadline UI':'หลังจากนั้นใช้ Paper ย้อนหลัง' in course and 'allow_late:false' in app,
 'admin submission popup':'submission_received' in plat,

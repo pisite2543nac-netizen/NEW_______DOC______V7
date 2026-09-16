@@ -1,6 +1,6 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { getClient } from "./v18-supabase.js";
 
-const RELEASE = "V17.9-SYSTEM-HARDENED";
+const RELEASE = "V18-COMPLETE-PRODUCTION";
 const V176_COMPAT_RELEASE="V17.6-FULL-11SUBJECTS";
 const v179Key=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const V173_COMPAT_ADMIN_SLIDE_LABEL="สไลด์สรุปพร้อมใช้";
@@ -37,13 +37,7 @@ function readSession(){
     return s?.access_token&&s?.user?.id?s:null;
   }catch{return null}
 }
-function client(){
-  const s=readSession();
-  return createClient(SUPABASE_URL,SUPABASE_KEY,{
-    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
-    global:{headers:s?.access_token?{Authorization:`Bearer ${s.access_token}`}:{}}
-  });
-}
+function client(){return getClient()}
 function flash(message,bad=false){
   let e=$("#v168-flash");
   if(!e){e=document.createElement("div");e.id="v168-flash";document.body.appendChild(e)}

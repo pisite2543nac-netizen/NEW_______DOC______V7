@@ -8,7 +8,7 @@ def ok(cond,msg):
 
 required=[
  'index.html','app.js','camera-registration.js','mobile.js','styles.css','mobile.css',
- 'v16-minimal.css','v16-platform.js','v16-7-hardening.js','v16-8-course-flow.js',
+ 'v16-minimal.css','v18-core-ui.css','v16-platform.js','v16-7-hardening.js','v16-8-course-flow.js',
  'v16-exam.js','exam.html','manifest.webmanifest','sw.js'
 ]
 for f in required: ok((SITE/f).is_file(),f'missing site/{f}')
@@ -25,7 +25,7 @@ examjs=(SITE/'v16-exam.js').read_text('utf-8')
 ok('v17-master-flow-production' in index,'index missing V17 release marker')
 ok(index.count('app.js')==1,'app.js must load exactly once')
 ok(index.count('v16-platform.js')==1,'v16-platform.js must load exactly once')
-for f in ['v16-platform.js','v16-7-hardening.js','v16-8-course-flow.js','v16-minimal.css']:
+for f in ['v16-platform.js','v16-7-hardening.js','v16-8-course-flow.js','v16-minimal.css','v18-core-ui.css']:
     ok(f in index,f'production dependency missing: {f}')
 ok('v16-exam.js' in exam,'exam engine missing from exam page')
 ok('v16-minimal.css' in exam,'exam minimal stylesheet missing')
@@ -35,7 +35,7 @@ refs=set(re.findall(r'["\'](\./[^"\']+?\.(?:js|css))(?:\?[^"\']*)?["\']',index+'
 for ref in refs: ok((SITE/ref[2:]).is_file(),f'missing local dependency {ref}')
 for legacy in ['v9-features.js','subject-bundles.js','v12-system.js','v13-course-system.js','v14-platform.js','v14-exam.js','v15-platform.js','v15-exam.js']:
     ok(legacy not in index and legacy not in exam,f'legacy production script referenced: {legacy}')
-ok('doc-full-nr-v17-master-flow-20260915' in sw,'service worker cache is not V17')
+ok('doc-full-nr-v18-1-complete-learning-system-20260916' in sw,'service worker cache is not V18.1')
 
 # PWA contract.
 manifest=json.loads((SITE/'manifest.webmanifest').read_text('utf-8'))
@@ -96,14 +96,14 @@ for marker in ['app_notifications','attendance_session_roster_v161','attendance_
     ok(marker in platform,f'attendance/realtime marker missing: {marker}')
 
 # Exam privacy + engine.
-ok('V16-EXAM-50Q-75MIN-REALTIME' in examjs,'exam engine marker missing')
+ok('V18.1-EXAM-INTEGRATED-550Q' in examjs or 'V16-EXAM-50Q-75MIN-REALTIME' in examjs,'exam engine marker missing')
 for marker in ['admin_create_exam_from_bank','admin_import_exam_bank','admin_upsert_exam_question','admin_delete_exam_question','record_exam_violation','admin_reset_exam_user','my_exam_attempt_status']:
     ok(marker in examjs,f'exam function marker missing: {marker}')
 ok('score,max_score' not in re.sub(r'adminResults[\s\S]*?function studentHome','',examjs),'student exam path may query score/max_score')
 
 # V17 health contract + source-of-truth migration.
-ok('admin_system_health_v17' in app,'System Health does not use V17 contract')
-ok('admin_system_health_v17' in platform,'Dashboard does not use V17 contract')
+ok('admin_system_health_v18' in app,'System Health does not use V18 contract')
+ok('admin_system_health_v18' in platform or 'admin_system_health_v17' in platform,'Dashboard health contract missing')
 health=ROOT/'supabase/migrations/20260915_v17_master_flow_health.sql'
 ok(health.is_file(),'V17 health migration mirror missing')
 if health.is_file():

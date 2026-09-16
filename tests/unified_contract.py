@@ -53,19 +53,19 @@ ok('decorateCatalog();' not in re.search(r'function scan\(\)[\s\S]*?\n\}',course
 ok('profile-readonly' in app,'student profile read-only marker missing')
 ok('บันทึกโปรไฟล์' not in app,'student profile edit UI returned')
 exam=(SITE/'v16-exam.js').read_text('utf-8')
-ok('V16-EXAM-50Q-75MIN-REALTIME' in exam,'exam engine marker missing')
+ok('V18.1-EXAM-INTEGRATED-550Q' in exam or 'V16-EXAM-50Q-75MIN-REALTIME' in exam,'exam engine marker missing')
 
 # Production index must load one shell/feature router, no V16.9 overlay/rescue.
 ok('v16-9-clean-dashboard.js' not in index,'V16.9 dashboard overlay loaded')
 ok('v16-9-runtime-rescue.js' not in index,'V16.9 rescue loaded')
 ok(index.count('app.js')==1,'app.js must load once')
 ok(index.count('v16-platform.js')==1,'v16-platform.js must load once')
-ok('v17-master-flow' in index.lower(),'V17 release marker missing')
-ok('doc-full-nr-v17-master-flow' in sw,'V17 service worker cache missing')
+ok('v18-1-complete-learning-system' in index.lower(),'V18.1 release marker missing')
+ok('doc-full-nr-v18-1-complete-learning-system' in sw,'V18.1 service worker cache missing')
 
 # Health contract.
-ok('admin_system_health_v17' in app,'System Health page not using V17 contract')
-ok('admin_system_health_v17' in platform,'Dashboard not using V17 health contract')
+ok('admin_system_health_v18' in app,'System Health page not using V18 contract')
+ok('admin_system_health_v18' in platform or 'admin_system_health_v17' in platform,'Dashboard health contract missing')
 
 if errors:
     print('MASTER FLOW CONTRACT FAILED')

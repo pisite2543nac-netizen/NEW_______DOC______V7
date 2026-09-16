@@ -1,3 +1,5 @@
+// compatibility marker: doc-full-nr-v18-1-complete-learning-system-20260916
+// compatibility marker: doc-full-nr-v18-2-complete-system-final-20260916
 // compatibility marker: doc-full-nr-v17-8-full-notifications-20260915
 // compatibility marker: doc-full-nr-v17-7-classroom-hardened-20260915
 // compatibility marker: doc-full-nr-v17-6-1-icon-refresh-20260915
@@ -10,14 +12,14 @@
 // compatibility marker: doc-full-nr-v17-2-college-branding-20260915
 // DOC-FULL-NR V17.3 FULL SYSTEM cache
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v17-9-system-hardened-20260916";
+const CACHE="doc-full-nr-v18-2-complete-system-final-20260916";
 const SHELL=[
   "./","./index.html","./exam.html",
-  "./styles.css?v=20260915-v17-6","./mobile.css?v=20260915-v17-6","./v16-minimal.css?v=20260915-v17-3",
-  "./v16-7-hardening.css?v=20260915-v17-3","./v16-8-course-flow.css?v=20260915-v17-6",
-  "./camera-registration.js?v=20260915-v17-3","./app.js?v=20260916-v17-9","./mobile.js?v=20260915-v17-3","./v16-platform.js?v=20260916-v17-9",
-  "./v16-7-hardening.js?v=20260915-v17-6","./v16-8-course-flow.js?v=20260916-v17-9","./v16-exam.js?v=20260916-v17-9",
-  "./manifest.webmanifest?v=20260915-v17-3",
+  "./styles.css?v=20260916-v18-2","./mobile.css?v=20260916-v18-2","./v18-core-ui.css?v=20260916-v18-2","./v16-minimal.css?v=20260916-v18-2",
+  "./v16-7-hardening.css?v=20260916-v18-2","./v16-8-course-flow.css?v=20260916-v18-2",
+  "./camera-registration.js?v=20260916-v18-2","./app.js?v=20260916-v18-2","./mobile.js?v=20260916-v18-2","./v16-platform.js?v=20260916-v18-2",
+  "./v16-7-hardening.js?v=20260916-v18-2","./v16-8-course-flow.js?v=20260916-v18-2","./v16-exam.js?v=20260916-v18-2",
+  "./manifest.webmanifest?v=20260916-v18-2","./data/exam-question-bank-v18.json","./data/exam-question-bank-manifest-v18.json",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png",
   "./favicon-v1761.ico","./favicon.ico","./icons/nangrong-favicon-16-v1761.png","./icons/nangrong-favicon-32-v1761.png","./icons/nangrong-favicon-48-v1761.png","./icons/nangrong-app-180-v1761.png","./icons/nangrong-app-192-v1761.png","./icons/nangrong-app-512-v1761.png","./icons/nangrong-maskable-512-v1761.png"
 ];

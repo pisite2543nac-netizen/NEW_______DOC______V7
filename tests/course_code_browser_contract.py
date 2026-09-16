@@ -11,6 +11,7 @@ chromium=shutil.which('chromium') or shutil.which('chromium-browser') or shutil.
 if not chromium:
     print('COURSE CODE BROWSER CONTRACT SKIP: Chromium not installed');sys.exit(0)
 platform=(ROOT/'site/v16-platform.js').read_text('utf-8')
+platform=platform.replace('import { getClient } from "./v18-supabase.js";','const getClient = ()=>globalThis.__createClient();')
 platform=platform.replace('import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";','const createClient = globalThis.__createClient;')
 platform=re.sub(r'function readSession\(\)\{[\s\S]*?\n\}', 'function readSession(){ return globalThis.__testSession; }', platform, count=1)
 base_html='''<!doctype html><html><body><div id="app"><div class="app"><aside id="sidebar"><div class="brand"><div class="smalltext"></div></div><nav class="nav"></nav></aside><main><header class="topbar"><div class="row"><b id="pagetitle"></b></div><div class="row"></div></header><section id="content"></section></main></div></div></body></html>'''
@@ -36,7 +37,7 @@ def setup(page,profile):
         return {from:(t)=>chain(t),rpc:async(name,args)=>{
           if(name==='server_now')return {data:new Date().toISOString(),error:null};
           if(name==='admin_subject_join_code_registry')return {data:registry,error:null};
-          if(name==='join_subject_with_code')return {data:{ok:true,status:'approved',subject_id:args.p_subject_id,subject_code:'20001-1001',subject_name:'สุขภาพความปลอดภัยและสิ่งแวดล้อม'},error:null};
+          if(name==='join_subject_with_code_v18')return {data:{ok:true,status:'approved',subject_id:args.p_subject_id,subject_code:'20001-1001',subject_name:'สุขภาพความปลอดภัยและสิ่งแวดล้อม'},error:null};
           if(name==='my_leader_classrooms')return {data:[],error:null};
           return {data:null,error:null};
         },realtime:{setAuth:async()=>true},channel:()=>({on(){return this},subscribe(){return this}}),removeChannel:()=>true,storage:{from:()=>({createSignedUrl:async()=>({data:{signedUrl:'about:blank'},error:null})})}};

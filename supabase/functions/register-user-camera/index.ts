@@ -22,6 +22,11 @@ Deno.serve(async(req:Request)=>{
     const studentCode=String(body.student_code||body.username||'').trim(),username=studentCode,password=String(body.password||''),fullName=String(body.full_name||'').trim(),nickname=String(body.nickname||'').trim(),birthDate=String(body.birth_date||'').trim();
     const registrationCode=String(body.registration_code||'').trim(),gradeLevel=String(body.grade_level||'').trim(),roomLabel=String(body.room_label||'').trim(),department=String(body.department||'').trim(),major=String(body.major||'').trim();
     const phone=normalizePhone(body.phone),photoSource=String(body.profile_photo_source||''),photo=decodeJpeg(body.profile_photo_jpeg),contact=null;
+    const forwarded=(req.headers.get('x-forwarded-for')||req.headers.get('cf-connecting-ip')||'unknown').split(',')[0].trim();
+    const fingerprint=await sha256(`${forwarded}|${req.headers.get('user-agent')||'unknown'}|${studentCode||'unknown'}`);
+    const rate=await svc.rpc('registration_rate_check_v18',{p_fingerprint:fingerprint,p_success:false});
+    if(rate.error)return json({error:'REGISTRATION_RATE_CHECK_FAILED'},500);
+    if(rate.data?.blocked===true)return json({error:'REGISTRATION_RATE_LIMITED',retry_after_seconds:Number(rate.data.retry_after_seconds||1800)},429);
     if(!/^\d{1,15}$/.test(studentCode)||password.length<8||!fullName||!nickname||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!MAJORS.has(major))return json({error:'INVALID_REGISTRATION_DATA'},400);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)||new Date(birthDate+'T00:00:00Z').getTime()>Date.now())return json({error:'INVALID_BIRTH_DATE'},400);
     if(!thaiText(fullName,160)||!thaiText(nickname,40))return json({error:'REGISTRATION_THAI_ONLY'},400);
@@ -46,6 +51,7 @@ Deno.serve(async(req:Request)=>{
     if(!roomId){const ins=await svc.from('classrooms').insert({name:className,level:gradeLevel,academic_year:academicYear,semester,active:true,description:'สร้างอัตโนมัติจากการลงทะเบียนนักศึกษา'}).select('id').single();if(ins.error){const retry=await svc.from('classrooms').select('id').eq('name',className).eq('academic_year',academicYear).eq('semester',semester).maybeSingle();roomId=retry.data?.id||null}else roomId=ins.data?.id||null}
     if(roomId){const mr=await svc.from('classroom_memberships').upsert({classroom_id:roomId,user_id:id,active:true},{onConflict:'classroom_id,user_id'});if(mr.error){await svc.storage.from('avatars').remove([avatarPath]);await svc.auth.admin.deleteUser(id);return json({error:'CLASSROOM_MEMBERSHIP_FAILED'},500)}}
     await svc.from('audit_logs').insert({actor_id:null,action:'REGISTER_USER',entity_type:'profile',entity_id:id,metadata:{self_registration:true,approval_status:'pending',student_code:studentCode,nickname,birth_date:birthDate,grade_level:gradeLevel,room_label:roomLabel,department,major,phone_provided:!!phone,phone_verified:false,profile_photo:'camera_live',avatar_path:avatarPath,classroom_id:roomId,academic_year:academicYear,semester}});
+    await svc.rpc('registration_rate_check_v18',{p_fingerprint:fingerprint,p_success:true});
     return json({ok:true,username:studentCode,nickname,birth_date:birthDate,approval_status:'pending',avatar_path:avatarPath,phone,phone_verified:false,classroom_id:roomId,academic_year:academicYear,semester});
   }catch(e){return json({error:e instanceof Error?e.message:'Server error'},500)}
 });

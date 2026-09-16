@@ -232,3 +232,17 @@ table{background:#fff!important}thead th{background:#f8fafc!important;color:#475
 /* V17.3 real-use course / paper controls */
 .v168-admin-unit .v173-unit-actions{display:flex;flex-wrap:wrap;gap:8px}.v168-admin-unit .v173-unit-work-list{display:grid;gap:8px}
 @media(max-width:780px){.v165-room-code{align-items:stretch}.v165-room-code>.row{width:100%}.v165-room-code>.row .btn{flex:1}}
+
+
+/* V18.1 core component completion */
+.v14-overlay{background:rgba(15,23,42,.48)!important;backdrop-filter:blur(5px)!important}
+.v14-modal{background:#fff!important;color:#2B3947!important;border:1px solid #DFE6EA!important;box-shadow:0 24px 70px rgba(15,23,42,.22)!important}
+.v14-modal-head p,.v14-profile-card small,.v14-info-grid span,.v14-info-grid small,.v14-simple-list span{color:#71808E!important}
+.v14-profile-card{background:#FBFCFD!important;color:#2B3947!important;border-color:#DFE6EA!important}
+.v14-profile-card:hover{border-color:#587FA2!important;background:#F4F8FA!important}
+.v14-info-grid>div{background:#FBFCFD!important;border-color:#DFE6EA!important}
+.v14-chip-list span{background:#EDF4F7!important;border-color:#D9E8EF!important;color:#385872!important}
+.v181-step-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.v181-step-grid>div{display:grid;gap:6px;padding:12px;border:1px solid #DFE6EA;border-radius:12px;background:#FBFCFD}.v181-step-grid b{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#587FA2;color:#fff}
+.v181-page-progress{margin-top:12px}.v181-page-status{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px;border:1px solid #DFE6EA;border-radius:12px;background:#F8FAFC}.v181-page-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.v181-page-chips span{padding:6px 9px;border-radius:999px;background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0}.v181-page-chips span.done{background:#ECFDF5;color:#047857;border-color:#A7F3D0}
+@media(max-width:780px){.v181-step-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:460px){.v181-step-grid{grid-template-columns:1fr}}

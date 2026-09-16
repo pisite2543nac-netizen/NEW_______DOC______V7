@@ -1,8 +1,7 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { getClient } from "./v18-supabase.js";
+import { putDraft as putOfflineDraft, getDraft as getOfflineDraft, deleteDraft as deleteOfflineDraft, queueFinal as queueOfflineFinal, listFinals as listOfflineFinals, deleteFinal as deleteOfflineFinal, cleanup as cleanupOfflineStore } from "./v18-offline.js";
 
-const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
-const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
-const sb=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const sb=getClient();
 
 const S={
   session:null, profile:null, route:"dashboard", routeArg:null, installPrompt:null,
@@ -85,9 +84,12 @@ function friendlyError(err){
     INVALID_USER_DATA:"ข้อมูลผู้ใช้ไม่ครบหรือไม่ถูกต้อง",
     INVALID_REGISTRATION_CODE:"รหัสลงทะเบียนไม่ถูกต้อง",
     REGISTRATION_DISABLED:"ระบบลงทะเบียนถูกปิด",
+    REGISTRATION_RATE_LIMITED:"มีการลองลงทะเบียนหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่",
     INVALID_REGISTRATION_DATA:"ข้อมูลลงทะเบียนไม่ครบหรือไม่ถูกต้อง",
     INVALID_BIRTH_DATE:"วันเดือนปีเกิดไม่ถูกต้อง",
     JOIN_CODE_INVALID:"รหัสเข้าห้องเรียนไม่ถูกต้อง",
+    PAPER_PACKET_INCOMPLETE:"สำเนาใบงานย้อนหลังยังไม่ครบทุกหน้า",
+    PAPER_PAGE_OUT_OF_RANGE:"เลขหน้าสำเนาไม่ถูกต้อง",
     REGISTRATION_THAI_ONLY:"ชื่อ-นามสกุลและชื่อเล่นต้องกรอกเป็นภาษาไทย",
     NICKNAME_REQUIRED:"กรุณากรอกชื่อเล่น",
     DIGITAL_DEADLINE_PASSED_USE_PAPER:"พ้นกำหนดส่งออนไลน์แล้ว กรุณาพิมพ์ใบงานส่งย้อนหลัง",
@@ -132,12 +134,12 @@ async function loadProfile(retries=8){
 async function init(){
   const {data}=await sb.auth.getSession();
   S.session=data.session;
-  if(S.session){await loadProfile();syncServerClock().catch(()=>{});}
+  if(S.session){await loadProfile();syncServerClock().catch(()=>{});cleanupOfflineStore().catch(()=>{});flushOfflineSubmissionOutbox().catch(()=>{});}
 
   sb.auth.onAuthStateChange((_event,session)=>{
     S.session=session;
     setTimeout(async()=>{
-      if(session)await loadProfile(); else S.profile=null;
+      if(session){await loadProfile();flushOfflineSubmissionOutbox().catch(()=>{})} else S.profile=null;
       render();
     },0);
   });
@@ -153,7 +155,7 @@ function renderOwnerSetup(token){
     <div id="authmsg"></div>
     <form id="ownerclaim"><div class="field"><label>ชื่อผู้ใช้ Admin</label><input value="${OWNER_USERNAME}" disabled></div><div class="field"><label>รหัสผ่าน Admin ใหม่</label><input name="password" type="password" minlength="8" required autocomplete="new-password"></div><div class="field"><label>ยืนยันรหัสผ่าน</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"></div><button class="btn primary w100" id="ownerbtn">ตั้งค่าและเข้าใช้งาน</button></form>
   </div></div>`;
-  $("#ownerclaim").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),p=String(f.get("password")),c=String(f.get("confirm")),btn=$("#ownerbtn");if(p!==c){$("#authmsg").innerHTML='<div class="alert error">รหัสผ่านทั้งสองช่องไม่ตรงกัน</div>';return}btn.disabled=true;btn.textContent="กำลังตั้งค่าระบบ...";const {error}=await sb.rpc("claim_owner_account",{p_username:OWNER_USERNAME,p_setup_token:token,p_new_password:p});if(error){$("#authmsg").innerHTML=`<div class="alert error">${esc(friendlyError(error))}</div>`;btn.disabled=false;btn.textContent="ตั้งค่าและเข้าใช้งาน";return}history.replaceState(null,"",location.pathname+location.search);const login=await sb.auth.signInWithPassword({email:OWNER_EMAIL,password:p});if(login.error){$("#authmsg").innerHTML=`<div class="alert error">ตั้งรหัสสำเร็จ แต่ Login ไม่สำเร็จ: ${esc(login.error.message)}</div>`;btn.disabled=false;return}btn.textContent="กำลังเตรียมชุดทดสอบอัตโนมัติ...";try{const testPassword=randomPassword();const setup=await adminOp({action:"initialize_system",test_username:"User2000",test_user_password:testPassword,room_name:"ห้องทดสอบระบบ"});sessionStorage.setItem("docnr_test_credentials",JSON.stringify({username:setup.test_username,password:testPassword,worksheet:setup.worksheet_title||"ใบงานทดสอบระบบ DOC-FULL-NR"}))}catch(err){sessionStorage.setItem("docnr_setup_warning",friendlyError(err))}location.reload()};
+  $("#ownerclaim").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),p=String(f.get("password")),c=String(f.get("confirm")),btn=$("#ownerbtn");if(p!==c){$("#authmsg").innerHTML='<div class="alert error">รหัสผ่านทั้งสองช่องไม่ตรงกัน</div>';return}btn.disabled=true;btn.textContent="กำลังตั้งค่าระบบ...";const {error}=await sb.rpc("claim_owner_account",{p_username:OWNER_USERNAME,p_setup_token:token,p_new_password:p});if(error){$("#authmsg").innerHTML=`<div class="alert error">${esc(friendlyError(error))}</div>`;btn.disabled=false;btn.textContent="ตั้งค่าและเข้าใช้งาน";return}history.replaceState(null,"",location.pathname+location.search);const login=await sb.auth.signInWithPassword({email:OWNER_EMAIL,password:p});if(login.error){$("#authmsg").innerHTML=`<div class="alert error">ตั้งรหัสสำเร็จ แต่ Login ไม่สำเร็จ: ${esc(login.error.message)}</div>`;btn.disabled=false;return}btn.textContent="ตั้งค่าระบบสำเร็จ...";location.reload()};
 }
 function renderAuth(){
   const claim=ownerSetupToken();if(claim){renderOwnerSetup(claim);return}
@@ -244,20 +246,20 @@ function signupDialog(){
 
 function navItems(){
   return isAdmin()
-    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["students","นักศึกษาและสิทธิ์"],["workadmin","งาน คะแนน รายงาน"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
+    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["students","นักศึกษาและสิทธิ์"],["workadmin","งาน คะแนน รายงาน"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
     : [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["work","งานของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
 }
 const ROUTE_TITLES={
-  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",workadmin:"งาน คะแนน และรายงาน",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",academic:"ปีการศึกษาและระบบ",
+  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",workadmin:"งาน คะแนน และรายงาน",paperscan:"สแกนใบงานย้อนหลัง",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",academic:"ปีการศึกษาและระบบ",
   catalog:"รายวิชาทั้งหมด",work:"งานของฉัน",attendance:"เช็คชื่อ",profile:"ข้อมูลของฉัน",
   accounts:"อนุมัติบัญชี",enrollments:"สมาชิกวิชา",profiles:"โปรไฟล์นักศึกษา",presence:"สถานะออนไลน์",promotion:"เลื่อนชั้น / ปีการศึกษา",history:"ประวัติการศึกษา",
   users:"ผู้ใช้งาน",grading:"ตรวจงาน",overrides:"สิทธิ์ส่งเพิ่ม",reports:"รายงาน",audit:"Audit log",system:"ตั้งค่าระบบ",enroll:"รายวิชาทั้งหมด"
 };
-const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","presence","promotion","history","enroll"]);
+const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","presence","promotion","history","enroll"]);
 const BASE_ROUTES=new Set(["users","grading","overrides","reports","audit","system","profile"]);
-const ADMIN_ROUTES=new Set(["dashboard","courses","students","workadmin","attendancehub","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
+const ADMIN_ROUTES=new Set(["dashboard","courses","students","workadmin","paperscan","attendancehub","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
 const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","work","attendance","exam","profile","history","presence"]);
-const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
+const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
 function activeNavRoute(route){return ROUTE_GROUP[route]||route}
 function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:USER_ROUTES).has(route)}
 function paintNav(){
@@ -337,8 +339,8 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V17.8</div></div></div>
-      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V18.1</div></div></div>
+      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
       <header class="topbar">
@@ -814,30 +816,56 @@ function renderDigitalWorksheetPages(w,answers={}){
   return `<div class="v176-digital-pages">${pages.join("")}</div>`;
 }
 
-async function finalizeDigitalHardened(worksheetId,answers,paths){
-  const requestKey=crypto.randomUUID();
+async function sha256Blob(blob){
+  const buf=await blob.arrayBuffer(),hash=await crypto.subtle.digest("SHA-256",buf);
+  return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function transientNetworkError(err){
+  const m=String(err?.message||err||"").toLowerCase();
+  return !navigator.onLine||m.includes("failed to fetch")||m.includes("network")||m.includes("timeout")||m.includes("fetch");
+}
+async function finalizeDigitalHardened(worksheetId,answers,attachments,requestKeyValue=requestKey()){
   let lastError=null;
   for(let attempt=0;attempt<2;attempt++){
-    const r=await sb.rpc("finalize_digital_submission_v177",{
+    const r=await sb.rpc("finalize_digital_submission_v18",{
       p_worksheet_id:worksheetId,
       p_answers:answers,
-      p_attachment_paths:paths,
-      p_request_key:requestKey
+      p_attachments:attachments,
+      p_request_key:requestKeyValue
     });
     if(!r.error)return r.data;
     lastError=r.error;
     const m=String(r.error?.message||"").toLowerCase();
-    const transient=m.includes("failed to fetch")||m.includes("network")||m.includes("timeout")||m.includes("fetch");
+    const transient=transientNetworkError(r.error);
     if(!transient)throw r.error;
     await sleep(650);
   }
   // Reconcile a request that may have reached the server but lost the response.
   const check=await sb.from("submissions").select("id,status,submitted_at,attempt_count").eq("worksheet_id",worksheetId).eq("user_id",uid()).maybeSingle();
   if(!check.error&&check.data&&["submitted","graded"].includes(check.data.status)){
-    return {ok:true,submission_id:check.data.id,status:check.data.status,submitted_at:check.data.submitted_at,attempt_count:check.data.attempt_count,reconciled:true,request_key:requestKey};
+    return {ok:true,submission_id:check.data.id,status:check.data.status,submitted_at:check.data.submitted_at,attempt_count:check.data.attempt_count,reconciled:true,request_key:requestKeyValue};
   }
   throw lastError||new Error("SUBMIT_NETWORK_FAILED");
 }
+
+async function flushOfflineSubmissionOutbox(){
+  if(!S.session?.user?.id||!navigator.onLine)return;
+  const items=await listOfflineFinals(S.session.user.id).catch(()=>[]);
+  for(const item of items){
+    try{
+      const r=await sb.rpc("finalize_digital_submission_v18",{p_worksheet_id:item.worksheet_id,p_answers:item.answers,p_attachments:item.attachments||[],p_request_key:item.request_key});
+      if(r.error){
+        if(transientNetworkError(r.error))return;
+        await deleteOfflineFinal(item.request_key);
+        continue;
+      }
+      await deleteOfflineFinal(item.request_key);
+      await deleteOfflineDraft(item.user_id,item.worksheet_id);
+      toast(`ซิงก์งานที่ค้างสำเร็จ • ${item.title||"ใบงาน"}`);
+    }catch(e){if(transientNetworkError(e))return}
+  }
+}
+window.addEventListener("online",()=>flushOfflineSubmissionOutbox().catch(console.warn));
 async function openWorksheet(id){
   await syncServerClock();
   const [wr,sr,orr]=await Promise.all([
@@ -847,6 +875,8 @@ async function openWorksheet(id){
   ]);
   if(wr.error)return toast(friendlyError(wr.error),"error");
   const w=wr.data,old=sr.data;
+  const localDraft=await getOfflineDraft(uid(),id).catch(()=>null);
+  const initialAnswers=(!old||old.status==="draft")&&localDraft?.answers?{...(old?.answers||{}),...localDraft.answers}:(old?.answers||{});
   const ov=Array.isArray(orr.data)?orr.data[0]:(orr.data||{});
   if(w.mode==="paper"){printWorksheet(id);return}
 
@@ -876,7 +906,7 @@ async function openWorksheet(id){
     <p>${esc(w.instructions||"")}</p>
     ${files.length?`<div class="file-list"><b>ไฟล์ประกอบ</b>${files.map((f,i)=>`<div class="file-chip"><span>ไฟล์ ${i+1}</span><a class="btn sm" href="${f.url}" target="_blank" rel="noopener">เปิดไฟล์</a></div>`).join("")}</div>`:""}
     <div id="submissionpreview" hidden></div>
-    <form id="ans" novalidate>${renderDigitalWorksheetPages(w,old?.answers||{})}
+    <form id="ans" novalidate>${renderDigitalWorksheetPages(w,initialAnswers)}
       <div class="field"><label>แนบไฟล์ประกอบเพิ่มเติม (ไม่บังคับ, สูงสุด 20MB)</label><input id="attach" type="file" ${canWork?"":"disabled"}></div>
       <div class="autosave" id="autosave">${w.allow_draft&&canWork&&!canResubmit?"ระบบจะบันทึกร่างอัตโนมัติเมื่อมีการแก้คำตอบ":canResubmit?"โหมดส่งซ้ำ: คำตอบเดิมจะไม่ถูกแทนที่จนกดยืนยันส่งใหม่":" "}</div>
       <div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn" name="action" value="draft" ${canWork&&w.allow_draft&&!canResubmit?"":"disabled"}>บันทึกร่าง</button><button class="btn green" name="action" value="submit" ${canWork?"":"disabled"}>${canResubmit?"ตรวจทานและส่งซ้ำ":"ตรวจทานก่อนส่ง"}</button></div>
@@ -887,52 +917,63 @@ async function openWorksheet(id){
   if(!canWork)return;
 
   const form=$("#ans");initQuestionWidgets(form,w.questions||[]);
-  const collect=()=>collectWorksheetAnswers(form,w.questions||[],old?.answers||{});
+  const collect=()=>collectWorksheetAnswers(form,w.questions||[],initialAnswers);
   const answerTargets=()=>$$('input[name^="q_"],textarea[name^="q_"],select[name^="q_"]',form);
   if(manualOnly){
     const deny=e=>{e.preventDefault();toast("พื้นที่คำตอบนี้ไม่รองรับการวางข้อความ กรุณาพิมพ์คำตอบด้วยตนเอง","error")};
     for(const el of answerTargets()){if(el.type==="file"||el.type==="checkbox"||el.type==="radio")continue;el.addEventListener("paste",deny);el.addEventListener("drop",deny);el.addEventListener("cut",deny);el.addEventListener("copy",deny)}
   }
 
-  async function uploadQuestionFiles(answers,paths){
+  async function uploadQuestionFiles(answers,attachments){
     for(const q of w.questions||[]){
       if(normalizeQuestionType(q.type)!=="fileUpload")continue;
       const input=form.querySelector(`[data-question-file="${CSS.escape(q.id)}"]`),file=input?.files?.[0];
       if(!file)continue;
       const maxMb=Math.max(1,Number(q.max_mb||20));
       if(file.size>maxMb*1024*1024)throw new Error(`ไฟล์ในข้อ “${q.text}” เกิน ${maxMb} MB`);
-      const path=`${uid()}/${id}/q-${q.id}-${Date.now()}-${safeName(file.name)}`;
+      const path=`${uid()}/${id}/q-${q.id}-${Date.now()}-${safeName(file.name)}`,sha256=await sha256Blob(file);
       const up=await sb.storage.from("submissions").upload(path,file,{upsert:false});if(up.error)throw up.error;
-      paths.push(path);answers[q.id]={path,name:file.name,size:file.size,type:file.type||null};
+      attachments.push({path,name:file.name,size:file.size,type:file.type||null,sha256});answers[q.id]={path,name:file.name,size:file.size,type:file.type||null,sha256};
     }
-    return {answers,paths};
+    return {answers,attachments};
   }
 
   const autosave=async()=>{
     if(!w.allow_draft||canResubmit)return;
-    const answers=collect();
-    const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:old?.attachment_paths||[]});
+    const answers=collect(),paths=old?.attachment_paths||[];
+    await putOfflineDraft(uid(),id,answers,paths).catch(()=>{});
     const st=$("#autosave");
-    if(st)st.innerHTML=r.error?`<span class="bad">บันทึกร่างไม่สำเร็จ: ${esc(friendlyError(r.error))}</span>`:`บันทึกแล้ว ${new Date().toLocaleTimeString("th-TH")}`;
+    if(!navigator.onLine){if(st)st.innerHTML=`<span class="warn">บันทึกในเครื่องแล้ว • รอซิงก์เมื่อออนไลน์</span>`;return}
+    const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:paths});
+    if(st)st.innerHTML=r.error?`<span class="warn">บันทึกในเครื่องแล้ว • Server ยังไม่ซิงก์: ${esc(friendlyError(r.error))}</span>`:`บันทึกในเครื่อง + Server แล้ว ${new Date().toLocaleTimeString("th-TH")}`;
   };
-  form.addEventListener("input",()=>{if(!w.allow_draft||canResubmit)return;const st=$("#autosave");if(st)st.textContent=navigator.onLine?"กำลังรอบันทึก...":"ไม่มีอินเทอร์เน็ต • รอเชื่อมต่อ";clearTimeout(S.autosaveTimer);S.autosaveTimer=setTimeout(autosave,1200)});
+  form.addEventListener("input",()=>{if(!w.allow_draft||canResubmit)return;const answers=collect();putOfflineDraft(uid(),id,answers,old?.attachment_paths||[]).catch(()=>{});const st=$("#autosave");if(st)st.textContent=navigator.onLine?"บันทึกในเครื่องแล้ว • กำลังรอซิงก์ Server":"บันทึกในเครื่องแล้ว • ไม่มีอินเทอร์เน็ต";clearTimeout(S.autosaveTimer);S.autosaveTimer=setTimeout(autosave,900)});
   window.addEventListener("online",()=>{const st=$("#autosave");if(st)st.textContent="กลับมาออนไลน์แล้ว • กำลังบันทึก";autosave()},{once:true});
 
   async function finalizeAfterPreview(answers,file){
-    let paths=[...(old?.attachment_paths||[])];
+    let attachments=[...(old?.attachment_paths||[]).map(path=>({path,name:path.split("/").pop()||"attachment",size:null,type:null,sha256:null}))];
+    const finalRequestKey=requestKey();
     const btn=$("#confirm-final-submit");if(btn){btn.disabled=true;btn.textContent="กำลังอัปโหลดและส่งงาน..."}
     try{
-      const qf=await uploadQuestionFiles({...answers},paths);answers=qf.answers;paths=qf.paths;
+      const qf=await uploadQuestionFiles({...answers},attachments);answers=qf.answers;attachments=qf.attachments;
       if(file){
         if(file.size>20*1024*1024)throw new Error("ไฟล์แนบเพิ่มเติมเกิน 20MB");
-        const path=`${uid()}/${id}/${Date.now()}-${safeName(file.name)}`;
+        const path=`${uid()}/${id}/${Date.now()}-${safeName(file.name)}`,sha256=await sha256Blob(file);
         const up=await sb.storage.from("submissions").upload(path,file,{upsert:false});if(up.error)throw up.error;
-        paths.push(path);
+        attachments.push({path,name:file.name,size:file.size,type:file.type||null,sha256});
       }
-      const receipt=await finalizeDigitalHardened(id,answers,paths);
+      const receipt=await finalizeDigitalHardened(id,answers,attachments,finalRequestKey);
+      await deleteOfflineDraft(uid(),id).catch(()=>{});
       toast(`${canResubmit?"ส่งงานซ้ำสำเร็จ":"ส่งงานสำเร็จ"}${receipt?.reconciled?" • ระบบยืนยันผลหลังเชื่อมต่อกลับมา":""}`);closeModal();
       if(window.DOCNR_V15?.navigate)window.DOCNR_V15.navigate("work");else if(window.DOCNR_V14?.navigate)window.DOCNR_V14.navigate("work");else myworks();
     }catch(err){
+      if(transientNetworkError(err)&&attachments.length===(old?.attachment_paths||[]).length){
+        await queueOfflineFinal({request_key:finalRequestKey,user_id:uid(),worksheet_id:id,title:w.title,answers,attachments}).catch(()=>{});
+        await putOfflineDraft(uid(),id,answers,attachments.map(x=>x.path)).catch(()=>{});
+        if(btn){btn.disabled=false;btn.textContent="รอซิงก์เมื่อออนไลน์"}
+        toast("บันทึกคำขอส่งไว้ในเครื่องแล้ว • ยังไม่ถือว่าส่งจนกว่า Server จะยืนยัน","warn");
+        return;
+      }
       if(btn){btn.disabled=false;btn.textContent="ยืนยันส่งงาน"}
       toast(friendlyError(err),"error");
     }
@@ -963,9 +1004,11 @@ async function openWorksheet(id){
     e.preventDefault();clearTimeout(S.autosaveTimer);
     const action=e.submitter?.value||"draft",answers=collect(),file=$("#attach")?.files?.[0]||null;
     if(action==="draft"){
+      await putOfflineDraft(uid(),id,answers,old?.attachment_paths||[]).catch(()=>{});
+      if(!navigator.onLine){toast("บันทึกร่างไว้ในเครื่องแล้ว • จะซิงก์เมื่อออนไลน์");return}
       const r=await sb.rpc("save_worksheet_draft",{p_worksheet_id:id,p_answers:answers,p_attachment_paths:old?.attachment_paths||[]});
-      if(r.error)return toast(friendlyError(r.error),"error");
-      toast("บันทึกร่างแล้ว");const st=$("#autosave");if(st)st.textContent="บันทึกแล้ว "+new Date().toLocaleTimeString("th-TH");return;
+      if(r.error){toast("บันทึกในเครื่องแล้ว แต่ Server ยังไม่ซิงก์","warn");return}
+      toast("บันทึกร่างในเครื่องและ Server แล้ว");const st=$("#autosave");if(st)st.textContent="ซิงก์แล้ว "+new Date().toLocaleTimeString("th-TH");return;
     }
     if(previewRequired)showPreview(answers,file);else{
       const missing=missingRequiredWithSelectedFiles(answers);if(missing.length)return toast(`กรุณาตอบข้อ ${missing.join(", ")} ให้ครบ`,"error");
@@ -1000,10 +1043,11 @@ async function gradeDialog(id){
       <div class="field"><label>คะแนนเต็ม</label><input name="max_score" type="number" min="0" step="0.01" value="${g?.max_score??max}" required></div>
       <div class="field"><label>เกรด</label><input name="grade" value="${esc(g?.grade||"")}"></div>
       <div class="field span2"><label>ความคิดเห็น Admin (ผู้เรียนอ่านไม่ได้)</label><textarea name="admin_comment">${esc(g?.admin_comment||"")}</textarea></div>
+      <div class="field span2"><label>เหตุผลการบันทึก/แก้ไขคะแนน (บังคับ • เก็บประวัติ)</label><input name="reason" required value="${g?.grading_status==="final"?"ตรวจทานและแก้ไขคะแนน":"ตรวจและให้คะแนนครั้งแรก"}"></div>
     </div><div class="row end"><button type="button" class="btn" data-close>ปิด</button><button class="btn green">บันทึกผล</button></div></form>`,{wide:true});
   $("#gf").onsubmit=async e=>{
     e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
-    const r=await hardenedRpc("admin_grade_submission_v179",{p_submission_id:id,p_score:Number(f.score),p_max_score:Number(f.max_score),p_grade:f.grade||null,p_admin_comment:f.admin_comment||null,p_rubric_result:{}});
+    const r=await hardenedRpc("admin_grade_submission_v18",{p_submission_id:id,p_score:Number(f.score),p_max_score:Number(f.max_score),p_grade:f.grade||null,p_admin_comment:f.admin_comment||null,p_rubric_result:{},p_reason:String(f.reason||"").trim()});
     if(r.error)return toast(friendlyError(r.error),"error");
     closeModal();toast(`บันทึกผลและอัปเดต Gradebook แล้ว${Number(r.data?.credit_factor||1)<1?" • งานย้อนหลังคิดเครดิต 50%":""}`);grading();
   };
@@ -1032,9 +1076,10 @@ async function overrides(){
   $$('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!ask("ยกเลิกสิทธิ์นี้?"))return;try{await adminOp({action:"revoke_override",override_id:b.dataset.revoke});toast("ยกเลิกสิทธิ์แล้ว");overrides()}catch(err){toast(friendlyError(err),"error")}});
 }
 async function system(){
-  let h=null,edge=null,integrity=null;
-  try{const r=await sb.rpc("admin_system_health_v17");if(!r.error)h=r.data}catch{}
-  try{const r=await sb.rpc("admin_integrity_report_v179");if(!r.error)integrity=r.data}catch{}
+  let h=null,edge=null,integrity=null,capacity=null;
+  try{const r=await sb.rpc("admin_system_health_v18");if(!r.error)h=r.data}catch{}
+  try{const r=await sb.rpc("admin_integrity_report_v18");if(!r.error)integrity=r.data}catch{}
+  try{const r=await sb.rpc("admin_capacity_report_v18");if(!r.error)capacity=r.data}catch{}
   try{edge=await adminOp({action:"health"})}catch{}
   const {data:cfg}=await sb.from("system_settings").select("key,value").in("key",["registration","school"]);
   const reg=cfg?.find(x=>x.key==="registration")?.value||{},school=cfg?.find(x=>x.key==="school")?.value||{};
@@ -1051,7 +1096,9 @@ async function system(){
           <div><span>Idempotent Submit</span><b>${h?.idempotent_digital_submit?"พร้อม":"-"}</b></div>
           <div><span>Gradebook คะแนนจริง</span><b>${h?.real_gradebook_scores?"พร้อม":"-"}</b></div>
           <div><span>แจ้งเตือน Deadline</span><b>${h?.deadline_notification_backend_ok?"พร้อม":"ตรวจสอบ"}</b></div><div><span>Integrity Core</span><b>${h?.integrity_ok?"PASS":"CHECK"}</b></div>
-          <div><span>Hardened RPC</span><b>${h?.hardened_action_rpcs??"-"}/8</b></div><div><span>Auto Reconcile</span><b>${h?.delivery_reconcile?"พร้อม":"-"}</b></div>
+          <div><span>V18 RPC</span><b>${h?.v18_rpc_count??"-"}/10</b></div><div><span>Auto Reconcile</span><b>${h?.delivery_reconcile?"พร้อม":"-"}</b></div>
+          <div><span>Exam Bank</span><b>${h?.exam_question_bank??"-"}/550</b></div><div><span>Paper Multi-page</span>${pass(h?.paper_multi_page_packet)}</div>
+          <div><span>Immutable Evidence</span>${pass(h?.immutable_submission_evidence)}</div><div><span>Grade History</span>${pass(h?.grade_revision_history)}</div>
           <div><span>Profile Read-only</span>${pass(h?.student_profile_readonly)}</div>
           <div><span>Locked Unit Resources</span>${pass(h?.locked_subject_resources)}</div><div><span>Submission Override Relation</span>${pass(h?.submission_override_relationship)}</div>
         </div><div class="smalltext muted" style="margin-top:10px">Server time: ${esc(h?.server_time||edge?.server_time||"-")}</div>
@@ -1060,11 +1107,19 @@ async function system(){
         <div><span>Work Pair ซ้ำ</span><b>${integrity?.duplicate_pair_completion??"-"}</b></div><div><span>Assignment ใบงานหาย</span><b>${integrity?.missing_worksheet_assignments??"-"}</b></div>
         <div><span>Assignment ข้อสอบหาย</span><b>${integrity?.missing_exam_assignments??"-"}</b></div><div><span>คะแนน/สถานะไม่ตรง</span><b>${integrity?.grade_state_mismatch??"-"}</b></div>
         <div><span>Paper ไม่มี Scan</span><b>${integrity?.paper_without_scan??"-"}</b></div><div><span>Attendance ซ้ำ</span><b>${integrity?.duplicate_attendance??"-"}</b></div>
-        <div><span>คะแนนผิดเงื่อนไข</span><b>${integrity?.invalid_grade_rows??"-"}</b></div><div><span>Attendance ค้าง</span><b>${integrity?.stale_open_attendance??"-"}</b></div></div>
+        <div><span>คะแนนผิดเงื่อนไข</span><b>${integrity?.invalid_grade_rows??"-"}</b></div><div><span>Attendance ค้าง</span><b>${integrity?.stale_open_attendance??"-"}</b></div>
+        <div><span>Paper หน้าไม่ครบ</span><b>${integrity?.paper_incomplete_pages??"-"}</b></div><div><span>หลักฐานยังไม่ล็อก</span><b>${integrity?.submission_files_without_immutable_mark??"-"}</b></div>
+        <div><span>วิชาคลังสอบไม่ครบ 50</span><b>${integrity?.subjects_exam_bank_under_50??"-"}</b></div><div><span>คะแนน Final ไม่มี History</span><b>${integrity?.final_grades_without_history??"-"}</b></div></div>
         <p class="muted smalltext">ระบบ Reconcile Assignment อัตโนมัติทุก 5 นาที และ Hardened RPC ป้องกันการกดซ้ำจากเครือข่ายไม่เสถียร</p></div>
+      <div class="card"><h3>💾 Capacity / Storage</h3><div class="profile-data-grid">
+        <div><span>Database</span><b>${capacity?.database_bytes?`${(Number(capacity.database_bytes)/1048576).toFixed(1)} MB`:"-"}</b></div>
+        <div><span>Storage</span><b>${capacity?.storage_bytes?`${(Number(capacity.storage_bytes)/1048576).toFixed(1)} MB`:"-"}</b></div>
+        <div><span>Storage Objects</span><b>${capacity?.storage_objects??"-"}</b></div>
+        <div><span>Orphan > 7 วัน</span><b>${capacity?.orphan_submission_objects_over_7d??"-"}</b></div>
+      </div><p class="muted smalltext">รูป/ไฟล์จริงเก็บใน Private Storage ส่วน Database เก็บ Path และ Metadata เพื่อลดการโตของฐานข้อมูล</p></div>
       <div class="card"><h3>การลงทะเบียน</h3><div class="alert ${reg.enabled?"success":"warn"}">${reg.enabled?"เปิดรับลงทะเบียน":"ปิดรับลงทะเบียน"}</div><form id="regsettings"><div class="checks"><label><input type="checkbox" name="enabled" ${reg.enabled?"checked":""}> เปิดรับลงทะเบียน</label></div><div class="field"><label>เปลี่ยนรหัสลงทะเบียน (เว้นว่าง = ใช้เดิม)</label><input name="registration_code" minlength="6"></div><button class="btn primary">บันทึก</button></form><p class="muted smalltext">ไม่มี OTP • การอนุมัติบัญชีและการเข้ารายวิชาเป็นคนละขั้นตอน</p></div>
     </div>
-    <div class="card" style="margin-top:14px"><h3>ข้อมูลระบบ</h3><div><b>${esc(school.system_name||"DOC-FULL-NR Smart Worksheet")}</b></div><div class="muted">${esc(school.name||"วิทยาลัยเทคนิคนางรอง")} • ${esc(school.timezone||"Asia/Bangkok")} • V17.9 System Hardened</div></div>`;
+    <div class="card" style="margin-top:14px"><h3>ข้อมูลระบบ</h3><div><b>${esc(school.system_name||"DOC-FULL-NR Smart Worksheet")}</b></div><div class="muted">${esc(school.name||"วิทยาลัยเทคนิคนางรอง")} • ${esc(school.timezone||"Asia/Bangkok")} • V18 Complete Production Hardened</div></div>`;
   $("#regsettings").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await adminOp({action:"set_registration",enabled:f.get("enabled")==="on",registration_code:String(f.get("registration_code")||"")});toast("บันทึกการลงทะเบียนแล้ว");system()}catch(err){toast(friendlyError(err),"error")}};
 }
 

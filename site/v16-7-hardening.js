@@ -1,6 +1,6 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { getClient } from "./v18-supabase.js";
 
-const DOCNR_HARDENING_VERSION = "V16.7-RUNTIME-HARDENED";
+const DOCNR_HARDENING_VERSION = "V18-RUNTIME-HARDENED";
 const SUPABASE_URL = "https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY = "sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF = "thjscmfqunlaqxlievna";
@@ -19,13 +19,7 @@ function readSession(){
     return s?.access_token && s?.user?.id ? s : null;
   }catch{return null}
 }
-function client(){
-  const s = readSession();
-  return createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth:{persistSession:false, autoRefreshToken:false, detectSessionInUrl:false},
-    global:{headers:s?.access_token ? {Authorization:`Bearer ${s.access_token}`} : {}}
-  });
-}
+function client(){return getClient()}
 function flash(message, bad=false){
   let e = $("#v167-flash");
   if(!e){ e=document.createElement("div"); e.id="v167-flash"; document.body.appendChild(e); }

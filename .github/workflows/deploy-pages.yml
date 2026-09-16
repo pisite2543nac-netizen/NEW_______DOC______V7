@@ -29,6 +29,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install browser test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.55.0
+          python -m playwright install --with-deps chromium
       - name: Validate release
         run: |
           python tests/static_validation.py
@@ -44,6 +48,8 @@ jobs:
           python tests/v177_transaction_contract.py
           python tests/v178_notification_contract.py
           python tests/v179_full_system_hardening_contract.py
+          python tests/v181_complete_learning_system_contract.py
+          python tests/v182_complete_system_final_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js
@@ -52,6 +58,12 @@ jobs:
           node --check site/v16-8-course-flow.js
           node --check site/v16-exam.js
           node --check site/sw.js
+          node --check site/v18-supabase.js
+          node --check site/v18-offline.js
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/browser_contract.py
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/course_code_browser_contract.py
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/real_use_browser_contract.py
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v181_core_browser_contract.py
       - name: Decode PWA app icons
         shell: bash
         run: |

@@ -6,13 +6,11 @@
    - anti-cheat event audit (deterrence, not a browser security boundary)
    - admin question bank CRUD + JSON import/export + realtime results
 */
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { getClient } from "./v18-supabase.js";
 
-const URL="https://thjscmfqunlaqxlievna.supabase.co";
-const KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const REF="thjscmfqunlaqxlievna";
 const SK=`sb-${REF}-auth-token`;
-const VERSION="V17.9-EXAM-HARDENED";
+const VERSION="V18.1-EXAM-INTEGRATED-550Q";
 const V16_EXAM_COMPAT="V16-EXAM-50Q-75MIN-REALTIME";
 
 const $=(s,r=document)=>r.querySelector(s);
@@ -27,15 +25,18 @@ let state={
   profile:null,offset:0,attempt:null,answers:{},flags:new Set(),currentIndex:0,
   saveTimer:null,timer:null,submitting:false,dirty:false,
   examChannel:null,rt:null,antiCheatBound:false,fullscreenExpected:false,
-  violationLocal:0,fullscreenPrompting:false
+  violationLocal:0,fullscreenPrompting:false,bankSeedTried:false
 };
 
 function session(){try{const x=JSON.parse(localStorage.getItem(SK)||"null");return x?.access_token?x:null}catch{return null}}
-function db(){const s=session();return createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{headers:s?.access_token?{Authorization:`Bearer ${s.access_token}`}:{}}})}
-async function rtClient(){const s=session();if(!s)return null;if(state.rt)return state.rt;const c=createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});try{await c.realtime.setAuth(s.access_token)}catch{}state.rt=c;return c}
+function db(){return getClient()}
+async function rtClient(){const s=session();if(!s)return null;if(state.rt)return state.rt;const c=getClient();state.rt=c;return c}
 function app(){return $("#exam-app")}
 function msg(text,bad=false){let e=$("#exam-toast");if(!e){e=document.createElement("div");e.id="exam-toast";e.className="v14-toast";document.body.appendChild(e)}e.textContent=text;e.className=`v14-toast show${bad?" bad":""}`;clearTimeout(msg.t);msg.t=setTimeout(()=>e.className="v14-toast",3500)}
-function err(e){const s=String(e?.message||e?.details||e||"เกิดข้อผิดพลาด");const map={EXAM_NOT_OPEN:"ยังไม่ถึงเวลาเปิดสอบ",EXAM_CLOSED:"หมดเวลาเปิดสอบแล้ว",MAX_ATTEMPTS_REACHED:"ใช้สิทธิ์เข้าสอบครบแล้ว",NOT_ASSIGNED:"ไม่ได้รับมอบหมายข้อสอบนี้",EXAM_TIME_EXPIRED:"หมดเวลาทำข้อสอบแล้ว",ATTEMPT_FINALIZED:"ข้อสอบถูกส่งแล้ว",ADMIN_REQUIRED:"ต้องใช้บัญชี Admin",QUESTION_BANK_NEEDS_50:"คลังข้อสอบรายวิชานี้ต้องมีอย่างน้อย 50 ข้อ",FOUR_OPTIONS_REQUIRED:"คำถามต้องมีตัวเลือก 4 ตัว",CORRECT_ANSWER_NOT_IN_OPTIONS:"เฉลยต้องตรงกับหนึ่งใน 4 ตัวเลือก"};for(const[k,v]of Object.entries(map))if(s.includes(k))return v;return s}
+function err(e){const s=String(e?.message||e?.details||e||"เกิดข้อผิดพลาด");const map={EXAM_NOT_OPEN:"ยังไม่ถึงเวลาเปิดสอบ",EXAM_CLOSED:"หมดเวลาเปิดสอบแล้ว",MAX_ATTEMPTS_REACHED:"ใช้สิทธิ์เข้าสอบครบแล้ว",NOT_ASSIGNED:"ไม่ได้รับมอบหมายข้อสอบนี้",EXAM_TIME_EXPIRED:"หมดเวลาทำข้อสอบแล้ว",ATTEMPT_FINALIZED:"ข้อสอบถูกส่งแล้ว",ADMIN_REQUIRED:"ต้องใช้บัญชี Admin",QUESTION_BANK_NEEDS_50:"คลังข้อสอบรายวิชานี้ต้องมีอย่างน้อย 50 ข้อ",FOUR_OPTIONS_REQUIRED:"คำถามต้องมีตัวเลือก 4 ตัว",CORRECT_ANSWER_NOT_IN_OPTIONS:"เฉลยต้องตรงกับหนึ่งใน 4 ตัวเลือก",
+QUESTION_BANK_DISTRIBUTION_NOT_READY:"คลังข้อสอบต้องครบ Basic 10 / Easy 15 / Hard 25",
+EXAM_SAFE_PAYLOAD_VIOLATION:"ตรวจพบข้อมูลเฉลยใน Payload นักศึกษา ระบบไม่อนุญาตให้เผยแพร่",
+GRADE_REASON_REQUIRED:"กรุณาระบุเหตุผลในการแก้ไขคะแนน"};for(const[k,v]of Object.entries(map))if(s.includes(k))return v;return s}
 function uuid(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 function seededOrder(arr,seed){const h=s=>{let x=2166136261;for(let i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619)}return x>>>0};return [...arr].sort((a,b)=>h(seed+JSON.stringify(a))-h(seed+JSON.stringify(b)))}
 function csvDownload(rows,filename){const cell=v=>{const s=String(v??"");return /[",\r\n]/.test(s)?`"${s.replaceAll('"','""')}"`:s};const blob=new Blob(["\uFEFF"+rows.map(r=>r.map(cell).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
@@ -58,9 +59,48 @@ function now(){return Date.now()+state.offset}
 // ---------------------------------------------------------------------
 // Admin home / room context
 // ---------------------------------------------------------------------
+
+function bankImportItem(x){
+  const options=Array.isArray(x.options)?x.options.map(String):[];
+  const idx=Number(x.correct);
+  return {
+    source_key:String(x.id||""),
+    subject_code:String(x.subjectCode||x.subject_code||""),
+    prompt:String(x.q||x.prompt||""),
+    options,
+    correct_answer:options[idx]??String(x.correct_answer||""),
+    explanation:String(x.explain||x.explanation||""),
+    difficulty:String(x.level||x.difficulty||"").toLowerCase(),
+    theme:String(x.theme||"")
+  };
+}
+async function ensureBundledQuestionBank(){
+  if(state.bankSeedTried)return;
+  state.bankSeedTried=true;
+  const c=db(),count=await c.from("exam_question_bank").select("id",{count:"exact",head:true}).eq("active",true);
+  if(count.error||Number(count.count||0)>=550)return;
+  try{
+    msg(`กำลังติดตั้งคลังข้อสอบมาตรฐาน ${count.count||0}/550 ข้อ...`);
+    const res=await fetch("./data/exam-question-bank-v18.json",{cache:"no-store"});
+    if(!res.ok)throw new Error("EXAM_BANK_FILE_NOT_FOUND");
+    const raw=await res.json(),items=(Array.isArray(raw)?raw:[]).map(bankImportItem).filter(x=>x.source_key&&x.subject_code&&x.prompt&&x.options.length===4&&x.correct_answer);
+    if(items.length!==550)throw new Error(`EXAM_BANK_EXPECTED_550_GOT_${items.length}`);
+    let imported=0;
+    for(let i=0;i<items.length;i+=50){
+      const r=await c.rpc("admin_import_exam_bank_v18",{p_items:items.slice(i,i+50)});
+      if(r.error)throw r.error;
+      imported+=Number(r.data?.imported||0);
+    }
+    msg(`ติดตั้งคลังข้อสอบจากระบบต้นแบบแล้ว ${imported}/550 ข้อ`);
+  }catch(e){
+    console.error("V18 exam bank auto import",e);
+    msg(`นำเข้าคลังข้อสอบอัตโนมัติไม่สำเร็จ: ${err(e)}`,true);
+  }
+}
 async function adminHome(){
   cleanupExamSecurity();closeChannel();
   const c=db();
+  await ensureBundledQuestionBank();
   const [er,sr,ar,enr]=await Promise.all([
     c.from("exams").select("*,subjects(code,name,color_hex)").order("created_at",{ascending:false}),
     c.from("subjects").select("id,code,name").eq("active",true).eq("subject_type","subject").order("code"),
@@ -88,9 +128,9 @@ async function createFromBankDialog(subjectId,room,bankCount){
   if(!subjectId){msg("กรุณาเปิด Exam Center จากห้องเรียนรายวิชา",true);return}
   if(bankCount<50){msg(`คลังข้อสอบมี ${bankCount} ข้อ ต้องมีอย่างน้อย 50 ข้อ`,true);return}
   const start=new Date(now()+10*60000),end=new Date(start.getTime()+2*60*60000);
-  app().innerHTML=`<button class="btn" id="exam-back">← กลับ</button><div class="v16-simple-page"><span class="v14-kicker">CREATE FROM QUESTION BANK</span><h1>สร้างข้อสอบ 50 ข้อ</h1><p>${esc(room?.code||"")} ${esc(room?.name||"")} • ระบบสุ่ม 50 ข้อจากคลัง และนักศึกษาแต่ละคนจะเห็นลำดับข้อ/ตัวเลือกต่างกัน</p><form id="bank-exam-form" class="card v16-form-stack"><label>ชื่อชุดสอบ<input class="input" name="title" required value="สอบกลางภาค ${esc(room?.name||"")}"></label><label>ประเภท<select class="input" name="kind"><option value="midterm">สอบกลางภาค 20 คะแนน</option><option value="final">สอบปลายภาค 20 คะแนน</option><option value="practice">สอบฝึก/ทดสอบ 20 คะแนน</option></select></label><div class="v14-form-grid"><label>เปิดสอบ<input class="input" type="datetime-local" name="open" value="${localVal(start)}" required></label><label>ปิดรับเข้าสอบ<input class="input" type="datetime-local" name="due" value="${localVal(end)}" required></label></div><div class="v16-fixed-spec"><b>ค่าคงที่ของระบบ</b><span>50 ข้อ • 4 ตัวเลือก • 75 นาที • คะแนนเต็ม 20 • 1 ข้อ = 0.4 คะแนน • ไม่แสดงคะแนนผู้เรียน</span></div><label class="v16-check"><input type="checkbox" name="publish" checked> สร้างแล้วปล่อยสอบให้สมาชิกห้องทันที</label><div class="row end"><button class="btn primary">สร้างชุดสอบ</button></div></form></div>`;
+  app().innerHTML=`<button class="btn" id="exam-back">← กลับ</button><div class="v16-simple-page"><span class="v14-kicker">CREATE FROM QUESTION BANK</span><h1>สร้างข้อสอบ 50 ข้อ</h1><p>${esc(room?.code||"")} ${esc(room?.name||"")} • ระบบสุ่มตามสัดส่วน Basic 10 + Easy 15 + Hard 25 รวม 50 ข้อ และนักศึกษาแต่ละคนจะเห็นลำดับข้อ/ตัวเลือกต่างกัน</p><form id="bank-exam-form" class="card v16-form-stack"><label>ชื่อชุดสอบ<input class="input" name="title" required value="สอบกลางภาค ${esc(room?.name||"")}"></label><label>ประเภท<select class="input" name="kind"><option value="midterm">สอบกลางภาค 20 คะแนน</option><option value="final">สอบปลายภาค 20 คะแนน</option><option value="practice">สอบฝึก/ทดสอบ 20 คะแนน</option></select></label><div class="v14-form-grid"><label>เปิดสอบ<input class="input" type="datetime-local" name="open" value="${localVal(start)}" required></label><label>ปิดรับเข้าสอบ<input class="input" type="datetime-local" name="due" value="${localVal(end)}" required></label></div><div class="v16-fixed-spec"><b>ค่าคงที่ของระบบ</b><span>50 ข้อ • Basic 10 / Easy 15 / Hard 25 • 4 ตัวเลือก • 75 นาที • คะแนนเต็ม 20 • 1 ข้อ = 0.4 คะแนน • ไม่แสดงคะแนน/เฉลยผู้เรียน</span></div><div class="alert"><b>ระบบ V18</b> • เมื่อยืนยัน ระบบจะสร้างชุดสอบและมอบหมายให้สมาชิกที่อนุมัติใน Transaction เดียว</div><div class="row end"><button class="btn primary">สร้างชุดสอบ</button></div></form></div>`;
   $("#exam-back").onclick=adminHome;
-  $("#bank-exam-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),open=new Date(String(f.get("open"))).toISOString(),due=new Date(String(f.get("due"))).toISOString();const c=db();const cr=await c.rpc("admin_create_exam_from_bank",{p_subject_id:subjectId,p_title:String(f.get("title")||""),p_exam_kind:String(f.get("kind")||"midterm"),p_open_at:open,p_due_at:due});if(cr.error){msg(err(cr.error),true);return}if(f.get("publish")){const pr=await c.rpc("publish_exam_to_subject",{p_exam_id:cr.data,p_open_at:open,p_due_at:due});if(pr.error){msg(`สร้างชุดแล้ว แต่ปล่อยสอบไม่สำเร็จ: ${err(pr.error)}`,true);return}}msg("สร้างชุดสอบ 50 ข้อเรียบร้อย");adminHome()};
+  $("#bank-exam-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),open=new Date(String(f.get("open"))).toISOString(),due=new Date(String(f.get("due"))).toISOString();const c=db();const cr=await c.rpc("admin_create_exam_from_bank_v18",{p_subject_id:subjectId,p_title:String(f.get("title")||""),p_exam_kind:String(f.get("kind")||"midterm"),p_open_at:open,p_due_at:due});if(cr.error){msg(err(cr.error),true);return}msg(`สร้างและมอบหมายชุดสอบ 50 ข้อเรียบร้อย • Basic ${cr.data?.distribution?.basic||10} / Easy ${cr.data?.distribution?.easy||15} / Hard ${cr.data?.distribution?.hard||25}`);adminHome()};
 }
 
 async function publishDialog(id){
@@ -114,7 +154,7 @@ async function questionBank(preferredSubject,subjects){
     const render=()=>{const q=$("#bank-q").value.trim().toLowerCase(),f=rows.filter(x=>!q||`${x.prompt} ${(x.options||[]).join(" ")}`.toLowerCase().includes(q));$("#bank-list").innerHTML=f.map((x,i)=>`<article class="v16-bank-q ${x.active?"":"disabled"}"><div class="row between"><b>ข้อ ${i+1}</b><span class="v14-status ${x.active?"approved":"muted"}">${x.active?"ใช้งาน":"ปิดใช้งาน"}</span></div><h3>${esc(x.prompt)}</h3><ol type="A">${(x.options||[]).map(o=>`<li class="${String(o)===String(x.correct_answer)?"correct":""}">${esc(o)}</li>`).join("")}</ol><div class="row end"><button class="btn sm" data-bank-edit="${x.id}">แก้ไข</button>${x.active?`<button class="btn red sm" data-bank-delete="${x.id}">ปิดใช้งาน</button>`:`<button class="btn green sm" data-bank-edit="${x.id}" data-reactivate="1">เปิดใช้งาน</button>`}</div></article>`).join("")||'<div class="v14-empty">ยังไม่มีข้อสอบในคลัง</div>';$$('[data-bank-edit]').forEach(b=>b.onclick=()=>bankQuestionDialog(sid,rows.find(x=>x.id===b.dataset.bankEdit),()=>draw(sid),b.dataset.reactivate==="1"));$$('[data-bank-delete]').forEach(b=>b.onclick=async()=>{if(!confirm("ปิดใช้งานข้อนี้?"))return;const r=await c.rpc("admin_delete_exam_question",{p_id:b.dataset.bankDelete});if(r.error)msg(err(r.error),true);else draw(sid)})};render();
     $("#bank-q").oninput=render;$("#bank-subject").onchange=e=>draw(e.target.value);$("#bank-add").onclick=()=>bankQuestionDialog(sid,null,()=>draw(sid));$("#exam-back").onclick=adminHome;
     $("#bank-export").onclick=()=>{const out=rows.map(x=>({id:x.source_key||x.id,subjectCode:sub.code,q:x.prompt,options:x.options,correct:(x.options||[]).findIndex(o=>String(o)===String(x.correct_answer)),explain:x.explanation||"",level:x.difficulty||"",theme:x.theme||""}));jsonDownload(out,`question-bank-${sub.code}.json`)};
-    $("#bank-import").onclick=()=>$("#bank-file").click();$("#bank-file").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{const raw=JSON.parse(await file.text()),arr=Array.isArray(raw)?raw:Array.isArray(raw.questions)?raw.questions:[];const items=arr.map(x=>({...x,subjectCode:x.subjectCode||x.subject_code||sub.code}));if(!items.length)throw new Error("ไม่พบรายการคำถาม");const r=await c.rpc("admin_import_exam_bank",{p_items:items});if(r.error)throw r.error;msg(`นำเข้า ${r.data?.imported||0} ข้อ • ข้าม ${r.data?.skipped||0} ข้อ`);draw(sid)}catch(ex){msg(err(ex),true)}};
+    $("#bank-import").onclick=()=>$("#bank-file").click();$("#bank-file").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{const raw=JSON.parse(await file.text()),arr=Array.isArray(raw)?raw:Array.isArray(raw.questions)?raw.questions:[];const items=arr.map(x=>bankImportItem({...x,subjectCode:x.subjectCode||x.subject_code||sub.code}));if(!items.length)throw new Error("ไม่พบรายการคำถาม");let imported=0,skipped=0;for(let i=0;i<items.length;i+=50){const r=await c.rpc("admin_import_exam_bank_v18",{p_items:items.slice(i,i+50)});if(r.error)throw r.error;imported+=Number(r.data?.imported||0);skipped+=Number(r.data?.skipped||0)}msg(`นำเข้า ${imported} ข้อ • ข้าม ${skipped} ข้อ`);draw(sid)}catch(ex){msg(err(ex),true)}};
   };
   draw(subjectId);
 }
@@ -132,9 +172,16 @@ async function resultsView(id){
   cleanupExamSecurity();closeChannel();const c=db();
   const [er,ar]=await Promise.all([c.from("exams").select("id,title,exam_kind,full_score,question_count_target,subjects(code,name)").eq("id",id).single(),c.from("exam_attempts").select("*,profiles!exam_attempts_user_id_fkey(full_name,student_code,class_name)").eq("exam_id",id).order("started_at",{ascending:false})]);if(ar.error){msg(err(ar.error),true);return}
   const exam=er.data,rows=ar.data||[],avg=rows.filter(x=>x.score!=null).length?rows.filter(x=>x.score!=null).reduce((a,x)=>a+Number(x.score),0)/rows.filter(x=>x.score!=null).length:0;
-  app().innerHTML=`<button class="btn" id="exam-back">← กลับ</button><div class="v16-exam-head"><div><span class="v14-kicker">EXAM RESULTS • ADMIN ONLY</span><h1>${esc(exam?.title||"")}</h1><p>${esc(exam?.subjects?.code||"")} ${esc(exam?.subjects?.name||"")} • คะแนนไม่เปิดเผยแก่ Student</p></div><button class="btn" id="result-csv">⬇️ CSV</button></div><div class="v16-exam-kpis"><div><span>เข้าสอบ</span><b>${rows.length}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>เต็ม</span><b>${Number(exam?.full_score||20)}</b></div><div><span>สูตร</span><b>ถูก × 20/50</b></div></div><div class="table-wrap"><table><thead><tr><th>นักศึกษา</th><th>ครั้ง</th><th>ส่ง</th><th>ถูก</th><th>คะแนน /20</th><th>สลับแท็บ</th><th>ออก Fullscreen</th><th>Copy/Paste</th><th>รวมเหตุการณ์</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.profiles?.full_name||"")}</b><div class="muted smalltext">${esc(x.profiles?.student_code||"")} • ${esc(x.profiles?.class_name||"")}</div></td><td>${x.attempt_no}</td><td>${fmt(x.submitted_at||x.started_at)}</td><td>${x.correct_count??"-"}/${exam?.question_count_target||50}</td><td><b>${x.score??"-"}</b>/${x.max_score??exam?.full_score??20}</td><td>${x.tab_switch_count||0}</td><td>${x.fullscreen_exit_count||0}</td><td>${x.copy_paste_count||0}</td><td><span class="v14-status ${(x.violation_count||0)>0?"pending":"approved"}">${x.violation_count||0}</span></td><td><button class="btn red sm" data-reset-user="${x.user_id}">รีเซ็ตผู้สอบ</button></td></tr>`).join("")||`<tr><td colspan="10" class="empty">ยังไม่มีผู้เข้าสอบ</td></tr>`}</tbody></table></div>`;
+  app().innerHTML=`<button class="btn" id="exam-back">← กลับ</button><div class="v16-exam-head"><div><span class="v14-kicker">EXAM RESULTS • ADMIN ONLY</span><h1>${esc(exam?.title||"")}</h1><p>${esc(exam?.subjects?.code||"")} ${esc(exam?.subjects?.name||"")} • คะแนนไม่เปิดเผยแก่ Student</p></div><button class="btn" id="result-csv">⬇️ CSV</button></div><div class="v16-exam-kpis"><div><span>เข้าสอบ</span><b>${rows.length}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>เต็ม</span><b>${Number(exam?.full_score||20)}</b></div><div><span>สูตร</span><b>ถูก × 20/50</b></div></div><div class="table-wrap"><table><thead><tr><th>นักศึกษา</th><th>ครั้ง</th><th>ส่ง</th><th>ถูก</th><th>คะแนน /20</th><th>สลับแท็บ</th><th>ออก Fullscreen</th><th>Copy/Paste</th><th>รวมเหตุการณ์</th><th>จัดการ</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.profiles?.full_name||"")}</b><div class="muted smalltext">${esc(x.profiles?.student_code||"")} • ${esc(x.profiles?.class_name||"")}</div></td><td>${x.attempt_no}</td><td>${fmt(x.submitted_at||x.started_at)}</td><td>${x.correct_count??"-"}/${exam?.question_count_target||50}</td><td><b>${x.score??"-"}</b>/${x.max_score??exam?.full_score??20}</td><td>${x.tab_switch_count||0}</td><td>${x.fullscreen_exit_count||0}</td><td>${x.copy_paste_count||0}</td><td><span class="v14-status ${(x.violation_count||0)>0?"pending":"approved"}">${x.violation_count||0}</span></td><td><div class="row wrap"><button class="btn sm" data-grade-attempt="${x.id}" data-score="${x.score??0}" data-max="${x.max_score??exam?.full_score??20}">แก้คะแนน</button><button class="btn red sm" data-reset-user="${x.user_id}">รีเซ็ตผู้สอบ</button></div></td></tr>`).join("")||`<tr><td colspan="10" class="empty">ยังไม่มีผู้เข้าสอบ</td></tr>`}</tbody></table></div>`;
   $("#exam-back").onclick=adminHome;$("#result-csv").onclick=()=>csvDownload([["รหัส","ชื่อ","ห้อง","ครั้ง","ถูก","คะแนน","สลับแท็บ","ออก fullscreen","copy/paste","context menu","print","เหตุการณ์รวม"],...rows.map(x=>[x.profiles?.student_code,x.profiles?.full_name,x.profiles?.class_name,x.attempt_no,x.correct_count,x.score,x.tab_switch_count,x.fullscreen_exit_count,x.copy_paste_count,x.context_menu_count,x.print_attempt_count,x.violation_count])],`exam-results-${exam?.subjects?.code||"subject"}.csv`);
   $$('[data-reset-user]').forEach(b=>b.onclick=async()=>{if(!confirm("รีเซ็ตผู้เข้าสอบคนนี้? เขาจะสามารถเริ่มสอบใหม่ตามสิทธิ์ของชุดสอบ"))return;const r=await c.rpc("admin_reset_exam_user",{p_exam_id:id,p_user_id:b.dataset.resetUser});if(r.error)msg(err(r.error),true);else{msg("รีเซ็ตแล้ว");resultsView(id)}});
+  $$('[data-grade-attempt]').forEach(b=>b.onclick=async()=>{
+    const score=prompt(`คะแนนใหม่ (0-${b.dataset.max})`,b.dataset.score||"0");if(score===null)return;
+    const n=Number(score),max=Number(b.dataset.max||20);if(!Number.isFinite(n)||n<0||n>max){msg("คะแนนไม่ถูกต้อง",true);return}
+    const reason=prompt("เหตุผลในการแก้ไขคะแนน (บังคับ)","ตรวจทาน/แก้ไขคะแนนโดยผู้สอน");if(!reason?.trim())return;
+    const r=await c.rpc("admin_grade_exam_attempt_v18",{p_attempt_id:b.dataset.gradeAttempt,p_score:n,p_admin_comment:null,p_reason:reason.trim(),p_request_key:uuid()});
+    if(r.error){msg(err(r.error),true);return}msg("บันทึกคะแนนและประวัติการแก้ไขแล้ว");resultsView(id);
+  });
   const rt=await rtClient();if(rt){state.examChannel=rt.channel(`exam-result-${id}-${Date.now()}`).on("postgres_changes",{event:"*",schema:"public",table:"exam_attempts",filter:`exam_id=eq.${id}`},()=>{clearTimeout(resultsView.t);resultsView.t=setTimeout(()=>resultsView(id),800)}).subscribe()}
 }
 
@@ -150,7 +197,7 @@ async function studentHome(){
 }
 
 async function startAttempt(examId){
-  const {data,error}=await db().rpc("start_exam_v179",{p_exam_id:examId});if(error){msg(err(error),true);return}
+  const {data,error}=await db().rpc("start_exam_v18",{p_exam_id:examId});if(error){msg(err(error),true);return}
   if(data?.expired_finalized&&data?.exhausted){app().innerHTML=`<div class="exam-result card"><span class="v14-kicker">AUTO SUBMITTED</span><h1>หมดเวลา • ระบบส่งข้อสอบให้แล้ว</h1><strong>✓</strong><p>บันทึกการสอบเรียบร้อย</p><p class="muted">ระบบผู้เรียนไม่แสดงคะแนนหรือเฉลย</p><button class="btn primary" id="exam-finish">กลับรายการสอบ</button></div>`;$("#exam-finish").onclick=studentHome;return}
   state.attempt=data;state.answers={...(data.answers||{})};state.flags=new Set();state.currentIndex=0;state.dirty=false;state.violationLocal=0;state.fullscreenExpected=!!data.exam?.require_fullscreen;renderAttempt();
 }
@@ -180,7 +227,7 @@ function setAnswer(id,v){state.answers[id]=v;state.dirty=true;drawNav();clearTim
 async function saveAnswers(){if(state.submitting||!state.attempt)return;const e=$("#exam-save-state");if(e)e.textContent="กำลังบันทึก...";const {error}=await db().rpc("save_exam_answers",{p_attempt_id:state.attempt.attempt_id,p_answers:state.answers});if(e)e.textContent=error?`บันทึกไม่สำเร็จ • จะลองใหม่เมื่อแก้คำตอบ: ${err(error)}`:`บันทึกล่าสุด ${new Date().toLocaleTimeString("th-TH")}`;if(!error)state.dirty=false}
 function startTimer(){clearInterval(state.timer);const tick=()=>{const el=$("#exam-timer");if(!el)return;let ms=new Date(state.attempt.expires_at).getTime()-now();if(ms<=0){el.textContent="หมดเวลา";el.classList.add("danger");clearInterval(state.timer);submitAttempt(true);return}const h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000),sec=Math.floor(ms%60000/1000);el.textContent=`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;if(ms<300000)el.classList.add("danger")};tick();state.timer=setInterval(tick,1000)}
 async function submitAttempt(auto){
-  if(state.submitting)return;if(!auto&&!confirm("ยืนยันส่งข้อสอบ? หลังส่งแล้วแก้คำตอบไม่ได้"))return;state.submitting=true;clearTimeout(state.saveTimer);clearInterval(state.timer);const submitKey=uuid();let data=null,error=null;for(let i=0;i<2;i++){const r=await db().rpc("submit_exam_attempt_v179",{p_attempt_id:state.attempt.attempt_id,p_answers:state.answers,p_request_key:submitKey});data=r.data;error=r.error;if(!error)break;const m=String(error?.message||"").toLowerCase();if(!(m.includes("fetch")||m.includes("network")||m.includes("timeout")))break;await new Promise(res=>setTimeout(res,500));}state.submitting=false;if(error){msg(err(error),true);startTimer();return}state.dirty=false;cleanupExamSecurity();try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}app().innerHTML=`<div class="exam-result card"><span class="v14-kicker">EXAM SUBMITTED</span><h1>${auto?"หมดเวลา • ระบบส่งข้อสอบให้แล้ว":"ส่งข้อสอบสำเร็จ"}</h1><strong>✓</strong><p>ระบบบันทึกคำตอบเรียบร้อยแล้ว</p><p class="muted">คะแนนสอบกลางภาค/ปลายภาค เฉลย และความคิดเห็นเป็นข้อมูล Admin เท่านั้น นักศึกษาไม่สามารถขอเปิดดูจากระบบนี้ได้</p><button class="btn primary" id="exam-finish">กลับรายการสอบ</button></div>`;$("#exam-finish").onclick=studentHome;
+  if(state.submitting)return;if(!auto&&!confirm("ยืนยันส่งข้อสอบ? หลังส่งแล้วแก้คำตอบไม่ได้"))return;state.submitting=true;clearTimeout(state.saveTimer);clearInterval(state.timer);const submitKey=uuid();let data=null,error=null;for(let i=0;i<2;i++){const r=await db().rpc("submit_exam_attempt_v18",{p_attempt_id:state.attempt.attempt_id,p_answers:state.answers,p_request_key:submitKey});data=r.data;error=r.error;if(!error)break;const m=String(error?.message||"").toLowerCase();if(!(m.includes("fetch")||m.includes("network")||m.includes("timeout")))break;await new Promise(res=>setTimeout(res,500));}state.submitting=false;if(error){msg(err(error),true);startTimer();return}state.dirty=false;cleanupExamSecurity();try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}app().innerHTML=`<div class="exam-result card"><span class="v14-kicker">EXAM SUBMITTED</span><h1>${auto?"หมดเวลา • ระบบส่งข้อสอบให้แล้ว":"ส่งข้อสอบสำเร็จ"}</h1><strong>✓</strong><p>ระบบบันทึกคำตอบเรียบร้อยแล้ว</p><p class="muted">คะแนนสอบกลางภาค/ปลายภาค เฉลย และความคิดเห็นเป็นข้อมูล Admin เท่านั้น นักศึกษาไม่สามารถขอเปิดดูจากระบบนี้ได้</p><button class="btn primary" id="exam-finish">กลับรายการสอบ</button></div>`;$("#exam-finish").onclick=studentHome;
 }
 
 async function boot(){await syncTime();const p=await profile();if(!p)return;document.documentElement.dataset.examVersion=VERSION;if(p.role==="admin")adminHome();else studentHome()}
