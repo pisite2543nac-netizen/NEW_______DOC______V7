@@ -1,0 +1,9 @@
+DOC-FULL-NR V18.8.4
+
+NEW:
+1. Admin: button "กำหนดส่งใบงานอิเล็กทรอนิกส์" directly in each unit work pair.
+2. Admin can edit electronic worksheet open/due time without changing the paper path.
+3. User: before deadline shows electronic worksheet action.
+4. User: after digital deadline, if not submitted, action automatically changes to Print Late Paper.
+5. Deadline switch auto-refreshes at the deadline without manual page refresh.
+6. Uses existing production RPC publish_subject_worksheets and my_prepare_late_paper_print.
