@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V17.3-FULL-SYSTEM";
+const V15_VERSION="V17.8-FULL-NOTIFICATIONS";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -60,6 +60,7 @@ function toast(message,bad=false){
   let e=$("#v14-toast");if(!e){e=document.createElement("div");e.id="v14-toast";document.body.appendChild(e)}
   e.textContent=message;e.className=`v14-toast show${bad?" bad":""}`;clearTimeout(toast.t);toast.t=setTimeout(()=>e.className="v14-toast",3800);
 }
+const v179RequestKey=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
 function errorText(err){
   const raw=String(err?.message||err?.details||err?.error_description||err||"เกิดข้อผิดพลาด");
   const map={
@@ -136,6 +137,65 @@ async function subscribeSubjectRoom(sid,mode){
 }
 
 
+
+function notificationStorageKey(id){return `docnr-os-notified:${uid()||"anon"}:${id||"unknown"}`}
+function mobileNotificationSupported(){return "Notification" in window&&"serviceWorker" in navigator}
+function notificationPermissionText(){
+  if(!mobileNotificationSupported())return "อุปกรณ์นี้ไม่รองรับ Pop-up";
+  if(Notification.permission==="granted")return "Pop-up โทรศัพท์: เปิดแล้ว";
+  if(Notification.permission==="denied")return "Pop-up โทรศัพท์: ถูกปิดในตั้งค่า Browser";
+  return "เปิด Pop-up แจ้งเตือนบนอุปกรณ์นี้";
+}
+async function requestMobileNotificationPermission(){
+  if(!mobileNotificationSupported()){toast("Browser นี้ไม่รองรับการแจ้งเตือนของระบบปฏิบัติการ",true);return false}
+  let permission=Notification.permission;
+  if(permission!=="granted")permission=await Notification.requestPermission();
+  if(permission==="granted"){
+    localStorage.setItem("docnr-mobile-notifications","enabled");
+    toast("เปิดแจ้งเตือน Pop-up บนอุปกรณ์นี้แล้ว");
+    await replayPendingDeadlineNotifications();
+    return true;
+  }
+  toast("ยังไม่ได้รับสิทธิ์แจ้งเตือน กรุณาอนุญาต Notifications ใน Browser/ระบบปฏิบัติการ",true);return false;
+}
+async function showOsNotification(n,{force=false}={}){
+  if(!n||!mobileNotificationSupported()||Notification.permission!=="granted")return false;
+  const id=n.id||`${n.type||"notification"}:${n.created_at||Date.now()}`,key=notificationStorageKey(id);
+  if(!force&&localStorage.getItem(key))return false;
+  const urgent=n.type==="worksheet_due_now"||n.metadata?.urgency==="critical";
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    await reg.showNotification(n.title||"Nangrong Smart Worksheet",{
+      body:n.message||"มีการแจ้งเตือนใหม่",
+      icon:"./icons/nangrong-app-192-v1761.png",
+      badge:"./icons/nangrong-favicon-48-v1761.png",
+      tag:`docnr-${id}`,
+      renotify:true,
+      requireInteraction:urgent,
+      vibrate:urgent?[250,120,250,120,400]:[180,80,180],
+      data:{route:n.metadata?.route||"work",notification_id:n.id||null,metadata:n.metadata||{}},
+      actions:[{action:"open",title:"เปิดงานของฉัน"}]
+    });
+    localStorage.setItem(key,String(Date.now()));return true;
+  }catch(e){
+    try{new Notification(n.title||"Nangrong Smart Worksheet",{body:n.message||"มีการแจ้งเตือนใหม่",icon:"./icons/nangrong-app-192-v1761.png"});localStorage.setItem(key,String(Date.now()));return true}catch{return false}
+  }
+}
+async function replayPendingDeadlineNotifications(){
+  if(!uid()||Notification.permission!=="granted")return;
+  const {data,error}=await client().rpc("my_pending_deadline_notifications");if(error)return;
+  for(const n of Array.isArray(data)?data:[])await showOsNotification(n);
+}
+function handleNotificationRoute(route){
+  route=String(route||"work");
+  if(window.DOCNR_BASE?.navigate)window.DOCNR_BASE.navigate(route);
+}
+function bindNotificationClickBridge(){
+  if(state.notificationBridgeBound)return;state.notificationBridgeBound=true;
+  navigator.serviceWorker?.addEventListener?.("message",e=>{if(e.data?.type==="DOCNR_NOTIFICATION_CLICK")handleNotificationRoute(e.data.route||"work")});
+  const q=new URLSearchParams(location.search),r=q.get("notifyRoute");
+  if(r){setTimeout(()=>handleNotificationRoute(r),900);q.delete("notifyRoute");const qs=q.toString();history.replaceState(null,"",location.pathname+(qs?`?${qs}`:"")+location.hash)}
+}
 function notificationTime(meta,created){
   const t=meta?.scanned_at||meta?.updated_at||created;
   return t?new Date(t).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"medium"}):"-";
@@ -146,9 +206,10 @@ async function refreshNotificationBadge(){
   const badge=$("#v161-notification-count");if(badge){const n=count||0;badge.textContent=n>99?"99+":String(n);badge.hidden=!n}
 }
 function ensureNotificationUI(){
+  bindNotificationClickBridge();
   const bar=$(".topbar .row:last-child");if(!bar||$("#v161-notification-button"))return;
   const b=document.createElement("button");b.type="button";b.id="v161-notification-button";b.className="btn sm v161-notify-btn";
-  b.innerHTML=`🔔<span id="v161-notification-count" hidden>0</span>`;b.title="การแจ้งเตือน";bar.insertBefore(b,bar.firstChild);
+  b.innerHTML=`🔔<span id="v161-notification-count" hidden>0</span>`;b.title="การแจ้งเตือน • Deadline Pop-up";bar.insertBefore(b,bar.firstChild);
   b.onclick=showNotificationPanel;
 }
 async function showNotificationPanel(){
@@ -156,25 +217,32 @@ async function showNotificationPanel(){
   const {data,error}=await client().from("app_notifications").select("id,type,title,message,metadata,read_at,created_at").eq("user_id",uid()).order("created_at",{ascending:false}).limit(40);
   if(error){toast(errorText(error),true);return}
   const panel=document.createElement("aside");panel.id="v161-notification-panel";panel.className="v161-notification-panel";
-  panel.innerHTML=`<div class="v161-notification-head"><div><b>🔔 การแจ้งเตือน</b><small>ข้อมูลจากระบบแบบ Real-time</small></div><button class="btn sm" id="v161-notification-close">✕</button></div>
-    <div class="v161-notification-list">${(data||[]).map(n=>`<button class="v161-notification-item ${n.read_at?"":"unread"}" data-v161-notification="${n.id}">
+  const permission=typeof Notification!=="undefined"?Notification.permission:"unsupported";
+  panel.innerHTML=`<div class="v161-notification-head"><div><b>🔔 การแจ้งเตือน</b><small>Real-time • เตือนก่อนหมดเวลาส่ง 1 ชั่วโมง</small></div><button class="btn sm" id="v161-notification-close">✕</button></div>
+    <div class="v178-notify-permission ${permission==='granted'?'ready':''}"><div><b>📱 ${esc(notificationPermissionText())}</b><small>${permission==='granted'?'ระบบจะแสดง Pop-up ของโทรศัพท์/แท็บเล็ต/คอมเมื่อแอปมี Session ทำงาน':'แตะเปิดสิทธิ์เพื่อรับ Pop-up บนอุปกรณ์นี้'}</small></div>${permission==='granted'?`<span class="v178-ready-dot">● พร้อม</span>`:`<button class="btn sm primary" id="v178-enable-notifications">เปิดแจ้งเตือนมือถือ</button>`}</div>
+    <div class="v161-notification-list">${(data||[]).map(n=>`<button class="v161-notification-item ${n.read_at?"":"unread"}" data-v161-notification="${n.id}" data-v178-route="${esc(n.metadata?.route||'work')}">
       <b>${esc(n.title)}</b><span>${esc(n.message)}</span><small>${notificationTime(n.metadata,n.created_at)}</small>
     </button>`).join("")||`<div class="v14-empty">ยังไม่มีการแจ้งเตือน</div>`}</div>`;
   document.body.appendChild(panel);$("#v161-notification-close").onclick=()=>panel.remove();
+  const enable=$("#v178-enable-notifications");if(enable)enable.onclick=async()=>{if(await requestMobileNotificationPermission()){panel.remove();showNotificationPanel()}};
+  panel.addEventListener("click",e=>{const n=e.target.closest("[data-v178-route]");if(n){handleNotificationRoute(n.dataset.v178Route||"work");panel.remove()}});
   const unread=(data||[]).filter(n=>!n.read_at);
   await Promise.all(unread.map(n=>client().rpc("mark_notification_read",{p_notification_id:n.id}).catch(()=>null)));
   refreshNotificationBadge();
 }
 async function startNotificationRealtime(){
   const currentUid=uid();if(!currentUid)return;
-  if(state.notificationReady&&state.notificationUid===currentUid){ensureNotificationUI();return}
+  bindNotificationClickBridge();
+  if(state.notificationReady&&state.notificationUid===currentUid){ensureNotificationUI();replayPendingDeadlineNotifications().catch(()=>{});return}
   state.notificationReady=true;state.notificationUid=currentUid;ensureNotificationUI();await refreshNotificationBadge();
+  if(Notification.permission==="granted")replayPendingDeadlineNotifications().catch(()=>{});
   const rt=await realtimeClient();if(!rt)return;
   if(state.notificationChannel)try{rt.removeChannel(state.notificationChannel)}catch{}
   state.notificationChannel=rt.channel(`app-notifications-${currentUid}-${Date.now()}`)
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"app_notifications",filter:`user_id=eq.${currentUid}`},payload=>{
       const n=payload.new||{};refreshNotificationBadge();
       toast(`${n.title||"แจ้งเตือน"} • ${n.message||""}`);
+      if(["worksheet_due_1h","worksheet_due_now","worksheet_graded","submission_received"].includes(n.type))showOsNotification(n).catch(()=>{});
       if(state.route==="attendance"){
         const banner=$("#v161-latest-checkin");
         if(banner&&n.type==="attendance_checked")banner.innerHTML=`<b>✅ ${esc(n.title||"เช็คชื่อแล้ว")}</b><span>${esc(n.message||"")}</span><small>${notificationTime(n.metadata,n.created_at)}</small>`;
@@ -185,7 +253,7 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const p=await getProfile();if(!p)return;
   const brand=$("#sidebar .brand .smalltext");
-  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V17.3`;
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V17.8`;
   // V17: app.js is the single owner of Sidebar and route buttons.
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
@@ -319,10 +387,31 @@ async function studentWorkRows(){
   const ids=[...new Set((a||[]).map(x=>x.worksheet_id))];if(!ids.length)return [];
   const [wr,sr]=await Promise.all([
     c.from("worksheets").select("id,subject_id,title,reference_code,mode,status,open_at,due_at,allow_late,settings,subjects(id,code,name,color_hex)").in("id",ids),
-    c.from("submissions").select("worksheet_id,status,submitted_at,confirmed_at,is_late,last_saved_at,attempt_count").eq("user_id",id).in("worksheet_id",ids)
+    c.from("submissions").select("worksheet_id,status,submitted_at,confirmed_at,is_late,last_saved_at,attempt_count,updated_at").eq("user_id",id).in("worksheet_id",ids)
   ]);if(wr.error)throw wr.error;if(sr.error)throw sr.error;
   const sm=new Map();for(const s of sr.data||[]){const old=sm.get(s.worksheet_id);if(!old||new Date(s.updated_at||s.last_saved_at||s.submitted_at||0)>=new Date(old.updated_at||old.last_saved_at||old.submitted_at||0))sm.set(s.worksheet_id,s)}
-  return (wr.data||[]).map(w=>({w,s:sm.get(w.id)||null,status:workStatus(w,sm.get(w.id)||null)})).sort((x,y)=>(new Date(x.w.due_at||"9999-12-31")-new Date(y.w.due_at||"9999-12-31")));
+  const groups=new Map();
+  for(const w of wr.data||[]){
+    const key=String(w.settings?.work_pair_key||w.id),g=groups.get(key)||{key,digital:null,paper:null};
+    if(w.mode==="digital")g.digital=w;else if(w.mode==="paper")g.paper=w;groups.set(key,g);
+  }
+  const finalKeys=new Set(["submitted","confirmed","graded"]);
+  const now=nowMs();
+  return [...groups.values()].map(g=>{
+    const d=g.digital,p=g.paper,w=d||p,ds=d?sm.get(d.id):null,ps=p?sm.get(p.id):null;
+    const due=d?.due_at?new Date(d.due_at).getTime():(w?.due_at?new Date(w.due_at).getTime():null);
+    const open=d?.open_at?new Date(d.open_at).getTime():(w?.open_at?new Date(w.open_at).getTime():null);
+    let status;
+    if(ds?.status==="graded")status={key:"graded",label:"ตรวจแล้ว",cls:"ok"};
+    else if(ds&&finalKeys.has(ds.status))status={key:"sent",label:"ส่งออนไลน์แล้ว",cls:"ok"};
+    else if(ps?.status==="graded")status={key:"graded",label:"ตรวจงานย้อนหลังแล้ว",cls:"ok"};
+    else if(ps&&finalKeys.has(ps.status))status={key:"late",label:"ส่งย้อนหลังแล้ว",cls:"warn"};
+    else if(ds?.status==="draft")status={key:"draft",label:"บันทึกร่าง",cls:"draft"};
+    else if(open&&open>now)status={key:"upcoming",label:"ยังไม่เปิด",cls:"muted"};
+    else if(due&&due<now)status={key:"overdue",label:"เกินกำหนด • พิมพ์ย้อนหลัง",cls:"bad"};
+    else status={key:"pending",label:"ยังไม่ส่ง",cls:"wait"};
+    return {...g,w,digitalSubmission:ds,paperSubmission:ps,status};
+  }).sort((x,y)=>(new Date(x.digital?.due_at||x.w?.due_at||"9999-12-31")-new Date(y.digital?.due_at||y.w?.due_at||"9999-12-31")));
 }
 function workStatus(w,s){
   const now=nowMs(),open=w.open_at?new Date(w.open_at).getTime():null,due=w.due_at?new Date(w.due_at).getTime():null;
@@ -333,15 +422,21 @@ function workStatus(w,s){
   if(due&&due<now)return {key:"overdue",label:"เกินกำหนด",cls:"bad"};
   return {key:"pending",label:"ยังไม่ส่ง",cls:"wait"};
 }
-function workCard(row){const {w,status}=row;return `<article class="v14-work-card" style="--course:${esc(w.subjects?.color_hex||"#22d3ee")}">
-  <div class="v14-work-main"><div class="v14-course-chip">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")}</div><h3>${esc(w.title)}</h3>
-  <div class="v14-meta">${w.mode==="paper"?"🖨️ ใบงานกระดาษ":"💻 ใบงานอิเล็กทรอนิกส์"} • ส่ง ${fmt(w.due_at)}</div></div>
-  <div class="v14-work-side"><span class="v14-status ${status.cls}">${esc(status.label)}</span>${!["sent","late","graded"].includes(status.key)&&w.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(w.due_at)}"></b>`:""}
-  <button class="btn primary" data-v14-open-work="${w.id}">${w.mode==="digital"?"เปิดทำใบงาน":"ดูใบงาน"}</button></div></article>`}
-
-// ---------------------------------------------------------------------------
-// Dashboards
-// ---------------------------------------------------------------------------
+function workCard(row){
+  const w=row.digital||row.paper||row.w,status=row.status,d=row.digital,p=row.paper;
+  const done=["sent","late","graded"].includes(status.key);
+  const overdue=status.key==="overdue";
+  const action=done?`<button class="btn" disabled>✅ บันทึกงานแล้ว</button>`:
+    overdue&&p?`<button class="btn warn" data-v175-late-paper="${p.id}">🖨️ พิมพ์ใบงานส่งย้อนหลัง</button>`:
+    d?`<button class="btn primary" data-v14-open-work="${d.id}">📝 ทำใบงานประจำหน่วย</button>`:
+    `<button class="btn" disabled>ยังไม่มีใบงาน</button>`;
+  return `<article class="v14-work-card v176-workpair-card" style="--course:${esc(w?.subjects?.color_hex||"#22d3ee")}">
+    <div class="v14-work-main"><div class="v14-course-chip">${esc(w?.subjects?.code||"")} ${esc(w?.subjects?.name||"")}</div><h3>${esc(w?.settings?.unit_topic||String(w?.title||"").replace(/^ใบงาน[^:]*:\s*/,""))}</h3>
+    <div class="v14-meta">📝 ใบงานประจำหน่วย • 💻 ส่งตรงเวลา / 🖨️ ส่งย้อนหลัง • กำหนด ${fmt(d?.due_at||w?.due_at)}</div>
+    <div class="v176-pair-codes"><span>${esc(d?.reference_code||"-")}</span><span>${esc(p?.reference_code||"-")}</span></div></div>
+    <div class="v14-work-side"><span class="v14-status ${status.cls}">${esc(status.label)}</span>${!done&&d?.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(d.due_at)}"></b>`:""}${action}</div>
+  </article>`;
+}
 function dashboardRouteCard(route,icon,title,desc,tone="blue"){
   return `<button class="v1610-flow-card ${tone}" data-app-route="${esc(route)}"><span class="v1610-flow-icon">${icon}</span><span><b>${esc(title)}</b><small>${esc(desc)}</small></span><i>›</i></button>`;
 }
@@ -351,8 +446,8 @@ function hubCard(route,icon,title,desc,tone="blue"){
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V17.3</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 13 หน่วย • สไลด์ • Digital/Paper","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V17.8</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 17 หน่วย • สไลด์ 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
   <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
   Promise.race([client().rpc("admin_system_health_v17"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
     const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
@@ -361,8 +456,8 @@ async function renderAdminDashboard(){
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V17.3</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","หน่วยที่เปิด • สไลด์ • ใบงาน","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V17.8</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","17 หน่วย • สไลด์ 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
   <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
 }
 async function renderStudentsHub(){
@@ -500,23 +595,20 @@ async function renderStudentCourses(){
 }
 async function renderStudentCourse(sid){
   state.subjectId=sid;state.route="courses";heartbeat();setTitle("ห้องเรียนของฉัน");busy("กำลังเปิดห้องเรียนรายวิชา...");const c=client();
-  const [sr,wr,fr,subr]=await Promise.all([
-    c.from("subjects").select("id,code,name,color_hex,description").eq("id",sid).single(),
-    c.from("worksheets").select("id,subject_id,title,reference_code,mode,status,open_at,due_at,settings,subjects(id,code,name,color_hex)").eq("subject_id",sid).eq("status","published").order("open_at"),
-    c.from("subject_files").select("id,worksheet_id,sequence_no,resource_kind,original_name,storage_path").eq("subject_id",sid).order("created_at"),
-    c.from("submissions").select("worksheet_id,status,submitted_at,is_late,last_saved_at").eq("user_id",uid())
-  ]);if(sr.error)throw sr.error;if(wr.error)throw wr.error;if(fr.error&&!String(fr.error.message).includes("permission"))throw fr.error;
-  const s=sr.data,sm=new Map((subr.data||[]).map(x=>[x.worksheet_id,x])),works=wr.data||[],files=fr.data||[];
-  const group=(mode,label)=>{const list=works.filter(w=>w.mode===mode);return `<section><div class="v14-section-head compact"><div><h2>${label}</h2><p>${list.length} งานที่ปล่อยแล้ว</p></div></div><div class="v14-work-list">${list.map(w=>{const st=workStatus(w,sm.get(w.id)),fs=files.filter(f=>f.worksheet_id===w.id||(!f.worksheet_id&&Number(f.sequence_no||0)===wsSeq(w)));return `<article class="v14-learning-set" style="--course:${esc(s.color_hex||"#22d3ee")}"><div class="v14-learning-content"><span class="v14-codebox">${esc(wsCode(w))}</span><div><h3>${esc(w.title)}</h3><div class="v14-goal">🎯 ${esc(w.settings?.learning_goal||"เป้าหมายตามหน่วยการเรียน")}</div><div class="v14-meta">เปิด ${fmt(w.open_at)} • ส่ง ${fmt(w.due_at)}</div>${!["sent","late","graded"].includes(st.key)&&w.due_at?`<b class="v14-countdown" data-v14-countdown="${esc(w.due_at)}"></b>`:""}</div></div><div class="v14-learning-media"><b>📊 สไลด์ / สื่อ</b>${fs.length?fs.map(f=>`<button class="v14-file" data-v14-file="${esc(f.storage_path)}">${esc(f.original_name)}</button>`).join(""):`<small>ยังไม่มีสื่อประกอบชุดนี้</small>`}</div><div class="v14-learning-actions"><span class="v14-status ${st.cls}">${esc(st.label)}</span><button class="btn primary" data-v14-open-work="${w.id}">${mode==="digital"?"เปิดทำใบงาน":"ดูใบงาน"}</button></div></article>`}).join("")||`<div class="v14-empty">ยังไม่มีใบงานประเภทนี้ที่ปล่อยให้คุณ</div>`}</div></section>`};
-  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>${group("paper","🖨️ ใบงานสำหรับพิมพ์")}${group("digital","💻 ใบงานอิเล็กทรอนิกส์")}</section>`;startCountdowns();subscribeSubjectRoom(sid,"student").catch(()=>{});
+  const sr=await c.from("subjects").select("id,code,name,color_hex,description").eq("id",sid).single();if(sr.error)throw sr.error;
+  const s=sr.data;
+  content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button>
+    <div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"17 หน่วย • สไลด์ 20 หน้า/หน่วย • ใบงานคู่แบบออนไลน์/ย้อนหลัง")}</p></div><div><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>
+    <div class="card v176-room-rule"><b>รูปแบบห้องเรียนสำเร็จรูป</b><span>แต่ละหน่วยมีสไลด์ 20 หน้าและใบงานปุ่มเดียว • ก่อนกำหนดทำออนไลน์ • หลังหมดเวลาจึงพิมพ์ใบงานย้อนหลังรายบุคคล</span></div>
+  </section>`;
+  subscribeSubjectRoom(sid,"student").catch(()=>{});
 }
 async function renderWorkStatus(){
   setTitle("ตารางสถานะงาน");busy("กำลังตรวจงานทั้งหมด...");const rows=await studentWorkRows();const counts={sent:0,late:0,graded:0,draft:0,pending:0,upcoming:0,overdue:0};rows.forEach(x=>counts[x.status.key]++);
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK STATUS</span><h1>ตารางสถานะงาน</h1><p>เห็นทันทีว่างานไหนส่งแล้ว งานไหนยังค้าง และเหลือเวลาเท่าไร</p></div></div><div class="v14-kpis four"><div><span>ทั้งหมด</span><b>${rows.length}</b></div><div><span>ส่งแล้ว/ตรวจแล้ว</span><b>${counts.sent+counts.late+counts.graded}</b></div><div><span>กำลังทำ/ยังไม่ส่ง</span><b>${counts.draft+counts.pending}</b></div><div><span>เกินกำหนด</span><b>${counts.overdue}</b></div></div>
-  <div class="card v14-filter"><input id="v14-work-q" class="input" placeholder="ค้นหาวิชา / ใบงาน"><select id="v14-work-type" class="input"><option value="">ทุกประเภท</option><option value="paper">ใบงานกระดาษ</option><option value="digital">ใบงานอิเล็กทรอนิกส์</option></select><select id="v14-work-status" class="input"><option value="">ทุกสถานะ</option><option value="pending">ยังไม่ส่ง</option><option value="draft">บันทึกร่าง</option><option value="sent">ส่งแล้ว</option><option value="late">ส่งช้า</option><option value="graded">ตรวจแล้ว</option><option value="overdue">เกินกำหนด</option><option value="upcoming">ยังไม่เปิด</option></select></div><div id="v14-work-list" class="v14-work-list"></div></section>`;
-  const draw=()=>{const q=$("#v14-work-q").value.trim().toLowerCase(),mode=$("#v14-work-type").value,st=$("#v14-work-status").value;const f=rows.filter(x=>(!q||`${x.w.title} ${x.w.subjects?.code} ${x.w.subjects?.name}`.toLowerCase().includes(q))&&(!mode||x.w.mode===mode)&&(!st||x.status.key===st));$("#v14-work-list").innerHTML=f.map(workCard).join("")||`<div class="v14-empty">ไม่พบงานตามตัวกรอง</div>`;startCountdowns()};draw();$("#v14-work-q").oninput=draw;$("#v14-work-type").onchange=draw;$("#v14-work-status").onchange=draw;
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK STATUS • LOGICAL PAIRS</span><h1>งานของฉัน</h1><p>1 หน่วย = 1 งาน • ระบบเลือกใบงานออนไลน์หรือใบงานพิมพ์ย้อนหลังให้อัตโนมัติตามเวลา</p></div></div><div class="v14-kpis four"><div><span>ทั้งหมด</span><b>${rows.length}</b></div><div><span>ส่งแล้ว/ตรวจแล้ว</span><b>${counts.sent+counts.late+counts.graded}</b></div><div><span>กำลังทำ/ยังไม่ส่ง</span><b>${counts.draft+counts.pending}</b></div><div><span>เกินกำหนด</span><b>${counts.overdue}</b></div></div>
+  <div class="card v14-filter"><input id="v14-work-q" class="input" placeholder="ค้นหาวิชา / หน่วย"><select id="v14-work-status" class="input"><option value="">ทุกสถานะ</option><option value="pending">ยังไม่ส่ง</option><option value="draft">บันทึกร่าง</option><option value="sent">ส่งออนไลน์แล้ว</option><option value="late">ส่งย้อนหลังแล้ว</option><option value="graded">ตรวจแล้ว</option><option value="overdue">เกินกำหนด</option><option value="upcoming">ยังไม่เปิด</option></select></div><div id="v14-work-list" class="v14-work-list"></div></section>`;
+  const draw=()=>{const q=$("#v14-work-q").value.trim().toLowerCase(),st=$("#v14-work-status").value;const f=rows.filter(x=>{const w=x.digital||x.paper||x.w;return (!q||`${w?.settings?.unit_topic||""} ${w?.title||""} ${w?.subjects?.code||""} ${w?.subjects?.name||""}`.toLowerCase().includes(q))&&(!st||x.status.key===st)});$("#v14-work-list").innerHTML=f.map(workCard).join("")||`<div class="v14-empty">ไม่พบงานตามตัวกรอง</div>`;startCountdowns()};draw();$("#v14-work-q").oninput=draw;$("#v14-work-status").onchange=draw;
 }
-
 // ---------------------------------------------------------------------------
 // Admin private profiles
 // ---------------------------------------------------------------------------
@@ -546,20 +638,23 @@ async function showAdminProfile(id){
   const [pr,er,assignR,subR,attR]=await Promise.all([
     c.from("profiles").select("*").eq("id",id).single(),
     c.from("subject_enrollments").select("status,requested_at,subjects(id,code,name)").eq("user_id",id),
-    c.from("worksheet_assignments").select("worksheet_id,worksheets(id,title,mode,subject_id,subjects(code,name))").eq("user_id",id),
-    c.from("submissions").select("id,status,submitted_at,is_late,worksheet_id,worksheets(title,subjects(code,name))").eq("user_id",id).order("updated_at",{ascending:false}),
+    c.from("worksheet_assignments").select("worksheet_id,worksheets(id,title,mode,subject_id,settings,subjects(code,name))").eq("user_id",id),
+    c.from("submissions").select("id,status,submitted_at,is_late,worksheet_id,worksheets(id,title,settings,subjects(code,name))").eq("user_id",id).order("updated_at",{ascending:false}),
     c.from("attendance_records").select("status,scanned_at,attendance_sessions(session_date,subject_id,subjects(code,name))").eq("user_id",id).order("created_at",{ascending:false})
   ]);
   if(pr.error){toast(errorText(pr.error),true);return}
   const p=pr.data,assignments=assignR.data||[],subs=subR.data||[],atts=attR.data||[];
-  const assigned=[...new Set(assignments.map(x=>x.worksheet_id).filter(Boolean))],completedSet=new Set(subs.filter(x=>["submitted","confirmed","graded"].includes(x.status)).map(x=>x.worksheet_id)),completed=assigned.filter(x=>completedSet.has(x)).length;
+  const logicalKey=w=>String(w?.settings?.work_pair_key||w?.id||"");
+  const assigned=[...new Set(assignments.map(x=>logicalKey(x.worksheets)).filter(Boolean))];
+  const completedSet=new Set(subs.filter(x=>["submitted","confirmed","graded"].includes(x.status)).map(x=>logicalKey(x.worksheets)).filter(Boolean));
+  const completed=assigned.filter(x=>completedSet.has(x)).length;
   const workRate=assigned.length?Math.round(completed*1000/assigned.length)/10:0;
   const counts={present:0,late:0,absent:0,excused:0};atts.forEach(x=>{if(counts[x.status]!==undefined)counts[x.status]++});
   const attDen=counts.present+counts.late+counts.absent,attRate=attDen?Math.round((counts.present+counts.late)*1000/attDen)/10:0;
   const latestSubs=subs.slice(0,20),latestAtt=atts.slice(0,20);
   const subjectWork={};
-  assignments.forEach(a=>{const s=a.worksheets?.subjects,code=s?.code||"-";if(!subjectWork[code])subjectWork[code]={name:s?.name||"",assigned:new Set(),done:new Set()};subjectWork[code].assigned.add(a.worksheet_id)});
-  subs.forEach(s=>{const code=s.worksheets?.subjects?.code||"-";if(subjectWork[code]&&["submitted","confirmed","graded"].includes(s.status))subjectWork[code].done.add(s.worksheet_id)});
+  assignments.forEach(a=>{const s=a.worksheets?.subjects,code=s?.code||"-";if(!subjectWork[code])subjectWork[code]={name:s?.name||"",assigned:new Set(),done:new Set()};subjectWork[code].assigned.add(logicalKey(a.worksheets))});
+  subs.forEach(s=>{const code=s.worksheets?.subjects?.code||"-";if(subjectWork[code]&&["submitted","confirmed","graded"].includes(s.status))subjectWork[code].done.add(logicalKey(s.worksheets))});
   const subjectAtt={};
   atts.forEach(r=>{const code=r.attendance_sessions?.subjects?.code||"-";if(!subjectAtt[code])subjectAtt[code]={name:r.attendance_sessions?.subjects?.name||"",present:0,late:0,absent:0,excused:0};if(subjectAtt[code][r.status]!==undefined)subjectAtt[code][r.status]++});
   let avatar=null;if(p.avatar_path){const r=await c.storage.from("avatars").createSignedUrl(p.avatar_path,600);avatar=r.data?.signedUrl||null}
@@ -697,7 +792,7 @@ async function submitAttendanceToken(raw){
   const token=parseAttendanceToken(raw);if(!token){toast("QR/Token ไม่ถูกต้อง",true);return}
   const classId=$("#v14-att-class")?.value,subjectId=$("#v14-att-subject")?.value;if(!classId||!subjectId){toast("กรุณาเลือกห้องและรายวิชาก่อนสแกน",true);return}
   if(state.scanBusy)return;state.scanBusy=true;
-  const {data,error}=await client().rpc("scan_attendance_qr",{p_classroom_id:classId,p_subject_id:subjectId,p_token:token,p_late_after_minutes:15});state.scanBusy=false;
+  const {data,error}=await client().rpc("scan_attendance_qr_v179",{p_classroom_id:classId,p_subject_id:subjectId,p_token:token,p_late_after_minutes:15,p_request_key:v179RequestKey()});state.scanBusy=false;
   if(error){toast(errorText(error),true);if(String(error.message||"").includes("ATTENDANCE_WINDOW_CLOSED_USE_ADMIN")){stopScanner();await loadAttendanceSessions()}return}
   state.currentAttendanceSession=data.session_id;state.currentAttendanceDeadline=data.auto_close_at||null;
   const btn=$("#v161-summary-submit");if(btn)btn.disabled=false;
@@ -829,32 +924,46 @@ function detailStatus(sub){
 }
 async function loadSubjectWorkDetailData(sid){
   const c=client();
-  const wr=await c.from("worksheets").select("id,title,reference_code,mode,status,due_at").eq("subject_id",sid).order("reference_code",{ascending:true});
+  const wr=await c.from("worksheets").select("id,title,reference_code,mode,status,due_at,settings").eq("subject_id",sid).order("reference_code",{ascending:true});
   if(wr.error)throw wr.error;
-  const works=wr.data||[];
-  if(!works.length)return {works:[],assignments:[],submissions:[]};
-  const ids=works.map(x=>x.id);
+  const raw=wr.data||[];
+  if(!raw.length)return {works:[],assignments:[],submissions:[]};
+  const ids=raw.map(x=>x.id);
   const [ar,sr]=await Promise.all([
     c.from("worksheet_assignments").select("worksheet_id,user_id,assigned_at").in("worksheet_id",ids),
     c.from("submissions").select("worksheet_id,user_id,status,is_late,submitted_at,confirmed_at").in("worksheet_id",ids)
   ]);
   if(ar.error)throw ar.error;if(sr.error)throw sr.error;
-  const assignedIds=new Set((ar.data||[]).map(x=>x.worksheet_id));
-  return {works:works.filter(x=>assignedIds.has(x.id)),assignments:ar.data||[],submissions:sr.data||[]};
+  const byId=new Map(raw.map(w=>[w.id,w])),pairs=new Map();
+  for(const w of raw){
+    const key=String(w.settings?.work_pair_key||w.id),p=pairs.get(key)||{id:key,key,title:w.settings?.unit_topic||w.title,reference_code:"",mode:"pair",worksheet_ids:[]};
+    p.worksheet_ids.push(w.id);
+    if(w.mode==="digital")p.digital=w;else if(w.mode==="paper")p.paper=w;
+    p.reference_code=[p.digital?.reference_code,p.paper?.reference_code].filter(Boolean).join(" / ");
+    pairs.set(key,p);
+  }
+  const assignments=(ar.data||[]).map(a=>({...a,pair_id:String(byId.get(a.worksheet_id)?.settings?.work_pair_key||a.worksheet_id)}));
+  const submissions=(sr.data||[]).map(s=>({...s,pair_id:String(byId.get(s.worksheet_id)?.settings?.work_pair_key||s.worksheet_id)}));
+  return {works:[...pairs.values()],assignments,submissions};
 }
 function renderWorkDetailTable(rows,detail){
   const works=detail.works||[],assign=detail.assignments||[],subs=detail.submissions||[];
   if(!works.length)return `<div class="v14-empty">ยังไม่มีใบงานที่มอบหมายจริงในรายวิชานี้</div>`;
-  const assigned=new Set(assign.map(x=>`${x.user_id}:${x.worksheet_id}`));
-  const subMap=new Map(subs.map(x=>[`${x.user_id}:${x.worksheet_id}`,x]));
-  const head=works.map(w=>`<th title="${esc(w.title||"")}"><span class="v162-work-code">${esc(w.reference_code||w.title||"งาน")}</span><small>${w.mode==="paper"?"Paper":"Digital"}</small></th>`).join("");
+  const assigned=new Set(assign.map(x=>`${x.user_id}:${x.pair_id}`));
+  const priority={graded:4,confirmed:3,submitted:2,draft:1};
+  const subMap=new Map();
+  for(const s of subs){
+    const key=`${s.user_id}:${s.pair_id}`,old=subMap.get(key);
+    if(!old||Number(priority[s.status]||0)>Number(priority[old.status]||0))subMap.set(key,s);
+  }
+  const head=works.map(w=>`<th title="${esc(w.title||"")}"><span class="v162-work-code">${esc(w.reference_code||w.title||"งาน")}</span><small>1 คู่ = 1 งาน</small></th>`).join("");
   const body=rows.map((x,i)=>`<tr><td class="sticky c">${i+1}</td><td class="sticky2"><b>${esc(x.student_code||"")}</b><small>${esc(x.full_name||"")}</small></td>${works.map(w=>{
     const key=`${x.user_id}:${w.id}`;
     if(!assigned.has(key))return `<td class="v162-work-na">—</td>`;
     const st=detailStatus(subMap.get(key));
     return `<td><span class="v162-work-status ${st.cls}">${st.label}</span></td>`;
   }).join("")}</tr>`).join("");
-  return `<div class="v162-detail-note">ส่วนนี้แสดงเฉพาะในหน้า Admin และ <b>ไม่ถูกนำไปพิมพ์หรือดาวน์โหลดในรายงานสรุป</b></div>
+  return `<div class="v162-detail-note">Digital และ Paper ของหน่วยเดียวกันนับเป็น <b>1 งาน</b> เท่านั้น • Gradebook ใช้คะแนนตรวจจริง และงานย้อนหลังมีเครดิตสูงสุด 50%</div>
   <div class="v162-work-matrix"><table><thead><tr><th class="sticky">#</th><th class="sticky2">นักศึกษา</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 async function renderSubjectGradebook(sid){
@@ -888,7 +997,7 @@ async function renderSubjectGradebook(sid){
     <div class="v16-no-print"><button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button></div>
     <div class="v16-print-head v16-no-print"><img src="./icons/icon-192.png" alt=""><div><span>วิทยาลัยเทคนิคนางรอง</span><h1>สรุปผลคะแนนรายวิชา</h1><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} ภาคเรียน ${esc(subject.semester||"-")}</p></div></div>
     <div class="v16-summary-kpis v16-no-print"><div><span>นักศึกษา</span><b>${rows.length}</b></div><div><span>ส่งงานครบ</span><b>${fullWork}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>คะแนนเต็ม</span><b>100</b></div></div>
-    <div class="v16-grade-rules v16-no-print"><b>เกณฑ์คะแนน</b><span>งาน ${cfg.work_points} • จิตพิสัย ${cfg.behavior_points} • สอบกลางภาค ${cfg.midterm_points} • สอบปลายภาค ${cfg.final_points}</span><small>คะแนนงานคิดจากจำนวนงานที่ครูมอบหมายจริง หากสั่ง 13 งานและส่งครบ 13 งาน = คะแนนงานเต็ม ${cfg.work_points}</small></div>
+    <div class="v16-grade-rules v16-no-print"><b>เกณฑ์คะแนน</b><span>งาน ${cfg.work_points} • จิตพิสัย ${cfg.behavior_points} • สอบกลางภาค ${cfg.midterm_points} • สอบปลายภาค ${cfg.final_points}</span><small>คะแนนงานคำนวณจากคะแนนที่ครูตรวจจริง • Digital/Paper คู่เดียวกันนับ 1 งาน • งานย้อนหลังมีเครดิตสูงสุด 50% • งานที่ส่งแต่ยังไม่ตรวจยังไม่ถูกนับเป็นคะแนน</small></div>
     <div class="v16-grade-actions v16-no-print">
       <button class="btn" id="v16-grade-settings">⚙️ ตั้งค่าองค์ประกอบคะแนน</button>
       <button class="btn" id="v162-grade-excel">⬇️ ดาวน์โหลด Excel</button>
@@ -899,7 +1008,7 @@ async function renderSubjectGradebook(sid){
     <div class="table-wrap v16-grade-table v16-no-print"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th><th>งาน ${cfg.work_points}</th><th>จิตพิสัย ${cfg.behavior_points}</th><th>กลางภาค ${cfg.midterm_points}</th><th>ปลายภาค ${cfg.final_points}</th><th>รวม 100</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">ยังไม่มีนักศึกษาที่อนุมัติในห้องเรียนนี้</td></tr>`}</tbody></table></div>
 
     <section class="v162-web-work-details v16-no-print">
-      <div class="v162-detail-head"><div><span>ADMIN ONLY</span><h2>รายละเอียดงานที่นำมาคิดคะแนน</h2><p>ดูว่านักศึกษาแต่ละคนได้รับงานใด ส่งแล้ว/ส่งช้า/ยังไม่ส่งอย่างไร รายละเอียดนี้ไม่แสดงในรายงานที่พิมพ์หรือดาวน์โหลด</p></div><div class="v162-detail-kpi">งานที่ถูกมอบหมาย <b>${detail.works.length}</b> รายการ</div></div>
+      <div class="v162-detail-head"><div><span>ADMIN ONLY</span><h2>รายละเอียดงานที่นำมาคิดคะแนน</h2><p>ดูว่านักศึกษาแต่ละคนได้รับงานใด ส่งแล้ว/ส่งช้า/ยังไม่ส่งอย่างไร รายละเอียดนี้ไม่แสดงในรายงานที่พิมพ์หรือดาวน์โหลด</p></div><div class="v162-detail-kpi">งานคู่ที่ถูกมอบหมาย <b>${detail.works.length}</b> รายการ</div></div>
       ${renderWorkDetailTable(rows,detail)}
     </section>
 
@@ -1010,7 +1119,7 @@ async function renderPaperScanCenter(sid){
     const up=await c.storage.from("submissions").upload(path,blob,{contentType:"image/jpeg",upsert:false});
     if(up.error){toast(errorText(up.error),true);confirmCapture.disabled=false;confirmCapture.textContent="✅ ยืนยันบันทึกสำเนา";return}
     const canvas=$("#v16-paper-canvas");
-    const rr=await c.rpc("admin_record_paper_scan",{p_token:current.token.token,p_storage_path:path,p_original_name:`${current.worksheet.reference_code||current.worksheet.id}.jpg`,p_mime_type:"image/jpeg",p_size_bytes:blob.size,p_barcode_format:current.token.code_kind||"barcode",p_accept_expired:current.expired,p_metadata:{capture:"full_sheet_camera",full_sheet:true,admin_confirmed_full_sheet:true,captured_width:canvas.width,captured_height:canvas.height,device:deviceLabel()}});
+    const rr=await c.rpc("admin_record_paper_scan_v179",{p_token:current.token.token,p_storage_path:path,p_original_name:`${current.worksheet.reference_code||current.worksheet.id}.jpg`,p_mime_type:"image/jpeg",p_size_bytes:blob.size,p_barcode_format:current.token.code_kind||"barcode",p_accept_expired:current.expired,p_metadata:{capture:"full_sheet_camera",full_sheet:true,admin_confirmed_full_sheet:true,captured_width:canvas.width,captured_height:canvas.height,device:deviceLabel()},p_request_key:v179RequestKey()});
     if(rr.error){await c.storage.from("submissions").remove([path]);toast(errorText(rr.error),true);confirmCapture.disabled=false;confirmCapture.textContent="✅ ยืนยันบันทึกสำเนา";return}
     toast("บันทึกสำเนาทั้งแผ่นและยืนยันใบงานแล้ว");clearPreview();stop();renderPaperScanCenter(sid);
   };

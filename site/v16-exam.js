@@ -12,7 +12,8 @@ const URL="https://thjscmfqunlaqxlievna.supabase.co";
 const KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const REF="thjscmfqunlaqxlievna";
 const SK=`sb-${REF}-auth-token`;
-const VERSION="V16-EXAM-50Q-75MIN-REALTIME";
+const VERSION="V17.9-EXAM-HARDENED";
+const V16_EXAM_COMPAT="V16-EXAM-50Q-75MIN-REALTIME";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -149,7 +150,7 @@ async function studentHome(){
 }
 
 async function startAttempt(examId){
-  const {data,error}=await db().rpc("start_exam",{p_exam_id:examId});if(error){msg(err(error),true);return}
+  const {data,error}=await db().rpc("start_exam_v179",{p_exam_id:examId});if(error){msg(err(error),true);return}
   if(data?.expired_finalized&&data?.exhausted){app().innerHTML=`<div class="exam-result card"><span class="v14-kicker">AUTO SUBMITTED</span><h1>หมดเวลา • ระบบส่งข้อสอบให้แล้ว</h1><strong>✓</strong><p>บันทึกการสอบเรียบร้อย</p><p class="muted">ระบบผู้เรียนไม่แสดงคะแนนหรือเฉลย</p><button class="btn primary" id="exam-finish">กลับรายการสอบ</button></div>`;$("#exam-finish").onclick=studentHome;return}
   state.attempt=data;state.answers={...(data.answers||{})};state.flags=new Set();state.currentIndex=0;state.dirty=false;state.violationLocal=0;state.fullscreenExpected=!!data.exam?.require_fullscreen;renderAttempt();
 }
@@ -179,7 +180,7 @@ function setAnswer(id,v){state.answers[id]=v;state.dirty=true;drawNav();clearTim
 async function saveAnswers(){if(state.submitting||!state.attempt)return;const e=$("#exam-save-state");if(e)e.textContent="กำลังบันทึก...";const {error}=await db().rpc("save_exam_answers",{p_attempt_id:state.attempt.attempt_id,p_answers:state.answers});if(e)e.textContent=error?`บันทึกไม่สำเร็จ • จะลองใหม่เมื่อแก้คำตอบ: ${err(error)}`:`บันทึกล่าสุด ${new Date().toLocaleTimeString("th-TH")}`;if(!error)state.dirty=false}
 function startTimer(){clearInterval(state.timer);const tick=()=>{const el=$("#exam-timer");if(!el)return;let ms=new Date(state.attempt.expires_at).getTime()-now();if(ms<=0){el.textContent="หมดเวลา";el.classList.add("danger");clearInterval(state.timer);submitAttempt(true);return}const h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000),sec=Math.floor(ms%60000/1000);el.textContent=`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;if(ms<300000)el.classList.add("danger")};tick();state.timer=setInterval(tick,1000)}
 async function submitAttempt(auto){
-  if(state.submitting)return;if(!auto&&!confirm("ยืนยันส่งข้อสอบ? หลังส่งแล้วแก้คำตอบไม่ได้"))return;state.submitting=true;clearTimeout(state.saveTimer);clearInterval(state.timer);const {data,error}=await db().rpc("submit_exam_attempt",{p_attempt_id:state.attempt.attempt_id,p_answers:state.answers});state.submitting=false;if(error){msg(err(error),true);startTimer();return}state.dirty=false;cleanupExamSecurity();try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}app().innerHTML=`<div class="exam-result card"><span class="v14-kicker">EXAM SUBMITTED</span><h1>${auto?"หมดเวลา • ระบบส่งข้อสอบให้แล้ว":"ส่งข้อสอบสำเร็จ"}</h1><strong>✓</strong><p>ระบบบันทึกคำตอบเรียบร้อยแล้ว</p><p class="muted">คะแนนสอบกลางภาค/ปลายภาค เฉลย และความคิดเห็นเป็นข้อมูล Admin เท่านั้น นักศึกษาไม่สามารถขอเปิดดูจากระบบนี้ได้</p><button class="btn primary" id="exam-finish">กลับรายการสอบ</button></div>`;$("#exam-finish").onclick=studentHome;
+  if(state.submitting)return;if(!auto&&!confirm("ยืนยันส่งข้อสอบ? หลังส่งแล้วแก้คำตอบไม่ได้"))return;state.submitting=true;clearTimeout(state.saveTimer);clearInterval(state.timer);const submitKey=uuid();let data=null,error=null;for(let i=0;i<2;i++){const r=await db().rpc("submit_exam_attempt_v179",{p_attempt_id:state.attempt.attempt_id,p_answers:state.answers,p_request_key:submitKey});data=r.data;error=r.error;if(!error)break;const m=String(error?.message||"").toLowerCase();if(!(m.includes("fetch")||m.includes("network")||m.includes("timeout")))break;await new Promise(res=>setTimeout(res,500));}state.submitting=false;if(error){msg(err(error),true);startTimer();return}state.dirty=false;cleanupExamSecurity();try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}app().innerHTML=`<div class="exam-result card"><span class="v14-kicker">EXAM SUBMITTED</span><h1>${auto?"หมดเวลา • ระบบส่งข้อสอบให้แล้ว":"ส่งข้อสอบสำเร็จ"}</h1><strong>✓</strong><p>ระบบบันทึกคำตอบเรียบร้อยแล้ว</p><p class="muted">คะแนนสอบกลางภาค/ปลายภาค เฉลย และความคิดเห็นเป็นข้อมูล Admin เท่านั้น นักศึกษาไม่สามารถขอเปิดดูจากระบบนี้ได้</p><button class="btn primary" id="exam-finish">กลับรายการสอบ</button></div>`;$("#exam-finish").onclick=studentHome;
 }
 
 async function boot(){await syncTime();const p=await profile();if(!p)return;document.documentElement.dataset.examVersion=VERSION;if(p.role==="admin")adminHome();else studentHome()}
