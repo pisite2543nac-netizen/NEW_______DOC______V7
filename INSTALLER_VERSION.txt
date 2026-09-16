@@ -1,3 +1,0 @@
-Installer: V18.7.2 ONE-CLICK GIT/GH ARGUMENT FIX
-App package: V18.7 ROOM CHECKLIST + ADAPTED EXAM CENTER
-Fix: PowerShell Invoke-Native uses ArgumentList instead of Args and resolves executable paths.

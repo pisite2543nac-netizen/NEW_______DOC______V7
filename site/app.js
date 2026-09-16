@@ -47,6 +47,20 @@ function randomPassword(){const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuv
 async function adminOp(body){const {data,error}=await sb.functions.invoke("admin-operations",{body});if(error||data?.error)throw new Error(data?.error||error?.message||"Admin operation failed");return data}
 function downloadText(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 
+const THEME_KEY="docnr_ui_theme";
+function readTheme(){try{return localStorage.getItem(THEME_KEY)==="dark"?"dark":"light"}catch{return"light"}}
+function applyTheme(mode=readTheme()){
+  const m=mode==="dark"?"dark":"light";
+  document.documentElement.setAttribute("data-theme",m);
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta)meta.setAttribute('content',m==='dark'?'#0f1f17':'#1f7a4f');
+  const btn=$("#theme-toggle");
+  if(btn){btn.innerHTML=m==='dark'?'☀️ โหมดสว่าง':'🌙 ไนท์โหมด';btn.setAttribute('aria-pressed',String(m==='dark'));btn.title=m==='dark'?'สลับเป็นโหมดสว่าง':'สลับเป็นไนท์โหมด'}
+}
+function toggleTheme(){const next=readTheme()==='dark'?'light':'dark';try{localStorage.setItem(THEME_KEY,next)}catch{}applyTheme(next);toast(next==='dark'?'เปิดไนท์โหมดแล้ว':'เปลี่ยนเป็นโหมดสว่างแล้ว')}
+
+applyTheme();
+
 function toast(msg,type=""){
   const e=$("#toast"); if(!e)return;
   e.textContent=msg; e.className="toast show"+(type?" "+type:"");
@@ -343,11 +357,12 @@ function renderShell(){
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
-      <header class="topbar">
+      <header class="topbar" id="topbar">
         <div class="row"><button class="btn mobile-menu" id="menubtn">☰</button><b id="pagetitle"></b></div>
-        <div class="row">
-          <button class="btn install sm" id="install">ติดตั้งแอป</button>
-          <button class="btn sm" id="fullscreen" title="เปิด/ปิดเต็มหน้าจอ">⛶ เต็มจอ</button>
+        <div class="row topbar-actions">
+          <button class="btn sm" id="theme-toggle" title="สลับธีม">🌙 ไนท์โหมด</button>
+          <button class="btn install sm" id="install">ติดตั้งแล้ว</button>
+          <button class="btn sm" id="fullscreen" title="เปิด/ปิดเต็มหน้าจอ">⛶ ออกจากเต็มจอ</button>
           <span class="muted user-name">${esc(S.profile?.full_name||S.session?.user?.email||"")}</span>
           <button class="btn sm" id="logout">ออกจากระบบ</button>
         </div>
@@ -360,6 +375,8 @@ function renderShell(){
   $("#logout").onclick=async()=>{try{window.DOCNR_V16_6?.cleanup?.()}catch{}await sb.auth.signOut()};
   $("#menubtn").onclick=()=>$("#sidebar").classList.toggle("open");
   $("#install").onclick=installGuide;
+  const themeBtn=$("#theme-toggle");if(themeBtn)themeBtn.onclick=toggleTheme;
+  applyTheme();
   const fsBtn=$("#fullscreen");if(fsBtn)fsBtn.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
   route();
 
