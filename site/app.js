@@ -71,6 +71,25 @@ function applyTheme(mode=readTheme()){
 }
 function toggleTheme(){const next=readTheme()==='dark'?'light':'dark';try{localStorage.setItem(THEME_KEY,next)}catch{}applyTheme(next);toast(next==='dark'?'เปิดไนท์โหมดแล้ว':'เปลี่ยนเป็นโหมดสว่างแล้ว')}
 
+function syncResponsiveFit(){
+  const root=document.documentElement;
+  const inner=Math.max(1,window.innerWidth||0),outer=Math.max(1,window.outerWidth||inner);
+  let scale=1;
+  // Chromium/Edge page zoom changes innerWidth but not outerWidth. Compensate only on desktop
+  // and only when the difference is large enough to avoid false positives from browser chrome.
+  if(inner>=1000&&outer>=700){
+    const ratio=inner/outer;
+    if(ratio>1.14&&ratio<2.6)scale=Math.min(2.25,Math.max(1,ratio));
+  }
+  root.style.setProperty('--docnr-page-scale',scale.toFixed(3));
+  root.dataset.docnrFitScale=scale.toFixed(2);
+}
+let responsiveFitTimer=0;
+function scheduleResponsiveFit(){clearTimeout(responsiveFitTimer);responsiveFitTimer=setTimeout(syncResponsiveFit,60)}
+syncResponsiveFit();
+window.addEventListener('resize',scheduleResponsiveFit,{passive:true});
+window.visualViewport?.addEventListener('resize',scheduleResponsiveFit,{passive:true});
+
 applyTheme();
 
 function toast(msg,type=""){
@@ -368,7 +387,7 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.0</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.1.3</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">

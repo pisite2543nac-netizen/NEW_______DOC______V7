@@ -1,0 +1,112 @@
+/* DOC-FULL-NR V19.1.3 — Responsive Fit Layer
+   Goal: keep the whole application usable at every common desktop/tablet/mobile proportion
+   without changing business logic. This file is loaded last and only controls layout/size. */
+
+:root{
+  --docnr-page-scale:1;
+  --docnr-shell-gap:clamp(10px,1vw,18px);
+  --docnr-page-pad:clamp(12px,1.35vw,28px);
+  --docnr-sidebar-w:clamp(218px,14.2vw,272px);
+  --docnr-control-h:44px;
+}
+
+html,body{width:100%;min-width:0;min-height:100%;overflow-x:hidden}
+body{min-height:100dvh}
+#app{width:calc(100% / var(--docnr-page-scale));min-height:calc(100dvh / var(--docnr-page-scale));zoom:var(--docnr-page-scale)}
+
+/* Core shell: always use the available viewport instead of a small centered desktop canvas. */
+.app{width:100%;min-width:0;min-height:100dvh;grid-template-columns:var(--docnr-sidebar-w) minmax(0,1fr)!important}
+.main{width:100%;min-width:0;max-width:none!important}
+.sidebar{width:100%;min-width:0;padding:clamp(14px,1.15vw,22px)!important;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
+.sidebar .brand{min-width:0}.sidebar .brand>div{min-width:0}.sidebar .brand b{font-size:clamp(1.05rem,1vw + .35rem,1.42rem)!important;white-space:nowrap}
+.nav-card-menu{width:100%}.nav-card-menu button,.v14-nav.nav-card-btn{width:100%;min-width:0!important;min-height:52px!important;padding:10px 11px!important}.nav-card-menu button>span:last-child{min-width:0;overflow-wrap:anywhere;line-height:1.3}
+
+.topbar,#topbar{width:100%;min-width:0;min-height:64px!important;padding:10px var(--docnr-page-pad)!important;gap:12px;flex-wrap:nowrap}
+.topbar>.row:first-child{min-width:0;flex:1 1 auto}.topbar>.row:last-child,.topbar-actions{min-width:0;flex:0 1 auto;justify-content:flex-end;gap:8px!important;flex-wrap:wrap}
+#pagetitle{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-actions .btn{min-height:40px;white-space:nowrap}.topbar-actions .user-name{max-width:18ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.content,#content{box-sizing:border-box;width:100%!important;max-width:none!important;min-width:0!important;margin:0!important;padding:var(--docnr-page-pad)!important}
+.content>*{min-width:0;max-width:100%}
+.card,.section-head,.toolbar,.table-wrap,.v14-page,.v1610-flow-grid,.v9-subject-hub,.v11-hub,.v11-library{min-width:0;max-width:100%}
+
+/* Generic layout blocks become fluid instead of assuming a single desktop width. */
+.grid:not(.two){grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))!important}
+.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.form-grid,.registration-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.section-head{min-width:0;flex-wrap:wrap}.section-head>div{min-width:0}.section-head h1,.section-head h2{overflow-wrap:anywhere}
+.toolbar{min-width:0}.toolbar .input{flex:1 1 240px;max-width:min(100%,420px)!important}
+.btn{min-height:var(--docnr-control-h);max-width:100%}.btn.sm{min-height:40px}
+.input,input,select,textarea{max-width:100%;min-width:0}
+
+/* Tables scroll inside their own frame; the page itself never becomes wider than the viewport. */
+.table-wrap,.v186-table-scroll,.v16-grade-table{width:100%;max-width:100%;overflow:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.table-wrap table{width:max(100%,760px)}
+.v186-table-shell{width:100%;min-width:0;max-width:100%;overflow:hidden}
+.v186-table-scroll{max-height:min(62dvh,720px)!important}
+
+/* Room Work Checklist: balanced proportions at 1280–4K, while keeping table readable. */
+.v186-checklist-page{width:100%;max-width:none!important}
+.v186-hero-shell{width:100%;grid-template-columns:clamp(58px,5vw,76px) minmax(0,1fr) minmax(240px,22vw)!important;gap:clamp(12px,1.3vw,20px)!important;padding:clamp(15px,1.4vw,24px)!important}
+.v186-hero-icon{width:clamp(58px,5vw,76px)!important;height:clamp(58px,5vw,76px)!important}
+.v186-hero-copy h1{font-size:clamp(1.55rem,1.45vw + .65rem,2.3rem)!important}
+.v186-hero-aside{min-width:0}.v186-hero-note{min-width:0}
+.v186-filter-card{width:100%}.v186-filter-grid{grid-template-columns:repeat(3,minmax(170px,1fr))!important}.v186-filter-grid .subject{grid-column:span 1!important}.v186-filter-grid .major{grid-column:span 2!important}
+.v186-room-summary{width:100%;grid-template-columns:minmax(0,1fr) minmax(320px,34vw)!important}.v186-room-ident{min-width:0}.v186-room-title-row h2{font-size:clamp(1.4rem,1vw + .75rem,2rem)!important}
+.v186-mini-kpis{grid-template-columns:repeat(auto-fit,minmax(112px,1fr))!important}
+.v186-toolbar{width:100%;min-width:0}.v186-toolbar-left{min-width:0}.v186-searchbox{flex:0 1 360px;max-width:100%}.v186-searchbox .input{width:100%}
+
+/* Mid-size laptops: preserve useful content width by reducing sidebar and collapsing dense groups. */
+@media (max-width:1280px){
+  :root{--docnr-sidebar-w:clamp(205px,17vw,232px);--docnr-page-pad:clamp(12px,1.2vw,20px)}
+  .topbar-actions .user-name{display:none}
+  .v186-hero-shell{grid-template-columns:64px minmax(0,1fr)!important}
+  .v186-hero-aside{grid-column:1/-1;grid-template-columns:minmax(0,1fr) auto!important;justify-items:stretch!important}
+  .v186-room-summary{grid-template-columns:1fr!important}
+  .v186-filter-grid{grid-template-columns:repeat(2,minmax(170px,1fr))!important}
+  .v186-filter-grid .subject,.v186-filter-grid .major{grid-column:span 2!important}
+}
+
+/* Tablet / narrow laptop: switch to drawer navigation before the content becomes cramped. */
+@media (max-width:960px){
+  :root{--docnr-page-pad:clamp(10px,2vw,16px)}
+  .app{grid-template-columns:1fr!important}
+  .mobile-menu{display:inline-flex!important}
+  .sidebar{display:block!important;position:fixed!important;inset:0 auto 0 0!important;width:min(84vw,310px)!important;height:100dvh!important;z-index:45!important;transform:translateX(-105%);visibility:hidden;pointer-events:none;transition:transform .2s ease,visibility .2s step-end;box-shadow:18px 0 45px rgba(2,6,23,.22)!important}
+  .sidebar.open{transform:translateX(0);visibility:visible;pointer-events:auto;transition:transform .2s ease,visibility 0s}
+  .topbar,#topbar{padding:8px var(--docnr-page-pad)!important}
+  .topbar-actions{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none}.topbar-actions::-webkit-scrollbar{display:none}
+  .topbar-actions .btn{flex:0 0 auto}
+  .grid.two,.form-grid,.registration-grid{grid-template-columns:1fr!important}.span2{grid-column:auto!important}
+  .v186-hero-shell{grid-template-columns:1fr!important}.v186-hero-icon{display:none!important}.v186-hero-aside{grid-template-columns:1fr!important}.v186-head-badge{justify-self:stretch!important}
+  .v186-filter-grid{grid-template-columns:1fr 1fr!important}.v186-filter-grid .subject,.v186-filter-grid .major{grid-column:span 2!important}
+  .v186-toolbar{flex-direction:column!important;align-items:stretch!important}.v186-searchbox{width:100%;flex-basis:auto}
+}
+
+@media (max-width:620px){
+  :root{--docnr-page-pad:10px}
+  .topbar-actions #install,.topbar-actions #fullscreen{display:none!important}
+  #pagetitle{max-width:52vw!important}
+  .content,#content{padding:10px!important}
+  .card{padding:14px!important}
+  .section-head{align-items:stretch!important}.section-head>.btn,.section-head>.row{width:100%}
+  .v186-hero-shell{padding:14px!important;border-radius:18px!important}.v186-breadcrumb{display:none}.v186-hero-copy h1{font-size:1.45rem!important}.v186-hero-note{display:none}
+  .v186-filter-top{flex-direction:column!important}.v186-filter-actions{width:100%}.v186-filter-actions .btn{flex:1 1 0}
+  .v186-filter-grid{grid-template-columns:1fr!important}.v186-filter-grid .subject,.v186-filter-grid .major{grid-column:span 1!important}
+  .v186-room-ident{align-items:flex-start!important}.v186-room-ident img{width:52px!important;height:52px!important;flex-basis:52px!important}.v186-mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .v186-action-buttons{display:grid!important;grid-template-columns:1fr 1fr;width:100%}.v186-action-buttons .btn{width:100%}
+  .v186-legend{overflow-x:auto;flex-wrap:nowrap!important;padding-bottom:3px}.v186-legend span{flex:0 0 auto}
+  .v186-table-scroll{max-height:none!important}.v186-check-table{min-width:1120px!important}
+}
+
+@media (max-width:390px){
+  #pagetitle{display:none!important}
+  .topbar-actions #theme-toggle{font-size:0}.topbar-actions #theme-toggle::before{content:"🌙";font-size:16px}
+  .v186-action-buttons{grid-template-columns:1fr!important}
+}
+
+/* Browser page-zoom compensation is disabled for print. */
+@media print{
+  #app{width:100%!important;min-height:auto!important;zoom:1!important}
+  .content,#content{padding:0!important}
+}

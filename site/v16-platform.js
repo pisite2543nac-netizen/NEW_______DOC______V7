@@ -243,7 +243,7 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const p=await getProfile();if(!p)return;
   const brand=$("#sidebar .brand .smalltext");
-  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V19.1.2`;
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V19.1.3`;
   // V17: app.js is the single owner of Sidebar and route buttons.
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
@@ -510,7 +510,7 @@ async function renderRoomWorkChecklist(){
       <div class="v186-hero-icon">✅</div>
       <div class="v186-hero-copy">
         <div class="v186-breadcrumb">หน้าหลัก <span>›</span> ตารางเช็กรวมการเก็บงานรายห้อง</div>
-        <span class="v14-kicker">ROOM WORK CHECKLIST • V19.1.2</span>
+        <span class="v14-kicker">ROOM WORK CHECKLIST • V19.1.3</span>
         <h1>ตารางเช็กรวมการเก็บงานรายห้อง</h1>
         <p>ดูสถานะการส่งงานของนักศึกษาแต่ละห้องแบบตารางเดียว โดยนับ Digital/Paper ของหน่วยเดียวกันเป็น 1 งาน เพื่อให้ตรวจสอบได้ง่ายและพิมพ์ใช้งานได้ทันที</p>
       </div>
