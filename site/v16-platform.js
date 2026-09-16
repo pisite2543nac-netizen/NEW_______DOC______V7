@@ -243,7 +243,7 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const p=await getProfile();if(!p)return;
   const brand=$("#sidebar .brand .smalltext");
-  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V17.8`;
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V18.8.7`;
   // V17: app.js is the single owner of Sidebar and route buttons.
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
@@ -505,9 +505,25 @@ async function renderRoomWorkChecklist(){
     c.from("profiles").select("id,student_code,full_name,display_name,grade_level,room_label,class_name,department,major,seat_number,active,approval_status,role").eq("role","user").eq("active",true).eq("approval_status","approved").order("student_code")
   ]);if(sr.error)throw sr.error;if(pr.error)throw pr.error;const subjects=sr.data||[],profiles=pr.data||[];
   const years=v186Unique(subjects,"academic_year"),semesters=v186Unique(subjects,"semester");
-  content().innerHTML=`<section class="v14-page v186-checklist-page"><div class="v186-hero v186-screen-only"><div class="v186-hero-main"><span class="v14-kicker">ROOM WORK CHECKLIST • V18.8</span><h1>✅ ตารางเช็กรวมการเก็บงานรายห้อง</h1><p>สรุปการส่งงานรายห้องจากข้อมูลลงทะเบียนจริง โดยนับ Digital/Paper ของหน่วยเดียวกันเป็น 1 งาน เพื่อดูภาพรวมได้ง่ายและพิมพ์ใช้งานได้ทันที</p></div><div class="v186-hero-side"><div><span>รายวิชาที่เปิดอยู่</span><b>${subjects.length}</b></div><div><span>นักศึกษาที่อนุมัติแล้ว</span><b>${profiles.length}</b></div></div></div>
-    <div class="card v186-filters v186-screen-only"><div class="v186-filter-head"><div><b>ตัวกรองตารางเช็กรวม</b><small>เลือกวิชาและกลุ่มห้อง แล้วกดแสดงข้อมูล</small></div><button class="btn primary" id="v186-load">แสดงข้อมูล</button></div><div class="v186-filter-grid"><label>ปีการศึกษา<select id="v186-year" class="input">${v186Opt(years)}</select></label><label>ภาคเรียน<select id="v186-sem" class="input">${v186Opt(semesters)}</select></label><label class="wide">รายวิชา<select id="v186-subject" class="input"></select></label><label>ระดับ<select id="v186-grade" class="input">${v186Opt(v186Unique(profiles,"grade_level"))}</select></label><label>ห้อง<select id="v186-room" class="input">${v186Opt(v186Unique(profiles,"room_label"))}</select></label><label>แผนก<select id="v186-dept" class="input">${v186Opt(v186Unique(profiles,"department"))}</select></label><label class="wide">สาขา<select id="v186-major" class="input">${v186Opt(v186Unique(profiles,"major"))}</select></label></div></div>
-    <div id="v186-checklist-result"><div class="v186-empty card"><b>ยังไม่ได้แสดงข้อมูล</b><p>เลือกรายวิชา ระดับ ห้อง หรือสาขาที่ต้องการ แล้วกด “แสดงข้อมูล” เพื่อสร้างตารางเช็กงาน</p></div></div></section>`;
+  content().innerHTML=`<section class="v14-page v186-checklist-page">
+    <div class="v186-page-head v186-screen-only">
+      <div><span class="v14-kicker">ROOM WORK CHECKLIST • V18.8.7</span><h1>ตารางเช็กรวมการเก็บงานรายห้อง</h1><p>ดูสถานะการส่งงานของนักศึกษาแต่ละห้องแบบตารางเดียว • Digital/Paper ของหน่วยเดียวกันนับเป็น 1 งาน</p></div>
+      <div class="v186-head-badge"><span>รายวิชา</span><b>${subjects.length}</b><small>วิชาที่เปิดใช้งาน</small></div>
+    </div>
+    <div class="card v186-filter-card v186-screen-only">
+      <div class="v186-filter-title"><div><b>เลือกข้อมูลที่ต้องการดู</b><small>กรองเฉพาะที่จำเป็นได้ ไม่ต้องเลือกครบทุกช่อง</small></div><button class="btn primary v186-load-btn" id="v186-load">แสดงข้อมูล</button></div>
+      <div class="v186-filter-grid">
+        <label><span>ปีการศึกษา</span><select id="v186-year" class="input">${v186Opt(years)}</select></label>
+        <label><span>ภาคเรียน</span><select id="v186-sem" class="input">${v186Opt(semesters)}</select></label>
+        <label class="subject"><span>รายวิชา</span><select id="v186-subject" class="input"></select></label>
+        <label><span>ระดับ</span><select id="v186-grade" class="input">${v186Opt(v186Unique(profiles,"grade_level"))}</select></label>
+        <label><span>ห้อง</span><select id="v186-room" class="input">${v186Opt(v186Unique(profiles,"room_label"))}</select></label>
+        <label><span>แผนก</span><select id="v186-dept" class="input">${v186Opt(v186Unique(profiles,"department"))}</select></label>
+        <label class="major"><span>สาขา</span><select id="v186-major" class="input">${v186Opt(v186Unique(profiles,"major"))}</select></label>
+      </div>
+    </div>
+    <div id="v186-checklist-result"><div class="v186-empty-state"><span>📋</span><b>เลือกวิชาและห้องที่ต้องการ</b><small>จากนั้นกด “แสดงข้อมูล” เพื่อเปิดตารางเช็กงาน</small></div></div>
+  </section>`;
   const year=$("#v186-year"),sem=$("#v186-sem"),subjectSel=$("#v186-subject");
   const refreshSubjects=()=>{const y=year.value,m=sem.value,current=subjectSel.value;const rows=subjects.filter(x=>(!y||String(x.academic_year||"")===y)&&(!m||String(x.semester||"")===m));subjectSel.innerHTML=rows.map(x=>`<option value="${x.id}">${esc(`${x.code} • ${x.name}`)}</option>`).join("")||`<option value="">ไม่พบรายวิชา</option>`;if(rows.some(x=>x.id===current))subjectSel.value=current};
   year.onchange=refreshSubjects;sem.onchange=refreshSubjects;refreshSubjects();
@@ -522,10 +538,15 @@ async function loadRoomWorkChecklist(subjects,allProfiles){
   const works=[...(detail.works||[])].sort((a,b)=>v186UnitNo(a)-v186UnitNo(b)),assigned=new Set((detail.assignments||[]).map(x=>`${x.user_id}:${x.pair_id}`)),subMap=v186SubmissionMap(detail),gradeMap=new Map((gr.data||[]).map(x=>[x.user_id,x]));let complete=0,partial=0,none=0;
   for(const p of students){let ac=0,dc=0;for(const w of works){if(assigned.has(`${p.id}:${w.id}`)){ac++;const st=v186CellState(p.id,w,assigned,subMap);if(["done","late"].includes(st.cls))dc++}}if(ac&&dc>=ac)complete++;else if(dc)partial++;else none++}
   const title=v186ClassTitle(students,filters),table=v186ChecklistTable(subject,students,works,assigned,subMap,gradeMap);
-  host.innerHTML=`<div class="v186-summary-shell"><div class="v186-print-head"><img src="./icons/icon-192.png" alt=""><div><h2>ตารางเช็กรวมการเก็บงาน รายห้อง ${esc(title)}</h2><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")}</p><small>ระดับ ${esc(filters.grade||"ทั้งหมด")} • ห้อง ${esc(filters.room||"ทั้งหมด")} • แผนก ${esc(filters.department||"ทั้งหมด")} • สาขา ${esc(filters.major||"ทั้งหมด")}</small></div></div>
-      <div class="v186-kpis v186-screen-only"><div><span>นักศึกษา</span><b>${students.length}</b></div><div class="ok"><span>ส่งครบ</span><b>${complete}</b></div><div class="warn"><span>ส่งบางส่วน</span><b>${partial}</b></div><div class="bad"><span>ยังไม่มีงานที่ส่ง</span><b>${none}</b></div></div>
+  host.innerHTML=`<div class="v186-room-summary">
+      <div class="v186-room-ident"><img src="./icons/icon-192.png" alt=""><div><div class="v186-room-title-row"><h2>${esc(title)}</h2><span>${esc(subject.code)}</span></div><p>${esc(subject.name)}</p><small>ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")} • ระดับ ${esc(filters.grade||"ทั้งหมด")} • ห้อง ${esc(filters.room||"ทั้งหมด")} • แผนก ${esc(filters.department||"ทั้งหมด")} • สาขา ${esc(filters.major||"ทั้งหมด")}</small></div></div>
+      <div class="v186-mini-kpis v186-screen-only"><div><span>นักศึกษา</span><b>${students.length}</b></div><div class="ok"><span>ส่งครบ</span><b>${complete}</b></div><div class="warn"><span>ส่งบางส่วน</span><b>${partial}</b></div><div class="bad"><span>ยังไม่ส่ง</span><b>${none}</b></div></div>
     </div>
-    <div class="v186-actions v186-screen-only"><div class="v186-action-buttons"><button class="btn" id="v186-excel">⬇️ ส่งออก Excel</button><button class="btn primary" id="v186-print">🖨️ พิมพ์ A4 แนวนอน</button></div><div class="v186-legend"><i class="done">✓</i> ส่งแล้ว <i class="late">ช</i> ส่งย้อนหลัง <i class="draft">ร</i> ร่าง <i class="waiting">/</i> รอดำเนินการ <i class="missing">✕</i> พ้นกำหนด <i>—</i> ไม่ได้มอบหมาย</div></div>${table}`;
+    <div class="v186-toolbar v186-screen-only">
+      <div class="v186-action-buttons"><button class="btn" id="v186-excel">⬇️ ส่งออก Excel</button><button class="btn primary" id="v186-print">🖨️ พิมพ์ A4 แนวนอน</button></div>
+      <div class="v186-legend"><span><i class="done">✓</i>ส่งแล้ว</span><span><i class="late">ช</i>ส่งย้อนหลัง</span><span><i class="draft">ร</i>ร่าง</span><span><i class="waiting">/</i>รอดำเนินการ</span><span><i class="missing">✕</i>พ้นกำหนด</span><span><i>—</i>ไม่ได้มอบหมาย</span></div>
+    </div>
+    <div class="v186-table-shell">${table}</div>`;
   state.workChecklist={subject,students,works,assigned,subMap,gradeMap,filters};
   $("#v186-excel").onclick=()=>{const html=v186ChecklistExcel(subject,students,works,assigned,subMap,gradeMap,filters);downloadExcelHtml(`ตารางเช็กรวม-${subject.code}-${title.replace(/\\s+/g,"-")}.xls`,html)};$("#v186-print").onclick=()=>window.print();
 }
