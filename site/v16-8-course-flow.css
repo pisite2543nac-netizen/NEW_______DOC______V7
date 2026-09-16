@@ -131,9 +131,3 @@
 /* V17.6 single learning hub: legacy split Paper/Digital libraries are hidden after the 17-unit plan is injected. */
 .v168-sequential-mode>.v14-ws-section,.v168-sequential-mode>#v15-room-ready{display:none!important}
 .v168-sequential-mode .v168-admin-plan-head h2:after{content:" • 17 หน่วย";font-size:.72em;color:#7dd3fc}
-
-
-/* V18.8.4 digital worksheet deadline control */
-.v1884-admin-deadline-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-.v175-admin-pair>div:first-child small{display:block;margin-top:4px;line-height:1.45}
-@media(max-width:720px){.v1884-admin-deadline-actions{width:100%;justify-content:stretch}.v1884-admin-deadline-actions .btn{flex:1 1 180px}}

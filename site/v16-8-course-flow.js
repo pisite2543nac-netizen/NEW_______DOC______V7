@@ -1,6 +1,6 @@
 import { getClient } from "./v18-supabase.js";
 
-const RELEASE = "V18.8.4-DIGITAL-DEADLINE-PRINT-SWITCH";
+const RELEASE = "V18-COMPLETE-PRODUCTION";
 const V176_COMPAT_RELEASE="V17.6-FULL-11SUBJECTS";
 const v179Key=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const V173_COMPAT_ADMIN_SLIDE_LABEL="สไลด์สรุปพร้อมใช้";
@@ -26,8 +26,7 @@ const state={
   loadingStudent:new Set(),
   loadingAdmin:new Set(),
   role:null,
-  uid:null,
-  deadlineTimers:new Map()
+  uid:null
 };
 
 function readSession(){
@@ -224,20 +223,6 @@ function unitWorkPair(unit,path){
     <div class="v175-workpair-meta"><span>💻 ${esc(digital?.reference_code||"-")} ออนไลน์</span><span>🖨️ ${esc(paper?.reference_code||"-")} พิมพ์ย้อนหลัง</span><span>📄 อย่างน้อย ${Math.max(Number(digital?.page_count||2),2)} หน้า</span></div>
   </div>`;
 }
-function scheduleStudentDeadlineRefresh(sid,path){
-  const old=state.deadlineTimers.get(sid);if(old)clearTimeout(old);
-  const base=Number(path?._server_epoch||Date.now()),loaded=Number(path?._client_loaded_at||Date.now());
-  const now=base+(Date.now()-loaded);
-  const dues=(path?.units||[]).flatMap(u=>(u.worksheets||[]).filter(w=>u.unlocked&&w.mode==="digital"&&w.due_at).map(w=>new Date(w.due_at).getTime())).filter(t=>Number.isFinite(t)&&t>now).sort((a,b)=>a-b);
-  if(!dues.length){state.deadlineTimers.delete(sid);return}
-  const wait=Math.max(1000,Math.min(dues[0]-now+1200,2147480000));
-  const timer=setTimeout(()=>{
-    state.deadlineTimers.delete(sid);
-    const page=$(".v14-page");if(page&&subjectIdFromPage()===sid){delete page.dataset.v168StudentPath;state.coursePath.delete(sid);injectStudentPath().catch(()=>{})}
-  },wait);
-  state.deadlineTimers.set(sid,timer);
-}
-
 function worksheetLine(w){
   const icon=w.mode==="paper"?"🖨️":"💻";
   const type=w.mode==="paper"?"ใบงานปริ้น":"ใบงานอิเล็กทรอนิกส์";
@@ -284,7 +269,6 @@ async function injectStudentPath(){
       (data.units||[]).forEach(u=>(u.worksheets||[]).forEach(w=>{const s=byId.get(w.id);if(s){w.submission_status=s.status;w.submitted_at=s.submitted_at;w.confirmed_at=s.confirmed_at}}));
     }
     state.coursePath.set(sid,data);
-    scheduleStudentDeadlineRefresh(sid,data);
     page.dataset.v168StudentPath=sid;
     $(".v168-learning-path",page)?.remove();
     const units=data?.units||[],opened=units.filter(x=>x.unlocked).length;
@@ -314,8 +298,7 @@ function adminUnitCard(unit,sid,nextUnit){
       ? `<button class="btn sm primary" data-v168-unlock="${sid}:${unit.unit_no}">▶ เริ่มสอน / ปลดล็อก</button>`
       : `<button class="btn sm" disabled>🔒 รอหน่วยก่อนหน้า</button>`;
   const digital=works.find(w=>w.mode==="digital")||null,paper=works.find(w=>w.mode==="paper")||null;
-  const deadlineText=digital?.due_at?`กำหนดส่งออนไลน์ ${fmt(digital.due_at)}`:(unit.unlocked?"ยังไม่ได้กำหนดเวลาส่งออนไลน์":"กำหนดเวลาเมื่อเริ่มสอน");
-  const workButtons=`<div class="v175-admin-pair"><div><b>📝 ใบงานประจำหน่วย</b><small>💻 ${esc(deadlineText)} • หลังหมดเวลา User จะเห็นปุ่มพิมพ์ใบงานย้อนหลังอัตโนมัติ</small></div><div class="v1884-admin-deadline-actions"><button class="btn sm" data-v1884-deadline="${sid}:${unit.unit_no}">⏱ กำหนดส่งใบงานอิเล็กทรอนิกส์</button><button class="btn sm primary" data-v175-admin-pair="${sid}:${unit.unit_no}">จัดการใบงาน</button></div></div>`;
+  const workButtons=`<div class="v175-admin-pair"><div><b>📝 ใบงานประจำหน่วย</b><small>ออนไลน์สำหรับส่งตรงเวลา • แบบพิมพ์สำหรับส่งย้อนหลัง</small></div><button class="btn sm primary" data-v175-admin-pair="${sid}:${unit.unit_no}">จัดการใบงาน</button></div>`;
   return `<article class="v168-admin-unit ${unit.unlocked?"unlocked":"locked"}">
     <div class="v168-admin-unit-top"><div><span>หน่วย ${unit.unit_no}</span><b>${esc(unitTopic(unit))}</b><small>${unit.unlocked?"เปิดสอนแล้ว":"เตรียมการสอนได้"}</small></div>${action}</div>
     <div class="v173-unit-actions"><button class="btn sm primary" data-v168-admin-slide="${sid}:${unit.unit_no}">📊 เปิดสไลด์พร้อมสอน</button>${first?`<button class="btn sm" data-v14-upload="${first.id}" data-subject="${sid}" data-seq="${unit.unit_no}">＋ เพิ่มสไลด์/สื่อของครู</button>`:""}${resources.map(r=>`<button class="btn sm" data-v168-resource="${esc(r.storage_path)}">📎 ${esc(r.original_name||"สื่อของครู")}</button>`).join("")}</div>
@@ -400,45 +383,6 @@ function openUnlockDialog(sid,unitNo){
   };
 }
 
-async function openDigitalDeadlineDialog(sid,unitNo){
-  const plan=state.adminPath.get(sid),unit=(plan?.units||[]).find(x=>Number(x.unit_no)===Number(unitNo));
-  if(!unit){flash("ไม่พบข้อมูลหน่วยเรียน กรุณาเปิดห้องใหม่",true);return}
-  const digital=(unit.worksheets||[]).find(w=>w.mode==="digital");
-  if(!digital){flash("ไม่พบใบงานอิเล็กทรอนิกส์ของหน่วยนี้",true);return}
-  if(!unit.unlocked){openUnlockDialog(sid,unitNo);return}
-  let settings={allow_resubmit:false,max_attempts:1,open_at:digital.open_at||unit.open_at};
-  try{
-    const {data}=await client().from("worksheets").select("open_at,due_at,allow_resubmit,max_attempts").eq("id",digital.id).maybeSingle();
-    if(data)settings={...settings,...data};
-  }catch{}
-  const openAt=settings.open_at?new Date(settings.open_at):new Date();
-  const dueAt=settings.due_at?new Date(settings.due_at):new Date(Date.now()+7*86400000);
-  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">DIGITAL WORK DEADLINE</span><h2>⏱ กำหนดส่งใบงานอิเล็กทรอนิกส์ • หน่วย ${unitNo}</h2><p>${esc(unitTopic(unit))}</p></div><button class="btn sm" data-v168-close>✕</button></div>
-    <form id="v1884-deadline-form">
-      <div class="alert success"><b>พฤติกรรมอัตโนมัติ</b><div>ก่อนหมดเวลา: User เห็นปุ่ม “ทำใบงานอิเล็กทรอนิกส์” • หลังหมดเวลาและยังไม่ส่ง: ปุ่มจะเปลี่ยนเป็น “พิมพ์ใบงานส่งย้อนหลัง” โดยอัตโนมัติ</div></div>
-      <label class="field"><span>เวลาเปิดใบงาน</span><input class="input" name="open_at" type="datetime-local" value="${localInput(openAt)}" required></label>
-      <label class="field"><span>กำหนดส่งใบงานอิเล็กทรอนิกส์</span><input class="input" name="due_at" type="datetime-local" value="${localInput(dueAt)}" required></label>
-      <div class="v168-checks"><label><input type="checkbox" name="allow_resubmit" ${settings.allow_resubmit?"checked":""}> อนุญาตส่งซ้ำก่อนหมดเวลา</label></div>
-      <label class="field"><span>จำนวนครั้งส่งสูงสุด</span><input class="input" name="max_attempts" type="number" min="1" max="20" value="${Math.max(1,Number(settings.max_attempts||1))}"></label>
-      <div class="v168-unlock-warning">การตั้งค่านี้ปรับเฉพาะใบงานอิเล็กทรอนิกส์ของหน่วยนี้ ไม่เปิดช่องส่ง Paper ก่อนกำหนดเวลา</div>
-      <div class="row end"><button type="button" class="btn" data-v168-close>ยกเลิก</button><button class="btn primary">💾 บันทึกกำหนดส่ง</button></div>
-    </form>`);
-  $("#v1884-deadline-form",o).onsubmit=async e=>{
-    e.preventDefault();const f=new FormData(e.target),btn=e.submitter;
-    const open=new Date(String(f.get("open_at"))),due=new Date(String(f.get("due_at")));
-    if(!(due>open)){flash("กำหนดส่งต้องอยู่หลังเวลาเปิด",true);return}
-    btn.disabled=true;btn.textContent="กำลังบันทึก...";
-    const {data,error}=await client().rpc("publish_subject_worksheets",{
-      p_subject_id:sid,p_worksheet_ids:[digital.id],p_open_at:open.toISOString(),p_due_at:due.toISOString(),
-      p_allow_late:false,p_allow_resubmit:f.get("allow_resubmit")==="on",p_max_attempts:Number(f.get("max_attempts")||1)
-    });
-    if(error){btn.disabled=false;btn.textContent="💾 บันทึกกำหนดส่ง";flash(errText(error),true);return}
-    o.remove();flash(`บันทึกกำหนดส่งหน่วย ${unitNo} แล้ว • ${fmt(due.toISOString())}`);
-    const page=$(".v14-page");if(page)delete page.dataset.v168AdminPlan;state.adminPath.delete(sid);
-    setTimeout(()=>injectAdminPlan(true),250);
-  };
-}
-
 function openAdminSummarySlides(sid,unitNo){
   const plan=state.adminPath.get(sid),unit=(plan?.units||[]).find(x=>Number(x.unit_no)===Number(unitNo));
   if(!unit){flash("ไม่พบข้อมูลหน่วยเรียน กรุณาเปิดห้องใหม่",true);return}
@@ -452,7 +396,7 @@ function openAdminWorkPair(sid,unitNo){
   const works=unit.worksheets||[],digital=works.find(w=>w.mode==="digital"),paper=works.find(w=>w.mode==="paper");
   overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">WORKSHEET PAIR</span><h2>หน่วย ${unitNo} • ${esc(unitTopic(unit))}</h2><p>ใบงานคู่เดียวกัน: ออนไลน์ใช้ส่งตรงเวลา • แบบพิมพ์ใช้ส่งย้อนหลัง</p></div><button class="btn sm" data-v168-close>✕</button></div>
     <div class="v175-pair-modal">
-      <div class="card"><h3>💻 ใบงานอิเล็กทรอนิกส์</h3><p>${esc(digital?.reference_code||"-")} • ${esc(cleanTopic(digital?.title||""))}</p><p class="muted">สำหรับนักศึกษาที่ทำและส่งภายในกำหนดเวลา${digital?.due_at?` • กำหนด ${fmt(digital.due_at)}`:""}</p>${digital?`<div class="row"><button class="btn" data-v14-preview="${digital.id}">👁 ดูใบงานออนไลน์</button><button class="btn primary" data-v1884-deadline="${sid}:${unitNo}">⏱ กำหนดส่ง</button></div>`:""}</div>
+      <div class="card"><h3>💻 ใบงานอิเล็กทรอนิกส์</h3><p>${esc(digital?.reference_code||"-")} • ${esc(cleanTopic(digital?.title||""))}</p><p class="muted">สำหรับนักศึกษาที่ทำและส่งภายในกำหนดเวลา</p>${digital?`<button class="btn primary" data-v14-preview="${digital.id}">👁 ดูใบงานออนไลน์</button>`:""}</div>
       <div class="card"><h3>🖨️ ใบงานพิมพ์ย้อนหลัง</h3><p>${esc(paper?.reference_code||"-")} • ${esc(cleanTopic(paper?.title||""))}</p><p class="muted">อย่างน้อย 2 หน้า • ใช้เมื่อเลยกำหนดส่งออนไลน์</p>${paper?`<div class="row"><button class="btn" data-v14-preview="${paper.id}">👁 ดูแบบพิมพ์</button><button class="btn primary" data-v167-print-pack="${paper.id}">🖨️ พิมพ์รายบุคคล + Barcode</button></div>`:""}</div>
     </div>`,true);
 }
@@ -497,8 +441,6 @@ function openSummarySlides(sid,unitNo){
 document.addEventListener("click",e=>{
   const latePaper=e.target.closest?.("[data-v175-late-paper]");
   if(latePaper){e.preventDefault();e.stopPropagation();openLatePaper(latePaper.dataset.v175LatePaper);return}
-  const deadline=e.target.closest?.("[data-v1884-deadline]");
-  if(deadline){e.preventDefault();e.stopPropagation();const [sid,u]=deadline.dataset.v1884Deadline.split(":");openDigitalDeadlineDialog(sid,Number(u));return}
   const adminPair=e.target.closest?.("[data-v175-admin-pair]");
   if(adminPair){e.preventDefault();e.stopPropagation();const [sid,u]=adminPair.dataset.v175AdminPair.split(":");openAdminWorkPair(sid,Number(u));return}
   const unlock=e.target.closest?.("[data-v168-unlock]");

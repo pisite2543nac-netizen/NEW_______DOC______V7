@@ -1,6 +1,0 @@
-V18.8.2 MAJOR ABBREVIATION CONTRACT
-PASS criteria:
-- ปวช.1/2/3 -> เทคโนโลยีสารสนเทศ (ทส.), เทคโนโลยีธุรกิจดิจิทัล (ทธ.), คอมพิวเตอร์ธุรกิจ (คธ.)
-- ปวส.1/2 -> เทคโนโลยีสารสนเทศ (ส.ทส.), เทคโนโลยีธุรกิจดิจิทัล (ส.ทธ.), คอมพิวเตอร์ธุรกิจ (ส.คท.)
-- Changing grade level refreshes major choices without needing page reload.
-- Same rule is applied in self-registration, Admin Create User, and Admin Edit User.
