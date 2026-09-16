@@ -1,0 +1,38 @@
+DOC-FULL-NR V18.6 TEST RESULTS
+UTC 2026-09-16 06:43:51
+
+== JavaScript syntax: all site/*.js ==
+ALL_SITE_JS_SYNTAX_PASS
+
+== Static/contract tests ==
+V17.2 BRANDING CONTRACT PASS
+BUTTON CONTRACT PASS
+critical actions= 27 obsolete sequential-bypass controls=0
+COURSE CODE CONTRACT PASS
+V17.4 LEARNING CONTENT CONTRACT PASS
+V17.3 RUNTIME CONTRACT PASS
+STATIC VALIDATION PASS
+release=V17 MASTER FLOW; active_files= 15 manifest_icons= 6 router_owner=app.js
+MASTER FLOW CONTRACT PASS
+admin main routes= 8 user main routes= 7 single router owner=app.js
+V17.5 WORKPAIR CONTRACT PASS
+V17.6.1 ICON CONTRACT PASS
+V17.6 FULLSET CONTRACT PASS
+V17.7 TRANSACTION CONTRACT PASS
+V17.8 NOTIFICATION CONTRACT PASS
+V17.9 FULL SYSTEM HARDENING CONTRACT PASS
+V18.1 COMPLETE LEARNING SYSTEM CONTRACT PASS
+subjects=11 exam_questions=550 paper=multi-page profile=detail course_code=V18 offline=IndexedDB
+V18.2 COMPLETE SYSTEM FINAL CONTRACT PASS; questions=550 subjects=11 paper=multi-page course-code=working profile=working
+V18.6 ROOM CHECKLIST CONTRACT PASS
+
+== Browser contracts (Chromium, mock backend) ==
+BROWSER CONTRACT PASS
+dashboard direct route -> students hub -> users route bridge PASS
+COURSE CODE BROWSER CONTRACT PASS
+Admin registry -> copy/change controls -> student CODE -> direct course room PASS
+REAL USE BROWSER CONTRACT PASS
+V18.1 CORE BROWSER CONTRACT PASS
+Admin profile modal + fixed overlay + top-level Paper Scan hub PASS
+V18.6 ROOM CHECKLIST BROWSER CONTRACT PASS
+registration filters -> subject enrollment -> logical work-pair matrix -> named headers -> detail modal PASS

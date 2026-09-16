@@ -31,7 +31,7 @@ function client(){
   const s=readSession();
   return createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
-    global:{headers:s?.access_token?{Authorization:`Bearer ${s.access_token}`}:{}}}
+    global:{headers:s?.access_token?{Authorization:`Bearer ${s.access_token}`}:{}}
   });
 }
 function uid(){return readSession()?.user?.id||null}

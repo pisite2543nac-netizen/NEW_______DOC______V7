@@ -1,0 +1,60 @@
+NANGRONG SMART WORKSHEET SYSTEM / DOC-FULL-NR
+V18.7 TEST RESULTS — ROOM CHECKLIST + EXAM SOURCE ADAPTED
+Date: 2026-09-16
+
+SOURCE BASIS
+- Base project: NEW_______DOC______V7 / V18.6 audited full source tree
+- Exam source adapted from: ALL_Test_pisite2543nac.github.io-main(1).zip
+- Source exam bank SHA256: cc56e27cbb6f38f9aee094d7aa2ed382bd3497f22a7f72b536ab763e082fd284
+- Packaged exam bank SHA256: cc56e27cbb6f38f9aee094d7aa2ed382bd3497f22a7f72b536ab763e082fd284
+- Hash match: PASS
+- Question bank: 550 questions / 11 subjects / 50 questions per subject
+- Difficulty contract per subject: basic 10 / easy 15 / hard 25
+
+STATIC / CONTRACT TESTS
+PASS  JavaScript syntax: all site/*.js
+PASS  V17.2 Branding Contract
+PASS  Button Contract
+PASS  Course CODE Contract
+PASS  V17.4 Learning Content Contract
+PASS  V17.3 Runtime Contract
+PASS  Static Validation
+PASS  Master Flow Contract
+PASS  V17.5 Workpair Contract
+PASS  V17.6.1 Icon Contract
+PASS  V17.6 Fullset Contract
+PASS  V17.7 Transaction Contract
+PASS  V17.8 Notification Contract
+PASS  V17.9 Full System Hardening Contract
+PASS  V18.1 Complete Learning System Contract
+PASS  V18.2 Complete System Final Contract
+PASS  V18.6 Room Work Checklist Contract
+
+REAL CHROMIUM BROWSER CONTRACTS
+PASS  Admin registry -> student Course CODE -> direct Course Room
+PASS  Admin student profile modal + top-level multi-page Paper Scan hub
+PASS  Room checklist: registration filters -> enrollment -> logical work-pair matrix -> named worksheet headers -> detail modal
+PASS  Real-use browser contract
+PASS  Student exam: assigned exam -> instructions -> V18 start -> 50-question navigator -> answer/autosave UI
+PASS  Admin exam: subject readiness -> 550-bank KPI -> exam set controls
+PASS  Responsive exam browser verification including 390x844 mobile viewport and no document horizontal overflow
+
+INTEGRATION POLICY
+- Exam is NOT a separate website.
+- Existing Supabase Auth, profiles, subject_enrollments, subjects and V18 RPCs are reused.
+- Firebase / duplicate registration / static Admin credentials from the source exam site are NOT carried over.
+- Student score, answer key, rubric and Admin comments remain hidden according to DOC-FULL-NR privacy rules.
+- Anti-cheat is deterrence + audit (fullscreen/event logging), not a claim of 100% cheating prevention.
+
+PRODUCTION REALITY (last inspected before packaging)
+- Supabase production project ACTIVE_HEALTHY.
+- 11 active subjects.
+- 374 ready worksheet templates = 187 Digital + 187 Paper.
+- exam_question_bank contained 0 rows at inspection time.
+- V18.7 Admin Exam Center contains automatic import from the packaged 550-question bank when the bank is empty/underfilled, plus manual JSON import fallback.
+- This package has NOT been deployed to GitHub Pages production yet.
+- Supabase security advisor warnings previously found are not silently treated as fixed by this release.
+
+BUILD NOTE
+- Production deployment model is the static PWA under /site.
+- npm build was not executed in this packaging environment because node_modules is not present; browser contracts exercise the actual static production shell.

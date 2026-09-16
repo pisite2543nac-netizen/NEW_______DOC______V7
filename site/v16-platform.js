@@ -4,7 +4,7 @@ const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V18.2-COMPLETE-SYSTEM-FINAL";
+const V15_VERSION="V18.6-ROOM-WORK-CHECKLIST-AUDITED";
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -18,7 +18,7 @@ const state={
   heartbeatTimer:null,countdownTimer:null,navTimer:null,presenceChannel:null,
   scanner:null,scanBusy:false,lastScanToken:null,lastScanAt:0,currentAttendanceSession:null,currentAttendanceDeadline:null,
   rtClient:null,roomChannel:null,roomRefreshTimer:null,currentRoomMode:null,
-  notificationChannel:null,notificationReady:false,notificationUid:null,attendanceTimer:null,attendanceFinalizeNotice:false,attendanceAutoClosing:false
+  notificationChannel:null,notificationReady:false,notificationUid:null,attendanceTimer:null,attendanceFinalizeNotice:false,attendanceAutoClosing:false,workChecklist:null
 };
 
 function readSession(){
@@ -263,6 +263,7 @@ async function navigate(route,arg=null){
     courses:()=>arg?renderAdminSubject(arg):renderAdminCourses(),
     students:renderStudentsHub,
     workadmin:renderWorkAdminHub,
+    workcheck:renderRoomWorkChecklist,
     paperscan:renderPaperScanHub,
     attendancehub:renderAttendanceHub,
     academic:renderAcademicHub,
@@ -437,8 +438,8 @@ function hubCard(route,icon,title,desc,tone="blue"){
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V18.1</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 17 หน่วย • สไลด์ 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V18.6</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 17 หน่วย • สไลด์ 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("workcheck","✅","ตารางเช็กรวมรายห้อง","ระดับ • ห้อง • แผนก • สาขา • 17 หน่วย","cyan")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
   <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
   Promise.race([client().rpc("admin_system_health_v18"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
     const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
@@ -447,7 +448,7 @@ async function renderAdminDashboard(){
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V18.1</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V18.6</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
   <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","17 หน่วย • สไลด์ 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
   <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
 }
@@ -457,8 +458,81 @@ async function renderStudentsHub(){
 }
 async function renderWorkAdminHub(){
   setTitle("งาน คะแนน และรายงาน");
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK • GRADE • REPORT FLOW</span><h1>📝 งาน คะแนน และรายงาน</h1><p>ตรวจ Submission ให้คะแนน จัดสิทธิ์ส่งเพิ่ม และสรุปผลจากข้อมูลจริง</p></div></div><div class="v1610-flow-grid">${hubCard("grading","📝","ตรวจงาน","Submission • Answer • Files • Rubric • Grade","violet")}${hubCard("paperscan","📄","สแกนงานย้อนหลัง","Barcode • ถ่ายครบทุกหน้า • ยืนยัน Packet","red")}${hubCard("overrides","⏳","สิทธิ์ส่งเพิ่ม","ขยายเวลา • ส่งซ้ำ • Extra Attempts","orange")}${hubCard("courses","📊","Gradebook รายวิชา","เข้า Course → สรุปคะแนน 40/20/20/20","cyan")}${hubCard("reports","📤","รายงาน / Export","Submission • คะแนน • CSV/Excel","green")}</div></section>`;
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK • GRADE • REPORT FLOW</span><h1>📝 งาน คะแนน และรายงาน</h1><p>ตรวจ Submission ให้คะแนน จัดสิทธิ์ส่งเพิ่ม และสรุปผลจากข้อมูลจริง</p></div></div><div class="v1610-flow-grid">${hubCard("workcheck","✅","ตารางเช็กรวมรายห้อง","แยกตามระดับ • ห้อง • แผนก • สาขา • ใบงาน 17 หน่วย","cyan")}${hubCard("grading","📝","ตรวจงาน","Submission • Answer • Files • Rubric • Grade","violet")}${hubCard("paperscan","📄","สแกนงานย้อนหลัง","Barcode • ถ่ายครบทุกหน้า • ยืนยัน Packet","red")}${hubCard("overrides","⏳","สิทธิ์ส่งเพิ่ม","ขยายเวลา • ส่งซ้ำ • Extra Attempts","orange")}${hubCard("courses","📊","Gradebook รายวิชา","เข้า Course → สรุปคะแนน 40/20/20/20","cyan")}${hubCard("reports","📤","รายงาน / Export","Submission • คะแนน • CSV/Excel","green")}</div></section>`;
 }
+
+// ---------------------------------------------------------------------------
+// V18.6 Room worksheet checklist
+// Admin-only matrix grouped from registration metadata + approved enrollment.
+// Digital/Paper of the same work_pair_key is intentionally one column.
+// ---------------------------------------------------------------------------
+function v186Unique(rows,key){return [...new Set(rows.map(x=>String(x?.[key]||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"))}
+function v186Opt(values,label="ทั้งหมด"){return `<option value="">${esc(label)}</option>${values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("")}`}
+function v186UnitNo(pair){return Number(pair?.digital?.settings?.sequence_no||pair?.paper?.settings?.sequence_no||pair?.digital?.settings?.lesson_sequence||pair?.paper?.settings?.lesson_sequence||999)}
+function v186WorkLabel(pair,subject){const n=v186UnitNo(pair),name=String(subject?.name||"รายวิชา").trim();return `ใบงาน${name}${Number.isFinite(n)&&n<999?` หน่วยที่ ${n}`:""}`}
+function v186WorkTopic(pair){return String(pair?.digital?.settings?.unit_topic||pair?.paper?.settings?.unit_topic||pair?.title||"").trim()}
+function v186ClassTitle(rows,filters){
+  const first=rows[0]||{},grade=filters.grade||first.grade_level||"",room=filters.room||first.room_label||"",major=filters.major||first.major||"";
+  const abbr=(major.match(/\(([^)]+)\)/)||[])[1]||"",num=(grade.match(/(\d+)/)||[])[1]||grade;
+  return `${abbr?abbr+" ":""}${num||""}${room||""}`.trim()||"หลายห้อง";
+}
+function v186SubmissionMap(detail){
+  const priority={graded:5,confirmed:4,submitted:3,draft:2};const map=new Map();
+  for(const x of detail.submissions||[]){const k=`${x.user_id}:${x.pair_id}`,old=map.get(k);if(!old||Number(priority[x.status]||0)>Number(priority[old.status]||0)||(!old.is_late&&x.is_late))map.set(k,x)}
+  return map;
+}
+function v186CellState(uid,pair,assigned,subMap){
+  const key=`${uid}:${pair.id}`;if(!assigned.has(key))return {label:"—",cls:"na",text:"ยังไม่ได้มอบหมาย"};
+  const sub=subMap.get(key);if(sub){if(sub.status==="draft")return {label:"ร",cls:"draft",text:"บันทึกร่าง"};if(sub.is_late||sub.worksheet_id===pair.paper?.id)return {label:"ช",cls:"late",text:"ส่งย้อนหลัง / ส่งช้า"};if(["submitted","confirmed","graded"].includes(sub.status))return {label:"✓",cls:"done",text:"ส่งแล้ว"};return {label:"•",cls:"neutral",text:sub.status||"มีรายการส่ง"}}
+  const due=pair.digital?.due_at||pair.paper?.due_at;if(due&&new Date(due).getTime()<nowMs())return {label:"✕",cls:"missing",text:"พ้นกำหนดและยังไม่ส่ง"};
+  return {label:"/",cls:"waiting",text:"มอบหมายแล้ว / ยังไม่ถึงกำหนดหรือยังไม่ส่ง"};
+}
+function v186ChecklistTable(subject,students,works,assigned,subMap,gradeMap){
+  const heads=works.map(pair=>{const label=v186WorkLabel(pair,subject),topic=v186WorkTopic(pair),n=v186UnitNo(pair);return `<th class="v186-work-head" title="${esc(`${label}${topic?` • ${topic}`:""}`)}"><span>${esc(`ใบงาน${subject.name}`)}</span><b>หน่วยที่ ${Number.isFinite(n)&&n<999?n:"-"}</b>${topic?`<small>${esc(topic)}</small>`:""}</th>`}).join("");
+  const body=students.map((p,i)=>{let completed=0,assignedCount=0,late=0,missing=0;const cells=works.map(pair=>{const key=`${p.id}:${pair.id}`;if(assigned.has(key))assignedCount++;const st=v186CellState(p.id,pair,assigned,subMap);if(st.cls==="done"||st.cls==="late")completed++;if(st.cls==="late")late++;if(st.cls==="missing")missing++;return `<td class="v186-status ${st.cls}"><button type="button" class="v186-cell-btn" data-v186-user="${p.id}" data-v186-pair="${esc(pair.id)}" title="${esc(st.text)}">${st.label}</button></td>`}).join("");const gr=gradeMap.get(p.id),note=missing?`ยังไม่ส่ง ${missing}`:late?`ส่งช้า ${late}`:(assignedCount&&completed>=assignedCount?"ส่งครบ":"-");return `<tr><td class="v186-sticky v186-col-no">${i+1}</td><td class="v186-sticky v186-col-code"><b>${esc(p.student_code||"")}</b></td><td class="v186-sticky v186-col-name">${esc(p.full_name||"")}<small>${esc(p.display_name||"")}</small></td>${cells}<td class="v186-summary"><b>${completed}/${assignedCount}</b></td><td class="v186-score">${gr?`${Number(gr.work_score||0).toFixed(2)}/${Number(gr.work_points||40)}`:"-"}</td><td class="v186-note ${missing?"bad":""}">${esc(note)}</td></tr>`}).join("");
+  return `<div class="v186-table-scroll"><table class="v186-check-table"><thead><tr><th class="v186-sticky v186-col-no">ลำดับ</th><th class="v186-sticky v186-col-code">รหัสนักศึกษา</th><th class="v186-sticky v186-col-name">ชื่อ - สกุล</th>${heads}<th>ส่งครบ<br>(หน่วย)</th><th>คะแนนงาน</th><th>หมายเหตุ</th></tr></thead><tbody>${body||`<tr><td colspan="${works.length+6}" class="v14-empty">ไม่พบนักศึกษาในกลุ่มที่เลือก</td></tr>`}</tbody></table></div>`;
+}
+function v186ChecklistExcel(subject,students,works,assigned,subMap,gradeMap,filters){
+  const cols=works.length+6,title=`ตารางเช็กรวมการเก็บงาน ${v186ClassTitle(students,filters)}`,meta=`${subject.code} ${subject.name} • ปีการศึกษา ${subject.academic_year||"-"} • ภาคเรียน ${subject.semester||"-"} • ระดับ ${filters.grade||"ทั้งหมด"} • ห้อง ${filters.room||"ทั้งหมด"} • แผนก ${filters.department||"ทั้งหมด"} • สาขา ${filters.major||"ทั้งหมด"}`;
+  const head=works.map(x=>`<th>${excelEsc(v186WorkLabel(x,subject))}<br><small>${excelEsc(v186WorkTopic(x))}</small></th>`).join("");
+  const body=students.map((p,i)=>{let completed=0,assignedCount=0,late=0,missing=0;const cells=works.map(pair=>{const k=`${p.id}:${pair.id}`;if(assigned.has(k))assignedCount++;const st=v186CellState(p.id,pair,assigned,subMap);if(["done","late"].includes(st.cls))completed++;if(st.cls==="late")late++;if(st.cls==="missing")missing++;return `<td class="c">${excelEsc(st.label)}</td>`}).join("");const gr=gradeMap.get(p.id),note=missing?`ยังไม่ส่ง ${missing}`:late?`ส่งช้า ${late}`:(assignedCount&&completed>=assignedCount?"ส่งครบ":"-");return `<tr><td class="c">${i+1}</td><td class="code">${excelEsc(p.student_code||"")}</td><td>${excelEsc(p.full_name||"")}</td>${cells}<td class="c">${completed}/${assignedCount}</td><td class="c">${gr?`${Number(gr.work_score||0).toFixed(2)}/${Number(gr.work_points||40)}`:"-"}</td><td>${excelEsc(note)}</td></tr>`}).join("");
+  return `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:6mm}body{font-family:Tahoma,Arial,sans-serif}table{border-collapse:collapse}th,td{border:1px solid #777;padding:5px;font-size:10px;vertical-align:middle}th{background:#dbeafe;text-align:center}.title td,.meta td{border:0;text-align:center;font-weight:700;font-size:16px}.meta td{font-size:11px;font-weight:400}.c{text-align:center}.code{mso-number-format:"\\@"}</style></head><body><table><tr class="title"><td colspan="${cols}">${excelEsc(title)}</td></tr><tr class="meta"><td colspan="${cols}">${excelEsc(meta)}</td></tr><tr><th>ลำดับ</th><th>รหัสนักศึกษา</th><th>ชื่อ - สกุล</th>${head}<th>ส่งครบ</th><th>คะแนนงาน</th><th>หมายเหตุ</th></tr>${body}</table></body></html>`;
+}
+async function renderRoomWorkChecklist(){
+  setTitle("ตารางเช็กรวมการเก็บงานรายห้อง");busy("กำลังเตรียมห้องเรียนและหมวดหมู่จากข้อมูลลงทะเบียน...");const c=client();
+  const [sr,pr]=await Promise.all([
+    c.from("subjects").select("id,code,name,academic_year,semester,active,subject_type").eq("active",true).eq("subject_type","subject").order("code"),
+    c.from("profiles").select("id,student_code,full_name,display_name,grade_level,room_label,class_name,department,major,seat_number,active,approval_status,role").eq("role","user").eq("active",true).eq("approval_status","approved").order("student_code")
+  ]);if(sr.error)throw sr.error;if(pr.error)throw pr.error;const subjects=sr.data||[],profiles=pr.data||[];
+  const years=v186Unique(subjects,"academic_year"),semesters=v186Unique(subjects,"semester");
+  content().innerHTML=`<section class="v14-page v186-checklist-page"><div class="v14-section-head v186-screen-only"><div><span class="v14-kicker">ROOM WORK CHECKLIST • V18.6</span><h1>✅ ตารางเช็กรวมการเก็บงานรายห้อง</h1><p>ดึงกลุ่มนักศึกษาจากข้อมูลลงทะเบียนจริง และนับ Digital/Paper ของหน่วยเดียวกันเป็น 1 งาน</p></div></div>
+    <div class="card v186-filters v186-screen-only"><label>ปีการศึกษา<select id="v186-year" class="input">${v186Opt(years)}</select></label><label>ภาคเรียน<select id="v186-sem" class="input">${v186Opt(semesters)}</select></label><label class="wide">รายวิชา<select id="v186-subject" class="input"></select></label><label>ระดับ<select id="v186-grade" class="input">${v186Opt(v186Unique(profiles,"grade_level"))}</select></label><label>ห้อง<select id="v186-room" class="input">${v186Opt(v186Unique(profiles,"room_label"))}</select></label><label>แผนก<select id="v186-dept" class="input">${v186Opt(v186Unique(profiles,"department"))}</select></label><label class="wide">สาขา<select id="v186-major" class="input">${v186Opt(v186Unique(profiles,"major"))}</select></label><button class="btn primary" id="v186-load">แสดงข้อมูล</button></div>
+    <div id="v186-checklist-result"><div class="v14-empty">เลือกรายวิชาและกลุ่มห้อง แล้วกด “แสดงข้อมูล”</div></div></section>`;
+  const year=$("#v186-year"),sem=$("#v186-sem"),subjectSel=$("#v186-subject");
+  const refreshSubjects=()=>{const y=year.value,m=sem.value,current=subjectSel.value;const rows=subjects.filter(x=>(!y||String(x.academic_year||"")===y)&&(!m||String(x.semester||"")===m));subjectSel.innerHTML=rows.map(x=>`<option value="${x.id}">${esc(`${x.code} • ${x.name}`)}</option>`).join("")||`<option value="">ไม่พบรายวิชา</option>`;if(rows.some(x=>x.id===current))subjectSel.value=current};
+  year.onchange=refreshSubjects;sem.onchange=refreshSubjects;refreshSubjects();
+  const load=()=>loadRoomWorkChecklist(subjects,profiles).catch(e=>{console.error(e);const host=$("#v186-checklist-result");if(host)host.innerHTML=`<div class="alert error"><b>โหลดตารางไม่สำเร็จ</b><div>${esc(errorText(e))}</div></div>`});
+  $("#v186-load").onclick=load;if(subjectSel.value)load();
+}
+async function loadRoomWorkChecklist(subjects,allProfiles){
+  const sid=$("#v186-subject")?.value;if(!sid)return;const host=$("#v186-checklist-result");if(!host)return;host.innerHTML=`<div class="v14-loading"><div class="v14-spinner"></div><b>กำลังสร้างตารางเช็กงานจากข้อมูลจริง...</b></div>`;
+  const filters={grade:$("#v186-grade")?.value||"",room:$("#v186-room")?.value||"",department:$("#v186-dept")?.value||"",major:$("#v186-major")?.value||""},subject=subjects.find(x=>x.id===sid);const c=client();
+  const [er,detail,gr]=await Promise.all([c.from("subject_enrollments").select("user_id,status").eq("subject_id",sid).eq("status","approved"),loadSubjectWorkDetailData(sid),c.rpc("admin_subject_gradebook",{p_subject_id:sid})]);if(er.error)throw er.error;if(gr.error)throw gr.error;
+  const enrolled=new Set((er.data||[]).map(x=>x.user_id));let students=allProfiles.filter(p=>enrolled.has(p.id));if(filters.grade)students=students.filter(p=>p.grade_level===filters.grade);if(filters.room)students=students.filter(p=>p.room_label===filters.room);if(filters.department)students=students.filter(p=>p.department===filters.department);if(filters.major)students=students.filter(p=>p.major===filters.major);students.sort((a,b)=>(Number(a.seat_number||999)-Number(b.seat_number||999))||String(a.student_code||"").localeCompare(String(b.student_code||"")));
+  const works=[...(detail.works||[])].sort((a,b)=>v186UnitNo(a)-v186UnitNo(b)),assigned=new Set((detail.assignments||[]).map(x=>`${x.user_id}:${x.pair_id}`)),subMap=v186SubmissionMap(detail),gradeMap=new Map((gr.data||[]).map(x=>[x.user_id,x]));let complete=0,partial=0,none=0;
+  for(const p of students){let ac=0,dc=0;for(const w of works){if(assigned.has(`${p.id}:${w.id}`)){ac++;const st=v186CellState(p.id,w,assigned,subMap);if(["done","late"].includes(st.cls))dc++}}if(ac&&dc>=ac)complete++;else if(dc)partial++;else none++}
+  const title=v186ClassTitle(students,filters),table=v186ChecklistTable(subject,students,works,assigned,subMap,gradeMap);
+  host.innerHTML=`<div class="v186-print-head"><img src="./icons/icon-192.png" alt=""><div><h2>ตารางเช็กรวมการเก็บงาน รายห้อง ${esc(title)}</h2><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")}</p><small>ระดับ ${esc(filters.grade||"ทั้งหมด")} • ห้อง ${esc(filters.room||"ทั้งหมด")} • แผนก ${esc(filters.department||"ทั้งหมด")} • สาขา ${esc(filters.major||"ทั้งหมด")}</small></div></div>
+    <div class="v186-kpis v186-screen-only"><div><span>นักศึกษา</span><b>${students.length}</b></div><div class="ok"><span>ส่งครบ</span><b>${complete}</b></div><div class="warn"><span>ส่งบางส่วน</span><b>${partial}</b></div><div class="bad"><span>ยังไม่มีงานที่ส่ง</span><b>${none}</b></div></div>
+    <div class="v186-actions v186-screen-only"><button class="btn" id="v186-excel">⬇️ ส่งออก Excel</button><button class="btn primary" id="v186-print">🖨️ พิมพ์ A4 แนวนอน</button><span class="v186-legend"><i class="done">✓</i> ส่งแล้ว <i class="late">ช</i> ส่งย้อนหลัง <i class="draft">ร</i> ร่าง <i class="waiting">/</i> รอดำเนินการ <i class="missing">✕</i> พ้นกำหนด <i>—</i> ไม่ได้มอบหมาย</span></div>${table}`;
+  state.workChecklist={subject,students,works,assigned,subMap,gradeMap,filters};
+  $("#v186-excel").onclick=()=>{const html=v186ChecklistExcel(subject,students,works,assigned,subMap,gradeMap,filters);downloadExcelHtml(`ตารางเช็กรวม-${subject.code}-${title.replace(/\\s+/g,"-")}.xls`,html)};$("#v186-print").onclick=()=>window.print();
+}
+function showRoomWorkChecklistCell(userId,pairId){
+  const ctx=state.workChecklist;if(!ctx)return;const p=ctx.students.find(x=>x.id===userId),pair=ctx.works.find(x=>String(x.id)===String(pairId));if(!p||!pair)return;const st=v186CellState(userId,pair,ctx.assigned,ctx.subMap),sub=ctx.subMap.get(`${userId}:${pair.id}`),due=pair.digital?.due_at||pair.paper?.due_at;
+  overlay(`<div class="v14-modal-head"><div><h2>${esc(v186WorkLabel(pair,ctx.subject))}</h2><p>${esc(v186WorkTopic(pair))}</p></div><button class="btn" data-v14-close>✕</button></div><div class="v186-cell-detail"><div><span>นักศึกษา</span><b>${esc(p.student_code||"")} • ${esc(p.full_name||"")}</b></div><div><span>สถานะ</span><b class="${st.cls}">${esc(st.text)}</b></div><div><span>กำหนดส่ง Digital</span><b>${due?esc(fmt(due)):"ไม่กำหนด"}</b></div><div><span>เวลาส่งล่าสุด</span><b>${sub?.submitted_at||sub?.confirmed_at?esc(fmt(sub.submitted_at||sub.confirmed_at)):"-"}</b></div><div><span>รูปแบบที่รับ</span><b>${sub?.worksheet_id===pair.paper?.id||sub?.is_late?"Paper / ย้อนหลัง":"Digital / ตรงเวลา"}</b></div></div>`);
+}
+
 async function renderAttendanceHub(){
   setTitle("เช็คชื่อและห้องเรียน");
   content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">ATTENDANCE FLOW</span><h1>📷 เช็คชื่อและห้องเรียน</h1><p>QR • Session 15 นาที • Late/Absent/Excused • หัวหน้าห้อง • Realtime Presence</p></div></div><div class="v1610-flow-grid">${hubCard("attendance","📷","Attendance","เปิด Session • Scan QR • สรุปยอด","orange")}${hubCard("presence","📡","สถานะออนไลน์","ดู Online/Away/Offline แบบ Realtime","cyan")}${hubCard("students","👨‍🎓","หัวหน้าห้อง / สมาชิก","จัดสิทธิ์นักศึกษาและสมาชิกห้อง","green")}${hubCard("courses","🏫","กลับรายวิชา","เลือกวิชาสำหรับงานเช็คชื่อ","slate")}</div></section>`;
@@ -1154,6 +1228,7 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v181-paper-subject]")){renderPaperScanCenter(t.dataset.v181PaperSubject);return}
   if(t.matches("[data-v16-paper-scan]")){renderPaperScanCenter(t.dataset.v16PaperScan);return}
   if(t.matches("[data-v16-view-scan]")){openPaperScanCopy(t.dataset.v16ViewScan);return}
+  if(t.matches("[data-v186-user]")){showRoomWorkChecklistCell(t.dataset.v186User,t.dataset.v186Pair);return}
   if(t.matches("[data-v15-jump]")){document.querySelector(t.dataset.v15Jump)?.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(t.matches("[data-v14-open-work]")){if(window.DOCNR_BASE?.openWorksheet)window.DOCNR_BASE.openWorksheet(t.dataset.v14OpenWork);else toast("ตัวเปิดใบงานหลักยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
   if(t.matches("[data-v14-profile]")){showAdminProfile(t.dataset.v14Profile);return}
@@ -1172,7 +1247,7 @@ document.addEventListener("change",async e=>{
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v18-1-complete-learning-system";
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v18-6-room-work-checklist";
   syncServerTime().catch(()=>{});startHeartbeat();
   scheduleEnsureNav();
   setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},700);
@@ -1186,6 +1261,6 @@ function cleanup(){
 
 // compatibility marker: V17-MASTER-FLOW
 // window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V17-MASTER-FLOW"})
-window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V18.2-COMPLETE-SYSTEM-FINAL"});
+window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V18.6-ROOM-WORK-CHECKLIST-AUDITED"});
 window.addEventListener("pagehide",cleanup);
 boot().catch(e=>console.error("DOC-FULL-NR V16.6 boot",e));

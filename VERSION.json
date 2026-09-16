@@ -1,5 +1,5 @@
 {
-  "release": "V18.2 COMPLETE SYSTEM FINAL",
+  "release": "V18.7 ROOM WORK CHECKLIST + EXAM SOURCE ADAPTED",
   "date": "2026-09-16",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -16,13 +16,13 @@
   "ready_templates": 374,
   "paper_templates": 187,
   "digital_templates": 187,
-  "release_marker": "V18.2-COMPLETE-SYSTEM-FINAL",
+  "release_marker": "V18.7-ROOM-WORK-CHECKLIST-EXAM-ADAPTED",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
-  "exam_room_integration": "50 MCQ / 4 choices / 75 minutes / 20 points; question bank; per-attempt shuffle; anti-cheat event audit; student score hidden",
-  "version": "18.2",
-  "notes": "Complete learning-system release: visible Admin/User flow, fixed student profile modal, working subject CODE join, top-level multi-page Paper Scan, integrated 550-question exam bank, immutable evidence, offline drafts, transactional grading and integrity monitoring.",
+  "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
+  "version": "18.7",
+  "notes": "Continued from V18.6 full system. Keeps the per-room worksheet checklist and adapts the user-supplied ALL_Test exam UX into the existing DOC-FULL-NR Exam Center without creating a second login/database. Adds subject exam dashboard, pre-exam instructions, responsive side navigator, fullscreen guard, registration-category result filters, and exact 550-question bank provenance.",
   "gradebook": "actual finalized grading scores, logical work-pair denominator",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
@@ -50,7 +50,8 @@
   "notification_runtime": "PWA OS popup + realtime + replay",
   "system_hardening": "idempotent grading/exam/attendance/paper scan/unit unlock + assignment reconcile + integrity monitor",
   "exam_question_bank": 550,
-  "core_ui": "admin profile detail + user course CODE + top-level multi-page paper scan + exam center",
-  "exam_bank_source": "ALL_Test_pisite2543nac.github.io initial-question-bank-all-subjects.json (byte-identical adapted JSON)",
-  "frontend_acceptance": "profile/course-code/paper-scan/exam browser contracts"
+  "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
+  "exam_bank_source": "ALL_Test_pisite2543nac.github.io-main(1).zip / initial-question-bank-all-subjects.json, SHA256 cc56e27cbb6f38f9aee094d7aa2ed382bd3497f22a7f72b536ab763e082fd284; copied byte-identically to site/data/exam-question-bank-v18.json",
+  "frontend_acceptance": "profile/course-code/paper-scan/room-work-checklist/adapted-exam browser contracts",
+  "base_release": "V18.6 ROOM WORK CHECKLIST + REALITY AUDIT"
 }
