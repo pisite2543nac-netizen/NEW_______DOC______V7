@@ -50,7 +50,6 @@ jobs:
           python tests/v179_full_system_hardening_contract.py
           python tests/v181_complete_learning_system_contract.py
           python tests/v182_complete_system_final_contract.py
-          python tests/v19_classroom_flow_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js

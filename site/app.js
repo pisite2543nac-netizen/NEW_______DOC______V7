@@ -118,7 +118,6 @@ function friendlyError(err){
     REGISTRATION_THAI_ONLY:"ชื่อ-นามสกุลและชื่อเล่นต้องกรอกเป็นภาษาไทย",
     NICKNAME_REQUIRED:"กรุณากรอกชื่อเล่น",
     DIGITAL_DEADLINE_PASSED_USE_PAPER:"พ้นกำหนดส่งออนไลน์แล้ว กรุณาพิมพ์ใบงานส่งย้อนหลัง",
-    ATTENDANCE_CHECKIN_REQUIRED:"ต้องผ่านการเช็คชื่อจากหัวหน้าห้องของวันนี้ก่อน จึงจะทำหรือส่งใบงานอิเล็กทรอนิกส์ได้",
     WORK_PAIR_ALREADY_COMPLETED:"งานหน่วยนี้ถูกส่งเรียบร้อยแล้ว ไม่สามารถส่งซ้ำอีกช่องทางได้",
     MISSING_REQUIRED_ANSWER:"กรุณาตอบคำถามบังคับให้ครบก่อนส่ง",
     INVALID_ATTACHMENT_PATH:"ไฟล์แนบไม่ผ่านการตรวจสอบความเป็นเจ้าของ",
@@ -367,7 +366,7 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.0</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V18.8.2</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
@@ -934,14 +933,6 @@ async function openWorksheet(id){
   ]);
   if(wr.error)return toast(friendlyError(wr.error),"error");
   const w=wr.data,old=sr.data;
-  if(w.mode==="digital"){
-    const access=await sb.rpc("my_digital_worksheet_access_v19",{p_worksheet_id:id});
-    if(access.error)return toast(friendlyError(access.error),"error");
-    if(access.data?.attendance_required&&!access.data?.attendance_passed){
-      modal(`<div class="modal-header"><div><h3>🛡️ ต้องเช็คชื่อก่อนทำใบงาน</h3><div class="muted">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")}</div></div><button class="btn sm" data-close>✕</button></div><div class="alert warn"><b>ยังไม่พบการเช็คชื่อจากหัวหน้าห้องของวันนี้</b><div>ระบบป้องกันการทำงานจากระยะไกลกำหนดให้หัวหน้าห้องเช็คชื่อก่อน จึงจะเปิด บันทึกร่าง หรือส่งใบงานอิเล็กทรอนิกส์ได้</div></div><div class="row end"><button class="btn primary" data-close>เข้าใจแล้ว</button></div>`);
-      return;
-    }
-  }
   const localDraft=await getOfflineDraft(uid(),id).catch(()=>null);
   const initialAnswers=(!old||old.status==="draft")&&localDraft?.answers?{...(old?.answers||{}),...localDraft.answers}:(old?.answers||{});
   const ov=Array.isArray(orr.data)?orr.data[0]:(orr.data||{});
