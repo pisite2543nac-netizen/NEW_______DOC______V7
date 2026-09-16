@@ -6,7 +6,9 @@ const cors={"Access-Control-Allow-Origin":ORIGIN,"Access-Control-Allow-Headers":
 const LEVELS=new Set(['ปวช.1','ปวช.2','ปวช.3','ปวส.1','ปวส.2']);
 const ROOMS=new Set(['/1','/2','/3','/4','/5','/6']);
 const DEPARTMENTS=new Set(['คอมพิวเตอร์','อิเล็กทรอนิก']);
-const MAJORS=new Set(['เทคโนโลยีสารสนเทศ (ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ทธ.)','คอมพิวเตอร์ธุรกิจ (คธ.)']);
+const MAJORS_LOW=new Set(['เทคโนโลยีสารสนเทศ (ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ทธ.)','คอมพิวเตอร์ธุรกิจ (คธ.)']);
+const MAJORS_HIGH=new Set(['เทคโนโลยีสารสนเทศ (ส.ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ส.ทธ.)','คอมพิวเตอร์ธุรกิจ (ส.คท.)']);
+const majorAllowed=(level:string,major:string)=>level.startsWith('ปวส.')?MAJORS_HIGH.has(major):MAJORS_LOW.has(major);
 
 function secret(){try{const raw=Deno.env.get('SUPABASE_SECRET_KEYS');if(raw)return JSON.parse(raw).default}catch{}return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}});
@@ -37,7 +39,7 @@ Deno.serve(async(req:Request)=>{
     if(role==='user'){
       studentCode=String(b.student_code||'').trim();username=studentCode;fullName=String(b.full_name||'').trim();nickname=String(b.display_name||b.nickname||'').trim();birthDate=String(b.birth_date||'').trim();
       gradeLevel=String(b.grade_level||'').trim();roomLabel=String(b.room_label||'').trim();department=String(b.department||'').trim();major=String(b.major||'').trim();phone=normalizePhone(b.phone);
-      if(!/^\d{1,15}$/.test(studentCode)||!thaiText(fullName)||!thaiText(nickname,40)||!validBirthDate(birthDate)||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!MAJORS.has(major))return json({error:'INVALID_USER_DATA'},400);
+      if(!/^\d{1,15}$/.test(studentCode)||!thaiText(fullName)||!thaiText(nickname,40)||!validBirthDate(birthDate)||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!majorAllowed(gradeLevel,major))return json({error:'INVALID_USER_DATA'},400);
       if(phone==='__INVALID__'||!phone)return json({error:'INVALID_PHONE'},400);
       if(seatNumber!==null&&(!Number.isInteger(seatNumber)||seatNumber<1||seatNumber>999))return json({error:'INVALID_SEAT_NUMBER'},400);
       className=`${gradeLevel}${roomLabel}`;

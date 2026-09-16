@@ -5,7 +5,9 @@ const cors={"Access-Control-Allow-Origin":ORIGIN,"Access-Control-Allow-Headers":
 const LEVELS=new Set(['ปวช.1','ปวช.2','ปวช.3','ปวส.1','ปวส.2']);
 const ROOMS=new Set(['/1','/2','/3','/4','/5','/6']);
 const DEPARTMENTS=new Set(['คอมพิวเตอร์','อิเล็กทรอนิก']);
-const MAJORS=new Set(['เทคโนโลยีสารสนเทศ (ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ทธ.)','คอมพิวเตอร์ธุรกิจ (คธ.)']);
+const MAJORS_LOW=new Set(['เทคโนโลยีสารสนเทศ (ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ทธ.)','คอมพิวเตอร์ธุรกิจ (คธ.)']);
+const MAJORS_HIGH=new Set(['เทคโนโลยีสารสนเทศ (ส.ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ส.ทธ.)','คอมพิวเตอร์ธุรกิจ (ส.คท.)']);
+const majorAllowed=(level:string,major:string)=>level.startsWith('ปวส.')?MAJORS_HIGH.has(major):MAJORS_LOW.has(major);
 const MAX_PHOTO_BYTES=1024*1024;
 function secret(){try{const raw=Deno.env.get('SUPABASE_SECRET_KEYS');if(raw)return JSON.parse(raw).default}catch{}return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}
 async function sha256(v:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -27,7 +29,7 @@ Deno.serve(async(req:Request)=>{
     const rate=await svc.rpc('registration_rate_check_v18',{p_fingerprint:fingerprint,p_success:false});
     if(rate.error)return json({error:'REGISTRATION_RATE_CHECK_FAILED'},500);
     if(rate.data?.blocked===true)return json({error:'REGISTRATION_RATE_LIMITED',retry_after_seconds:Number(rate.data.retry_after_seconds||1800)},429);
-    if(!/^\d{1,15}$/.test(studentCode)||password.length<8||!fullName||!nickname||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!MAJORS.has(major))return json({error:'INVALID_REGISTRATION_DATA'},400);
+    if(!/^\d{1,15}$/.test(studentCode)||password.length<8||!fullName||!nickname||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!majorAllowed(gradeLevel,major))return json({error:'INVALID_REGISTRATION_DATA'},400);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)||new Date(birthDate+'T00:00:00Z').getTime()>Date.now())return json({error:'INVALID_BIRTH_DATE'},400);
     if(!thaiText(fullName,160)||!thaiText(nickname,40))return json({error:'REGISTRATION_THAI_ONLY'},400);
     if(username.toLowerCase()==='pisit2000')return json({error:'USERNAME_RESERVED'},409);

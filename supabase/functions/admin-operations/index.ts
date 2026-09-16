@@ -10,7 +10,9 @@ function cleanUsername(v:unknown){return String(v||'').trim().replace(/[^A-Za-z0
 const LEVELS=new Set(['ปวช.1','ปวช.2','ปวช.3','ปวส.1','ปวส.2']);
 const ROOMS=new Set(['/1','/2','/3','/4','/5','/6']);
 const DEPARTMENTS=new Set(['คอมพิวเตอร์','อิเล็กทรอนิก']);
-const MAJORS=new Set(['เทคโนโลยีสารสนเทศ (ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ทธ.)','คอมพิวเตอร์ธุรกิจ (คธ.)']);
+const MAJORS_LOW=new Set(['เทคโนโลยีสารสนเทศ (ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ทธ.)','คอมพิวเตอร์ธุรกิจ (คธ.)']);
+const MAJORS_HIGH=new Set(['เทคโนโลยีสารสนเทศ (ส.ทส.)','เทคโนโลยีธุรกิจดิจิทัล (ส.ทธ.)','คอมพิวเตอร์ธุรกิจ (ส.คท.)']);
+const majorAllowed=(level:string,major:string)=>level.startsWith('ปวส.')?MAJORS_HIGH.has(major):MAJORS_LOW.has(major);
 function thaiText(v:unknown,max=160){const s=String(v||'').trim();return !!s&&s.length<=max&&/[\u0E00-\u0E7F]/.test(s)&&!/[A-Za-z]/.test(s)}
 function normalizePhone(input:unknown){const raw=String(input||'').trim().replace(/[\s()-]/g,'');if(!raw)return null;if(/^0\d{9}$/.test(raw))return '+66'+raw.slice(1);if(/^\+66\d{9}$/.test(raw))return raw;return '__INVALID__'}
 function validBirthDate(v:unknown){const s=String(v||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(`${s}T00:00:00Z`);return Number.isFinite(d.getTime())&&d<=new Date()&&d.getUTCFullYear()>=1900}
@@ -40,7 +42,7 @@ Deno.serve(async(req:Request)=>{
         const fullName=String(b.full_name??target.full_name??'').trim(),nickname=String(b.display_name??target.display_name??'').trim(),studentCode=String(b.student_code??target.student_code??'').trim();
         const birthDate=String(b.birth_date??target.birth_date??'').trim(),gradeLevel=String(b.grade_level??target.grade_level??'').trim(),roomLabel=String(b.room_label??target.room_label??'').trim(),department=String(b.department??target.department??'').trim(),major=String(b.major??target.major??'').trim();
         const phone=normalizePhone(b.phone??target.phone),seatRaw=b.seat_number??target.seat_number,seatNumber=seatRaw===null||seatRaw===''?null:Number(seatRaw);
-        if(!/^\d{1,15}$/.test(studentCode)||!thaiText(fullName)||!thaiText(nickname,40)||!validBirthDate(birthDate)||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!MAJORS.has(major))return json({error:'INVALID_USER_DATA'},400);
+        if(!/^\d{1,15}$/.test(studentCode)||!thaiText(fullName)||!thaiText(nickname,40)||!validBirthDate(birthDate)||!LEVELS.has(gradeLevel)||!ROOMS.has(roomLabel)||!DEPARTMENTS.has(department)||!majorAllowed(gradeLevel,major))return json({error:'INVALID_USER_DATA'},400);
         if(phone==='__INVALID__'||!phone)return json({error:'INVALID_PHONE'},400);if(seatNumber!==null&&(!Number.isInteger(seatNumber)||seatNumber<1||seatNumber>999))return json({error:'INVALID_SEAT_NUMBER'},400);
         const dup=await admin.from('profiles').select('id').eq('student_code',studentCode).neq('id',userId).limit(1);if(dup.error)throw dup.error;if((dup.data||[]).length)return json({error:'STUDENT_CODE_EXISTS'},409);
         const pd=await admin.from('profiles').select('id').eq('phone',phone).neq('id',userId).limit(1);if(pd.error)throw pd.error;if((pd.data||[]).length)return json({error:'PHONE_EXISTS'},409);

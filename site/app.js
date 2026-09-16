@@ -42,6 +42,7 @@ const REG_MAJORS=REG_MAJORS_VOC;
 function majorsForLevel(level){return String(level||"").startsWith("ปวส")?REG_MAJORS_HIGH:REG_MAJORS_VOC}
 function majorBaseName(v){return String(v||"").replace(/\s*\([^)]*\)\s*$/," ").trim()}
 function normalizeMajorForLevel(value,level){const list=majorsForLevel(level),base=majorBaseName(value);return list.find(x=>majorBaseName(x)===base)||list[0]||""}
+function majorForBackend(value,level){const base=majorBaseName(value);return REG_MAJORS_VOC.find(x=>majorBaseName(x)===base)||String(value||"")}
 function majorOptionHtml(level,current=""){const list=majorsForLevel(level),normalized=current?normalizeMajorForLevel(current,level):"";return `<option value="">-- เลือกสาขาวิชา --</option>${list.map(x=>`<option value="${esc(x)}" ${normalized===x?"selected":""}>${esc(x)}</option>`).join("")}`}
 function bindMajorToLevel(form,current=""){
   if(!form)return;const level=form.elements?.grade_level,major=form.elements?.major;if(!level||!major)return;
@@ -118,6 +119,7 @@ function friendlyError(err){
     REGISTRATION_THAI_ONLY:"ชื่อ-นามสกุลและชื่อเล่นต้องกรอกเป็นภาษาไทย",
     NICKNAME_REQUIRED:"กรุณากรอกชื่อเล่น",
     DIGITAL_DEADLINE_PASSED_USE_PAPER:"พ้นกำหนดส่งออนไลน์แล้ว กรุณาพิมพ์ใบงานส่งย้อนหลัง",
+    ATTENDANCE_CHECKIN_REQUIRED:"ต้องผ่านการเช็คชื่อจากหัวหน้าห้องของวันนี้ก่อน จึงจะทำหรือส่งใบงานอิเล็กทรอนิกส์ได้",
     WORK_PAIR_ALREADY_COMPLETED:"งานหน่วยนี้ถูกส่งเรียบร้อยแล้ว ไม่สามารถส่งซ้ำอีกช่องทางได้",
     MISSING_REQUIRED_ANSWER:"กรุณาตอบคำถามบังคับให้ครบก่อนส่ง",
     INVALID_ATTACHMENT_PATH:"ไฟล์แนบไม่ผ่านการตรวจสอบความเป็นเจ้าของ",
@@ -227,7 +229,7 @@ function signupDialog(){
     if(!input)return;
     input.addEventListener("input",()=>{
       if(/[A-Za-z]/.test(input.value)){
-        alert("พ่อคุณเป็นฝรั่งหรอ");
+        alert("กรุณากรอกชื่อและชื่อเล่นเป็นภาษาไทยเท่านั้น");
         input.value=input.value.replace(/[A-Za-z]/g,"");
       }
     });
@@ -245,7 +247,7 @@ function signupDialog(){
     const nickname=String(f.get("nickname")||"").trim();
     const birthDate=String(f.get("birth_date")||"").trim();
     if(!/^\d{1,15}$/.test(studentCode))return toast("เลขประจำตัวนักศึกษาต้องเป็นตัวเลขไม่เกิน 15 หลัก","error");
-    if(/[A-Za-z]/.test(fullName)||/[A-Za-z]/.test(nickname)){alert("พ่อคุณเป็นฝรั่งหรอ");return}
+    if(/[A-Za-z]/.test(fullName)||/[A-Za-z]/.test(nickname)){alert("กรุณากรอกชื่อและชื่อเล่นเป็นภาษาไทยเท่านั้น");return}
     if(!/[\u0E00-\u0E7F]/.test(fullName)||!/[\u0E00-\u0E7F]/.test(nickname))return toast("กรุณากรอกชื่อ-นามสกุลและชื่อเล่นเป็นภาษาไทย","error");
     if(!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)||new Date(`${birthDate}T00:00:00`) > new Date())return toast("กรุณาระบุวันเดือนปีเกิดให้ถูกต้อง","error");
     if(password!==confirmPassword)return toast("รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน","error");
@@ -259,7 +261,7 @@ function signupDialog(){
       grade_level:String(f.get("grade_level")||""),
       room_label:String(f.get("room_label")||""),
       department:String(f.get("department")||""),
-      major:String(f.get("major")||""),
+      major:majorForBackend(String(f.get("major")||""),String(f.get("grade_level")||"")),
       registration_code:REGISTRATION_CODE_DEFAULT,password,
       email:null
     };
@@ -366,7 +368,7 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V18.8.2</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.0</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
@@ -528,7 +530,7 @@ async function users(){
   const renderRows=()=>{
     const z=$("#usersearch").value.trim().toLowerCase(),level=$("#userlevel").value,room=$("#userroom").value,dept=$("#userdept").value,major=$("#usermajor").value,status=$("#userstatus").value;
     $("#userbody").innerHTML=(items||[]).filter(x=>(!level||x.grade_level===level)&&(!room||x.room_label===room)&&(!dept||x.department===dept)&&(!major||x.major===major)&&(!status||(x.approval_status||"approved")===status)&&(!z||[x.full_name,x.display_name,x.username,x.student_code,x.phone,x.class_name,x.grade_level,x.room_label,x.department,x.major].some(v=>String(v||"").toLowerCase().includes(z)))).map(x=>`<tr>
-      <td><b>${esc(x.full_name||"-")}</b><div class="smalltext muted">ชื่อเล่น: ${esc(x.display_name&&x.display_name!==x.full_name?x.display_name:"-")}</div></td><td>${esc(x.username||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td><td>${esc(x.department||"-")}<div class="smalltext muted">${esc(x.major||"")}</div></td>
+      <td><b>${esc(x.full_name||"-")}</b><div class="smalltext muted">ชื่อเล่น: ${esc(x.display_name&&x.display_name!==x.full_name?x.display_name:"-")}</div></td><td>${esc(x.username||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td><td>${esc(x.department||"-")}<div class="smalltext muted">${esc(normalizeMajorForLevel(x.major,x.grade_level)||"")}</div></td>
       <td><span class="badge ${x.role==="admin"?"warn":""}">${esc(x.role)}</span></td><td><span class="badge ${x.approval_status==="approved"&&x.active?"green":x.approval_status==="pending"?"warn":"red"}">${x.approval_status==="approved"&&x.active?"อนุมัติแล้ว":x.approval_status==="pending"?"รออนุมัติ":x.approval_status==="rejected"?"ไม่อนุมัติ":"ระงับ"}</span></td>
       <td><div class="row"><button class="btn sm primary" data-edit-user="${x.id}">แก้ข้อมูล</button><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.role!=="admin"?`<button class="btn sm class-leader-btn ${activeLeaders.has(x.id)?"is-leader":""}" data-class-leader-user="${x.id}">${activeLeaders.has(x.id)?"👑 หัวหน้าห้อง":"👑 เพิ่มสิทธิหัวหน้าห้อง"}</button>`:""}${x.id!==uid()?`<button class="btn sm ${x.approval_status==="approved"&&x.active?"red":"green"}" data-user-toggle="${x.id}" data-status="${esc(x.approval_status||"pending")}">${x.approval_status==="approved"&&x.active?"ระงับบัญชี":"อนุมัติบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
     </tr>`).join("")||`<tr><td colspan="8" class="empty">ไม่พบผู้ใช้</td></tr>`;
@@ -543,7 +545,7 @@ async function users(){
 }
 function thaiOnlyInput(input){
   if(!input)return;
-  input.addEventListener("input",()=>{if(/[A-Za-z]/.test(input.value)){alert("พ่อคุณเป็นฝรั่งหรอ");input.value=input.value.replace(/[A-Za-z]/g,"")}});
+  input.addEventListener("input",()=>{if(/[A-Za-z]/.test(input.value)){alert("กรุณากรอกชื่อและชื่อเล่นเป็นภาษาไทยเท่านั้น");input.value=input.value.replace(/[A-Za-z]/g,"")}});
 }
 function createUserDialog(){
   modal(`<div class="modal-header"><div><h3>สร้างผู้ใช้</h3><div class="muted">บัญชีนักศึกษาใช้เลขนักศึกษาเป็นชื่อเข้าสู่ระบบ • ข้อมูลนักศึกษาต้องครบก่อนสร้างบัญชี</div></div><button class="btn sm" data-close>✕</button></div>
@@ -569,7 +571,7 @@ function createUserDialog(){
   role.onchange=toggle;toggle();thaiOnlyInput(form.elements.full_name);thaiOnlyInput(form.elements.display_name);bindMajorToLevel(form);
   form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form),btn=$("#cubtn"),roleValue=String(f.get("role")||"user"),fullName=String(f.get("full_name")||"").trim(),password=String(f.get("password")||"");
     if(password.length<8)return toast("รหัสผ่านต้องอย่างน้อย 8 ตัว","error");
-    const body=roleValue==="user"?{role:"user",password,full_name:fullName,display_name:String(f.get("display_name")||"").trim(),birth_date:String(f.get("birth_date")||""),student_code:String(f.get("student_code")||"").trim(),grade_level:String(f.get("grade_level")||""),room_label:String(f.get("room_label")||""),department:String(f.get("department")||""),major:String(f.get("major")||""),phone:String(f.get("phone")||"").trim(),seat_number:String(f.get("seat_number")||"").trim()||null}:{role:"admin",password,full_name:fullName,username:String(f.get("username")||"").trim(),email:String(f.get("email")||"").trim()||null};
+    const body=roleValue==="user"?{role:"user",password,full_name:fullName,display_name:String(f.get("display_name")||"").trim(),birth_date:String(f.get("birth_date")||""),student_code:String(f.get("student_code")||"").trim(),grade_level:String(f.get("grade_level")||""),room_label:String(f.get("room_label")||""),department:String(f.get("department")||""),major:majorForBackend(String(f.get("major")||""),String(f.get("grade_level")||"")),phone:String(f.get("phone")||"").trim(),seat_number:String(f.get("seat_number")||"").trim()||null}:{role:"admin",password,full_name:fullName,username:String(f.get("username")||"").trim(),email:String(f.get("email")||"").trim()||null};
     if(roleValue==="user"&&(!/[\u0E00-\u0E7F]/.test(body.full_name)||!/[\u0E00-\u0E7F]/.test(body.display_name)))return toast("ชื่อ-นามสกุลและชื่อเล่นต้องเป็นภาษาไทย","error");
     btn.disabled=true;btn.textContent="กำลังสร้าง...";const {data,error}=await sb.functions.invoke("admin-create-user",{body});if(error||data?.error){btn.disabled=false;btn.textContent="สร้างบัญชี";return toast(friendlyError(data?.error||error),"error")}closeModal();toast(`สร้างบัญชีสำเร็จ • Login: ${data?.username||body.username||body.student_code}`);users()};
 }
@@ -590,7 +592,7 @@ function editUserDialog(user){
       <div class="field"><label>เลขที่</label><input name="seat_number" type="number" min="1" max="999" value="${esc(user.seat_number??"")}"></div>`:`<div class="field"><label>Username</label><input value="${esc(user.username||"")}" readonly></div><div class="field"><label>อีเมลติดต่อ</label><input name="contact_email" type="email" value="${esc(user.contact_email||"")}"></div>`}
     </div><div class="row end"><button type="button" class="btn" data-close>ยกเลิก</button><button class="btn primary" id="eubtn">บันทึกข้อมูล</button></div></form>`,{wide:true});
   const form=$("#eu");thaiOnlyInput(form.elements.full_name);if(isUser){thaiOnlyInput(form.elements.display_name);bindMajorToLevel(form,user.major)}
-  form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form),btn=$("#eubtn");const body={action:"update_user",user_id:user.id,full_name:String(f.get("full_name")||"").trim()};if(isUser)Object.assign(body,{display_name:String(f.get("display_name")||"").trim(),birth_date:String(f.get("birth_date")||""),student_code:String(f.get("student_code")||"").trim(),grade_level:String(f.get("grade_level")||""),room_label:String(f.get("room_label")||""),department:String(f.get("department")||""),major:String(f.get("major")||""),phone:String(f.get("phone")||"").trim(),seat_number:String(f.get("seat_number")||"").trim()||null});else body.contact_email=String(f.get("contact_email")||"").trim()||null;
+  form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form),btn=$("#eubtn");const body={action:"update_user",user_id:user.id,full_name:String(f.get("full_name")||"").trim()};if(isUser)Object.assign(body,{display_name:String(f.get("display_name")||"").trim(),birth_date:String(f.get("birth_date")||""),student_code:String(f.get("student_code")||"").trim(),grade_level:String(f.get("grade_level")||""),room_label:String(f.get("room_label")||""),department:String(f.get("department")||""),major:majorForBackend(String(f.get("major")||""),String(f.get("grade_level")||"")),phone:String(f.get("phone")||"").trim(),seat_number:String(f.get("seat_number")||"").trim()||null});else body.contact_email=String(f.get("contact_email")||"").trim()||null;
     btn.disabled=true;btn.textContent="กำลังบันทึก...";try{await adminOp(body);closeModal();toast("บันทึกข้อมูลผู้ใช้แล้ว");users()}catch(err){btn.disabled=false;btn.textContent="บันทึกข้อมูล";toast(friendlyError(err),"error")}};
 }
 
@@ -933,6 +935,14 @@ async function openWorksheet(id){
   ]);
   if(wr.error)return toast(friendlyError(wr.error),"error");
   const w=wr.data,old=sr.data;
+  if(w.mode==="digital"){
+    const access=await sb.rpc("my_digital_worksheet_access_v19",{p_worksheet_id:id});
+    if(access.error)return toast(friendlyError(access.error),"error");
+    if(access.data?.attendance_required&&!access.data?.attendance_passed){
+      modal(`<div class="modal-header"><div><h3>🛡️ ต้องเช็คชื่อก่อนทำใบงาน</h3><div class="muted">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")}</div></div><button class="btn sm" data-close>✕</button></div><div class="alert warn"><b>ยังไม่พบการเช็คชื่อจากหัวหน้าห้องของวันนี้</b><div>ระบบป้องกันการทำงานจากระยะไกลกำหนดให้หัวหน้าห้องเช็คชื่อก่อน จึงจะเปิด บันทึกร่าง หรือส่งใบงานอิเล็กทรอนิกส์ได้</div></div><div class="row end"><button class="btn primary" data-close>เข้าใจแล้ว</button></div>`);
+      return;
+    }
+  }
   const localDraft=await getOfflineDraft(uid(),id).catch(()=>null);
   const initialAnswers=(!old||old.status==="draft")&&localDraft?.answers?{...(old?.answers||{}),...localDraft.answers}:(old?.answers||{});
   const ov=Array.isArray(orr.data)?orr.data[0]:(orr.data||{});
@@ -1199,7 +1209,7 @@ async function profile(){
         <div><span>ห้องเรียน</span><b>${esc(S.profile?.class_name||"-")}</b></div>
         <div><span>เลขที่</span><b>${esc(S.profile?.seat_number??"-")}</b></div>
         <div><span>แผนกวิชา</span><b>${esc(S.profile?.department||"-")}</b></div>
-        <div><span>สาขาวิชา</span><b>${esc(S.profile?.major||"-")}</b></div>
+        <div><span>สาขาวิชา</span><b>${esc(normalizeMajorForLevel(S.profile?.major,S.profile?.grade_level)||"-")}</b></div>
         <div><span>เบอร์โทร</span><b>${esc(S.profile?.phone||"-")}</b></div>
         <div><span>อีเมลติดต่อ</span><b>${esc(S.profile?.contact_email||"-")}</b></div>
         <div><span>สถานะบัญชี</span><b>${S.profile?.approval_status==="approved"&&S.profile?.active!==false?"อนุมัติแล้ว":esc(S.profile?.approval_status||"-")}</b></div>

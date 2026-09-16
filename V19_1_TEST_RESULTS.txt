@@ -1,0 +1,76 @@
+DOC-FULL-NR V19.1 TEST RESULTS
+==============================
+Date: 2026-09-16
+
+STATIC / CONTRACT
+PASS static_validation.py
+PASS unified_contract.py
+PASS button_contract.py
+PASS course_code_contract.py
+PASS branding_contract.py
+PASS runtime_v173_contract.py
+PASS learning_content_v174_contract.py
+PASS v175_workpair_contract.py
+PASS v176_fullset_contract.py
+PASS v1761_icon_contract.py
+PASS v177_transaction_contract.py
+PASS v178_notification_contract.py
+PASS v179_full_system_hardening_contract.py
+PASS v181_complete_learning_system_contract.py
+PASS v182_complete_system_final_contract.py
+PASS v19_classroom_flow_contract.py
+PASS v191_complete_user_requests_contract.py
+
+JS SYNTAX
+PASS site/app.js
+PASS site/camera-registration.js
+PASS site/mobile.js
+PASS site/v16-platform.js
+PASS site/v16-7-hardening.js
+PASS site/v16-8-course-flow.js
+PASS site/v16-exam.js
+PASS site/sw.js
+PASS site/v18-supabase.js
+PASS site/v18-offline.js
+
+BROWSER
+PASS browser_contract.py
+PASS course_code_browser_contract.py
+PASS real_use_browser_contract.py
+PASS v181_core_browser_contract.py
+PASS v186_room_work_checklist_browser_contract.py
+PASS v187_exam_admin_browser_contract.py
+PASS v187_exam_source_adaptation_browser_contract.py
+
+V19.1 REQUEST CONTRACT
+PASS green_white_theme
+PASS night_mode
+PASS responsive_mobile
+PASS classroom_leader_admin
+PASS vocational_major_mapping
+PASS major_mapping_backend
+PASS room_work_checklist
+PASS room_work_excel_print
+PASS exam_550
+PASS unit_schedule_admin
+PASS schedule_exact_datetime
+PASS schedule_hours
+PASS deadline_to_paper
+PASS attendance_gate_client
+PASS attendance_gate_backend
+PASS unit_slides
+PASS large_action_tiles
+PASS paper_scan
+PASS gradebook
+PASS security_hardening
+
+PRODUCTION BACKEND SNAPSHOT
+ACTIVE_HEALTHY
+11 active subjects
+187 Digital templates
+187 Paper templates
+187 subject-unit pairs
+550 active exam questions
+V19 attendance gate trigger present
+V19 unit schedule RPCs present
+V19.1 security hardening migration applied

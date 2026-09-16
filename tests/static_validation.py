@@ -72,7 +72,7 @@ ok('set_phone_otp_enforcement' not in platform,'OTP enforcement returned')
 cam=(SITE/'camera-registration.js').read_text('utf-8')
 ok('name="phone"' in cam and 'required' in cam,'registration phone field must remain required')
 ok('ไม่มีการส่ง OTP' in cam,'registration no-OTP help missing')
-for marker in ['nickname','birth_date','พ่อคุณเป็นฝรั่งหรอ']:
+for marker in ['nickname','birth_date','กรุณากรอกชื่อและชื่อเล่นเป็นภาษาไทยเท่านั้น']:
     ok(marker in app,f'registration/profile marker missing: {marker}')
 ok('บันทึกโปรไฟล์' not in app,'student profile edit UI returned')
 ok('profile-readonly' in app,'student read-only profile marker missing')
