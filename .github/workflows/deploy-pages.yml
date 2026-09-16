@@ -37,6 +37,12 @@ jobs:
           python tests/course_code_contract.py
           python tests/branding_contract.py
           python tests/runtime_v173_contract.py
+          python tests/learning_content_v174_contract.py
+          python tests/v175_workpair_contract.py
+          python tests/v176_fullset_contract.py
+          python tests/v1761_icon_contract.py
+          python tests/v177_transaction_contract.py
+          python tests/v178_notification_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js

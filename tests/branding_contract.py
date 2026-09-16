@@ -15,5 +15,5 @@ for f in ["icon-48.png","icon-180.png","icon-192.png","icon-512.png","icon-maska
     assert raw.startswith(b"\x89PNG\r\n\x1a\n"), f
     b64=base64.b64decode((root/"site/icons"/(f+".b64")).read_text().strip())
     assert raw==b64, f+" b64 mismatch"
-assert any(i["src"].endswith("icon-maskable-512.png") and "maskable" in i.get("purpose","") for i in manifest["icons"])
+assert any((i["src"].endswith("icon-maskable-512.png") or i["src"].endswith("nangrong-maskable-512-v1761.png")) and "maskable" in i.get("purpose","") for i in manifest["icons"])
 print("V17.2 BRANDING CONTRACT PASS")

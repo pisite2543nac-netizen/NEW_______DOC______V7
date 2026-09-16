@@ -112,3 +112,14 @@ textarea.code{min-height:120px;font-family:ui-monospace,SFMono-Regular,Consolas,
   body.printing .formal-subject-band,body.printing .formal-qnum,body.printing .formal-footer,body.printing .subject-chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body.printing .formal-answer-space{height:94px}
 }
+
+
+/* V17.6 worksheet pages */
+.v176-digital-pages{display:grid;gap:18px}
+.v176-digital-page{position:relative;padding:18px;border:1px solid #cbd5e1;border-radius:16px;background:#fff}
+.v176-page-label{position:sticky;top:0;z-index:1;width:max-content;margin-left:auto;margin-bottom:10px;padding:5px 9px;border-radius:999px;background:#e2e8f0;color:#475569;font-size:12px;font-weight:800}
+.v176-page-space{min-height:180px;border:1px dashed #cbd5e1;border-radius:12px;display:grid;place-items:center;color:#64748b}
+.v176-formal-page+.v176-formal-page{margin-top:22px}
+.v176-pair-codes{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}.v176-pair-codes span{font-size:11px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 7px}
+.v176-room-rule{margin-top:14px;display:flex;gap:10px;align-items:flex-start}.v176-room-rule span{color:#64748b}
+@media print{body.printing .v176-formal-page{page-break-after:always!important}body.printing .v176-formal-page:last-child{page-break-after:auto!important}}
