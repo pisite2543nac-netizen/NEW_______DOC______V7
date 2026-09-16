@@ -1,0 +1,27 @@
+DOC-FULL-NR V19.0 TEST RESULTS
+===============================
+
+STATIC / CONTRACT
+- V19 classroom flow contract: PASS
+- V18.2 complete system final contract: PASS
+- Exam bank contract: 550 questions / 11 subjects: PASS
+
+BROWSER CONTRACTS (Chromium)
+- Core admin profile + paper scan hub: PASS
+- Room work checklist: PASS
+- Exam adapted flow: PASS
+
+PRODUCTION SUPABASE
+- V19 attendance gate migration: APPLIED
+- submissions_attendance_gate_v19 trigger: PRESENT
+- Existing published Digital worksheets gated: 1/1 at verification time
+
+V19 FEATURES
+- Admin appoint/revoke classroom leader from student list
+- Admin edit Digital open/due time inline per teaching unit
+- Exact date/time or duration presets/custom hours
+- Attendance gate requires same-day check-in scanned by a student actor (classroom leader path)
+- Server-side submission trigger blocks draft/submit when gate fails
+- Digital deadline continues to switch user to Paper late-print path after expiry
+- Larger course action buttons/icons and light green/white unit cards
+- Existing work-pair, gradebook, exam, scan and checklist flows retained

@@ -1,6 +1,6 @@
 import { getClient } from "./v18-supabase.js";
 
-const RELEASE = "V18-COMPLETE-PRODUCTION";
+const RELEASE = "V19-STABILIZED-COURSE-SCHEDULE-ATTENDANCE-GATE";
 const V176_COMPAT_RELEASE="V17.6-FULL-11SUBJECTS";
 const v179Key=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const V173_COMPAT_ADMIN_SLIDE_LABEL="สไลด์สรุปพร้อมใช้";
@@ -60,7 +60,9 @@ function errText(err){
     LATE_PAPER_NOT_OPEN_YET:"ยังไม่ถึงเวลาส่งย้อนหลัง ให้ทำใบงานอิเล็กทรอนิกส์ก่อน",
     DIGITAL_ALREADY_SUBMITTED:"ใบงานอิเล็กทรอนิกส์นี้ส่งเรียบร้อยแล้ว ไม่ต้องพิมพ์ย้อนหลัง",
     WORK_PAIR_REQUIRED:"ไม่พบคู่ใบงานของหน่วยนี้",
-    DIGITAL_PAIR_NOT_FOUND:"ไม่พบใบงานอิเล็กทรอนิกส์คู่กัน"
+    DIGITAL_PAIR_NOT_FOUND:"ไม่พบใบงานอิเล็กทรอนิกส์คู่กัน",
+    ATTENDANCE_CHECKIN_REQUIRED:"ต้องผ่านการเช็คชื่อจากหัวหน้าห้องของวันนี้ก่อน จึงจะทำหรือส่งใบงานอิเล็กทรอนิกส์ได้",
+    UNIT_DIGITAL_WORKSHEET_NOT_FOUND:"ไม่พบใบงานอิเล็กทรอนิกส์ของหน่วยนี้"
   };
   for(const [k,v] of Object.entries(map))if(raw.includes(k))return v;
   return raw;
@@ -292,18 +294,29 @@ function adminUnitCard(unit,sid,nextUnit){
   const resources=unit.resources||[];
   const resourceCount=resources.length||works.reduce((n,w)=>n+Number(w.resource_count||0),0);
   const first=works[0]||null;
-  const action=unit.unlocked
-    ? `<button class="btn sm" disabled>✅ เปิดแล้ว</button>`
-    : Number(unit.unit_no)===Number(nextUnit)
-      ? `<button class="btn sm primary" data-v168-unlock="${sid}:${unit.unit_no}">▶ เริ่มสอน / ปลดล็อก</button>`
-      : `<button class="btn sm" disabled>🔒 รอหน่วยก่อนหน้า</button>`;
   const digital=works.find(w=>w.mode==="digital")||null,paper=works.find(w=>w.mode==="paper")||null;
-  const workButtons=`<div class="v175-admin-pair"><div><b>📝 ใบงานประจำหน่วย</b><small>ออนไลน์สำหรับส่งตรงเวลา • แบบพิมพ์สำหรับส่งย้อนหลัง</small></div><button class="btn sm primary" data-v175-admin-pair="${sid}:${unit.unit_no}">จัดการใบงาน</button></div>`;
-  return `<article class="v168-admin-unit ${unit.unlocked?"unlocked":"locked"}">
-    <div class="v168-admin-unit-top"><div><span>หน่วย ${unit.unit_no}</span><b>${esc(unitTopic(unit))}</b><small>${unit.unlocked?"เปิดสอนแล้ว":"เตรียมการสอนได้"}</small></div>${action}</div>
-    <div class="v173-unit-actions"><button class="btn sm primary" data-v168-admin-slide="${sid}:${unit.unit_no}">📊 เปิดสไลด์พร้อมสอน</button>${first?`<button class="btn sm" data-v14-upload="${first.id}" data-subject="${sid}" data-seq="${unit.unit_no}">＋ เพิ่มสไลด์/สื่อของครู</button>`:""}${resources.map(r=>`<button class="btn sm" data-v168-resource="${esc(r.storage_path)}">📎 ${esc(r.original_name||"สื่อของครู")}</button>`).join("")}</div>
+  const action=unit.unlocked
+    ? `<button class="v19-status-btn open" disabled><span class="v19-btn-icon">✅</span><span>เปิดสอนแล้ว</span></button>`
+    : Number(unit.unit_no)===Number(nextUnit)
+      ? `<button class="v19-status-btn primary" data-v168-unlock="${sid}:${unit.unit_no}"><span class="v19-btn-icon">▶</span><span>เริ่มสอน / ปลดล็อก</span></button>`
+      : `<button class="v19-status-btn locked" disabled><span class="v19-btn-icon">🔒</span><span>รอหน่วยก่อนหน้า</span></button>`;
+  const due=digital?.due_at||unit.due_at||null,open=digital?.open_at||unit.open_at||null;
+  const duration=(open&&due)?Math.max(0,Math.round((new Date(due)-new Date(open))/3600000*10)/10):null;
+  const workButtons=`<div class="v175-admin-pair v19-admin-pair"><div class="v19-pair-icon">📝</div><div><b>ใบงานประจำหน่วย</b><small>Digital ส่งตรงเวลา • Paper ใช้ส่งย้อนหลังหลังหมดเวลา</small></div><button class="btn primary v19-big-action" data-v175-admin-pair="${sid}:${unit.unit_no}"><span>🗂️</span> จัดการใบงาน</button></div>`;
+  return `<article class="v168-admin-unit v19-admin-unit ${unit.unlocked?"unlocked":"locked"}">
+    <div class="v168-admin-unit-top v19-unit-top"><div><span class="v19-unit-number">หน่วย ${unit.unit_no}</span><b>${esc(unitTopic(unit))}</b><small>${unit.unlocked?"เปิดสอนแล้ว":"เตรียมการสอนได้"}</small></div>${action}</div>
+    <div class="v19-schedule-panel">
+      <div class="v19-schedule-icon">⏱️</div>
+      <div class="v19-schedule-copy"><span>เวลาส่งใบงานอิเล็กทรอนิกส์</span><b>${due?fmt(due):"ยังไม่ได้กำหนด"}</b><small>${open?`เปิด ${fmt(open)}`:"ยังไม่กำหนดเวลาเปิด"}${duration!==null?` • ${duration} ชั่วโมง`:""}</small></div>
+      ${unit.unlocked?`<button class="btn v19-schedule-btn" data-v19-unit-schedule="${sid}:${unit.unit_no}">🕒 ${due?"แก้ไขเวลา":"กำหนดเวลา"}</button>`:Number(unit.unit_no)===Number(nextUnit)?`<button class="btn v19-schedule-btn" data-v168-unlock="${sid}:${unit.unit_no}">🕒 กำหนดเวลาเมื่อเริ่มสอน</button>`:`<button class="btn v19-schedule-btn" disabled>🔒 รอเปิดหน่วยก่อนหน้า</button>`}
+    </div>
+    <div class="v173-unit-actions v19-unit-actions">
+      <button class="v19-action-tile primary" data-v168-admin-slide="${sid}:${unit.unit_no}"><span class="v19-action-icon">📊</span><b>เปิดสไลด์พร้อมสอน</b><small>สไลด์ Built-in 20 หน้า</small></button>
+      ${first?`<button class="v19-action-tile" data-v14-upload="${first.id}" data-subject="${sid}" data-seq="${unit.unit_no}"><span class="v19-action-icon">➕</span><b>เพิ่มสไลด์/สื่อ</b><small>แนบไฟล์ของครู</small></button>`:""}
+      ${resources.slice(0,2).map(r=>`<button class="v19-action-tile" data-v168-resource="${esc(r.storage_path)}"><span class="v19-action-icon">📎</span><b>${esc(r.original_name||"สื่อของครู")}</b><small>เปิดสื่อประกอบ</small></button>`).join("")}
+    </div>
     <div class="v173-unit-work-list">${workButtons||`<div class="v14-empty">ยังไม่มีใบงานในหน่วยนี้</div>`}</div>
-    <small>${works.length} ใบงาน • ไฟล์สื่อ ${resourceCount} • ${unit.unlocked?`ส่ง ${fmt(unit.due_at)}`:"นักศึกษายังเปิดไม่ได้จนกว่า Admin จะเริ่มสอน"}</small>
+    <div class="v19-unit-footer"><span>${works.length} ใบงาน</span><span>ไฟล์สื่อ ${resourceCount}</span><span>🛡️ Digital รองรับการล็อกด้วยเช็คชื่อหัวหน้าห้อง</span></div>
   </article>`;
 }
 async function injectAdminPlan(force=false){
@@ -351,38 +364,72 @@ function overlay(html){
   o.addEventListener("click",e=>{if(e.target===o)o.remove()});
   return o;
 }
+function v19DurationPresets(){return [[1,"1 ชม."],[2,"2 ชม."],[3,"3 ชม."],[6,"6 ชม."],[12,"12 ชม."],[24,"1 วัน"],[48,"2 วัน"],[72,"3 วัน"],[168,"7 วัน"]]}
+function v19BindDurationControls(o){
+  const openInput=$("[name=open_at]",o),dueInput=$("[name=due_at]",o),hoursInput=$("[name=duration_hours]",o);
+  const applyHours=h=>{const n=Number(h);if(!Number.isFinite(n)||n<=0)return;const open=new Date(openInput.value);if(Number.isNaN(open.getTime()))return;dueInput.value=localInput(new Date(open.getTime()+n*3600000));hoursInput.value=String(n)};
+  $$("[data-v19-hours]",o).forEach(b=>b.onclick=()=>applyHours(b.dataset.v19Hours));
+  if(hoursInput)hoursInput.onchange=()=>applyHours(hoursInput.value);
+  if(openInput)openInput.onchange=()=>{if(Number(hoursInput?.value)>0)applyHours(hoursInput.value)};
+}
+function v19ScheduleFields({open,due,gate=true,resubmit=false,maxAttempts=1}={}){
+  const openD=open?new Date(open):new Date(),dueD=due?new Date(due):new Date((open?new Date(open):new Date()).getTime()+2*3600000);
+  const hours=Math.max(.25,Math.round((dueD-openD)/3600000*100)/100);
+  return `<div class="v19-schedule-form-grid"><label class="field"><span>วัน/เวลาเปิด</span><input class="input" name="open_at" type="datetime-local" value="${localInput(openD)}" required></label><label class="field"><span>วัน/เวลาปิดรับ Digital</span><input class="input" name="due_at" type="datetime-local" value="${localInput(dueD)}" required></label></div>
+    <div class="v19-duration-box"><div><b>หรือกำหนดระยะเวลาหลังเปิด</b><small>เลือกชั่วโมงสำเร็จรูป หรือกรอกจำนวนชั่วโมงเอง</small></div><div class="v19-duration-presets">${v19DurationPresets().map(([h,l])=>`<button type="button" class="btn sm" data-v19-hours="${h}">${l}</button>`).join("")}</div><label class="v19-duration-custom"><span>กำหนดเอง</span><input class="input" name="duration_hours" type="number" min="0.25" max="720" step="0.25" value="${hours}"><b>ชั่วโมง</b></label></div>
+    <div class="v19-security-box"><label><input type="checkbox" name="attendance_gate" ${gate?"checked":""}> <span><b>🛡️ ต้องเช็คชื่อจากหัวหน้าห้องก่อนทำ Digital</b><small>หากยังไม่ผ่านการเช็คชื่อของวันนี้ ระบบจะไม่ให้เปิด บันทึกร่าง หรือส่งใบงานอิเล็กทรอนิกส์</small></span></label></div>
+    <div class="v168-checks"><label><input type="checkbox" name="allow_resubmit" ${resubmit?"checked":""}> อนุญาตส่งซ้ำก่อนหมดเวลา</label><label>จำนวนครั้งสูงสุด <input class="input v19-attempt-input" name="max_attempts" type="number" min="1" max="20" value="${Math.max(1,Number(maxAttempts||1))}"></label></div>`;
+}
 function openUnlockDialog(sid,unitNo){
-  const now=new Date(),due=new Date(now.getTime()+7*86400000);
-  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">START TEACHING</span><h2>เริ่มสอนหน่วย ${unitNo}</h2><p>เปิดใบงานทั้งหมดของหน่วยนี้ให้นักศึกษาที่เข้าเรียนด้วย CODE</p></div><button class="btn sm" data-v168-close>✕</button></div>
-    <form id="v168-unlock-form">
-      <label class="field"><span>เวลาเปิด</span><input class="input" name="open_at" type="datetime-local" value="${localInput(now)}" required></label>
-      <label class="field"><span>กำหนดส่ง</span><input class="input" name="due_at" type="datetime-local" value="${localInput(due)}" required></label>
-      <div class="v168-checks"><span>⏱ Digital ส่งได้ถึง Deadline เท่านั้น • หลังจากนั้นใช้ Paper ย้อนหลัง</span><label><input type="checkbox" name="allow_resubmit"> อนุญาตส่งซ้ำก่อนหมดเวลา</label></div>
-      <label class="field"><span>จำนวนครั้งส่งสูงสุด</span><input class="input" name="max_attempts" type="number" min="1" max="20" value="1"></label>
-      <div class="v168-unlock-warning">เมื่อยืนยัน นักศึกษาสมาชิกวิชาจะเห็นใบงานและสไลด์ของหน่วยนี้ทันที ส่วนหน่วยถัดไปยังคงล็อก</div>
+  const now=new Date(),due=new Date(now.getTime()+2*3600000);
+  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">START TEACHING • V19</span><h2>เริ่มสอนหน่วย ${unitNo}</h2><p>เปิดหน่วยพร้อมกำหนดเวลาส่ง Digital และเงื่อนไขเช็คชื่อ</p></div><button class="btn sm" data-v168-close>✕</button></div>
+    <form id="v168-unlock-form">${v19ScheduleFields({open:now,due,gate:true,resubmit:false,maxAttempts:1})}
+      <div class="v168-unlock-warning">เมื่อยืนยัน ระบบจะเปิดทั้ง Digital/Paper ของหน่วยนี้ แต่นักศึกษาจะทำ Digital ได้ต่อเมื่อผ่านเงื่อนไขเช็คชื่อที่กำหนด</div>
       <div class="row end"><button type="button" class="btn" data-v168-close>ยกเลิก</button><button class="btn primary">▶ ยืนยันเริ่มสอน</button></div>
     </form>`);
+  v19BindDurationControls(o);
   $("#v168-unlock-form",o).onsubmit=async e=>{
-    e.preventDefault();
-    const f=new FormData(e.target),btn=e.submitter;
+    e.preventDefault();const f=new FormData(e.target),btn=e.submitter;
     const open=new Date(String(f.get("open_at"))),dueAt=new Date(String(f.get("due_at")));
     if(!(dueAt>open)){flash("กำหนดส่งต้องอยู่หลังเวลาเปิด",true);return}
     btn.disabled=true;btn.textContent="กำลังปลดล็อก...";
-    const {data,error}=await client().rpc("admin_unlock_subject_unit_v179",{
-      p_subject_id:sid,p_unit_no:Number(unitNo),
-      p_due_at:dueAt.toISOString(),p_open_at:open.toISOString(),
-      p_allow_late:false,
-      p_allow_resubmit:f.get("allow_resubmit")==="on",
-      p_max_attempts:Number(f.get("max_attempts")||1),p_request_key:v179Key()
+    const {data,error}=await client().rpc("admin_unlock_subject_unit_v19",{
+      p_subject_id:sid,p_unit_no:Number(unitNo),p_due_at:dueAt.toISOString(),p_open_at:open.toISOString(),
+      p_allow_resubmit:f.get("allow_resubmit")==="on",p_max_attempts:Number(f.get("max_attempts")||1),
+      p_attendance_gate_required:f.get("attendance_gate")==="on",p_request_key:v179Key()
     });
     if(error){btn.disabled=false;btn.textContent="▶ ยืนยันเริ่มสอน";flash(errText(error),true);return}
-    o.remove();
-    flash(`ปลดล็อกหน่วย ${data?.unit_no||unitNo} แล้ว • มอบหมาย ${data?.assignment_count||0} รายการ`);
-    const page=$(".v14-page");if(page)delete page.dataset.v168AdminPlan;
-    setTimeout(()=>injectAdminPlan(true),350);
+    o.remove();flash(`ปลดล็อกหน่วย ${data?.unit_no||unitNo} แล้ว • มอบหมาย ${data?.assignment_count||0} รายการ`);
+    const page=$(".v14-page");if(page)delete page.dataset.v168AdminPlan;setTimeout(()=>injectAdminPlan(true),350);
   };
 }
-
+async function openUnitScheduleDialog(sid,unitNo){
+  const plan=state.adminPath.get(sid),unit=(plan?.units||[]).find(x=>Number(x.unit_no)===Number(unitNo));
+  const digital=(unit?.worksheets||[]).find(w=>w.mode==="digital");
+  if(!digital){flash("ไม่พบใบงานอิเล็กทรอนิกส์ของหน่วยนี้",true);return}
+  const {data:w,error}=await client().from("worksheets").select("id,open_at,due_at,allow_resubmit,max_attempts,status,settings").eq("id",digital.id).single();
+  if(error){flash(errText(error),true);return}
+  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">DIGITAL DEADLINE • V19</span><h2>⏱️ กำหนดเวลาส่ง • หน่วย ${unitNo}</h2><p>${esc(unitTopic(unit))} • Admin แก้เวลาได้ตลอด</p></div><button class="btn sm" data-v168-close>✕</button></div>
+    <form id="v19-schedule-form">${v19ScheduleFields({open:w.open_at||new Date(),due:w.due_at||new Date(Date.now()+2*3600000),gate:w.settings?.attendance_gate_required!==false,resubmit:w.allow_resubmit,maxAttempts:w.max_attempts})}
+      <div class="v19-schedule-note">การเปลี่ยนเวลาจะมีผลทันทีที่ Server • หากหมดเวลา Digital ปุ่มของผู้เรียนจะเปลี่ยนเป็น “พิมพ์ใบงานส่งย้อนหลัง” ตามระบบเดิม</div>
+      <div class="row end"><button type="button" class="btn" data-v168-close>ยกเลิก</button><button class="btn primary">💾 บันทึกเวลา</button></div>
+    </form>`);
+  v19BindDurationControls(o);
+  $("#v19-schedule-form",o).onsubmit=async e=>{
+    e.preventDefault();const f=new FormData(e.target),btn=e.submitter;
+    const open=new Date(String(f.get("open_at"))),dueAt=new Date(String(f.get("due_at")));
+    if(!(dueAt>open)){flash("กำหนดส่งต้องอยู่หลังเวลาเปิด",true);return}
+    btn.disabled=true;btn.textContent="กำลังบันทึก...";
+    const {data,error}=await client().rpc("admin_update_unit_schedule_v19",{
+      p_subject_id:sid,p_unit_no:Number(unitNo),p_open_at:open.toISOString(),p_due_at:dueAt.toISOString(),
+      p_allow_resubmit:f.get("allow_resubmit")==="on",p_max_attempts:Number(f.get("max_attempts")||1),
+      p_attendance_gate_required:f.get("attendance_gate")==="on",p_request_key:v179Key()
+    });
+    if(error){btn.disabled=false;btn.textContent="💾 บันทึกเวลา";flash(errText(error),true);return}
+    o.remove();flash(`บันทึกเวลาหน่วย ${unitNo} แล้ว • ปิดรับ ${fmt(data?.due_at||dueAt)}`);
+    const page=$(".v14-page");if(page)delete page.dataset.v168AdminPlan;setTimeout(()=>injectAdminPlan(true),250);
+  };
+}
 function openAdminSummarySlides(sid,unitNo){
   const plan=state.adminPath.get(sid),unit=(plan?.units||[]).find(x=>Number(x.unit_no)===Number(unitNo));
   if(!unit){flash("ไม่พบข้อมูลหน่วยเรียน กรุณาเปิดห้องใหม่",true);return}
@@ -443,6 +490,8 @@ document.addEventListener("click",e=>{
   if(latePaper){e.preventDefault();e.stopPropagation();openLatePaper(latePaper.dataset.v175LatePaper);return}
   const adminPair=e.target.closest?.("[data-v175-admin-pair]");
   if(adminPair){e.preventDefault();e.stopPropagation();const [sid,u]=adminPair.dataset.v175AdminPair.split(":");openAdminWorkPair(sid,Number(u));return}
+  const schedule=e.target.closest?.("[data-v19-unit-schedule]");
+  if(schedule){e.preventDefault();e.stopPropagation();const [sid,u]=schedule.dataset.v19UnitSchedule.split(":");openUnitScheduleDialog(sid,Number(u));return}
   const unlock=e.target.closest?.("[data-v168-unlock]");
   if(unlock){e.preventDefault();e.stopPropagation();const [sid,u]=unlock.dataset.v168Unlock.split(":");openUnlockDialog(sid,Number(u));return}
   const adminSlide=e.target.closest?.("[data-v168-admin-slide]");

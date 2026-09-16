@@ -1,5 +1,5 @@
 {
-  "release": "V18.8.2 GREEN THEME + NIGHT MODE + LEVEL-AWARE MAJOR ABBREVIATIONS",
+  "release": "V19.0 STABILIZED CLASSROOM FLOW",
   "date": "2026-09-16",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -16,7 +16,7 @@
   "ready_templates": 374,
   "paper_templates": 187,
   "digital_templates": 187,
-  "release_marker": "V18.7-ROOM-WORK-CHECKLIST-EXAM-ADAPTED",
+  "release_marker": "V19-STABILIZED-COURSE-SCHEDULE-ATTENDANCE-GATE",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
@@ -53,5 +53,14 @@
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
   "exam_bank_source": "ALL_Test_pisite2543nac.github.io-main(1).zip / initial-question-bank-all-subjects.json, SHA256 cc56e27cbb6f38f9aee094d7aa2ed382bd3497f22a7f72b536ab763e082fd284; copied byte-identically to site/data/exam-question-bank-v18.json",
   "frontend_acceptance": "profile/course-code/paper-scan/room-work-checklist/adapted-exam browser contracts",
-  "base_release": "V18.6 ROOM WORK CHECKLIST + REALITY AUDIT"
+  "base_release": "V18.6 ROOM WORK CHECKLIST + REALITY AUDIT",
+  "v19_features": {
+    "admin_class_leader_from_student_list": true,
+    "inline_digital_deadline_edit": true,
+    "deadline_exact_datetime_or_duration_hours": true,
+    "class_leader_attendance_gate": true,
+    "server_side_submission_gate": true,
+    "large_visible_course_actions": true,
+    "preserve_logical_work_pair": true
+  }
 }
