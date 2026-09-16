@@ -1,6 +1,0 @@
-DOC-FULL-NR V19.1.1 INSTALLER FIX
-=================================
-- Fixes BOM-less UTF-8 source reading in Windows PowerShell 5.1 preflight.
-- Thai legacy compatibility label is now read explicitly as UTF-8.
-- Also validates the ASCII structural marker data-v14-upload.
-- No business logic, Supabase data, worksheet, exam, classroom, deadline, or attendance feature was removed.
