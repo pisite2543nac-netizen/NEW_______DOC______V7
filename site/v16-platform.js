@@ -1,5 +1,6 @@
 import { getClient } from "./v18-supabase.js";
 
+const V1883_ADMIN_LEADER_FROM_STUDENT_LIST="V18.8.3-ADMIN-LEADER-FROM-STUDENT-LIST";
 const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
@@ -294,6 +295,8 @@ async function navigate(route,arg=null){
 
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button,a");if(!t)return;
+  if(t.matches("[data-v1883-leader-profile]")){await showLeaderFromStudentList(t.dataset.v1883LeaderProfile,t.dataset.studentName||"นักศึกษา");return}
+  if(t.matches("[data-v1883-leader-toggle]")){const active=t.dataset.active==="true";t.disabled=true;const r=await client().rpc("set_classroom_leader",{p_classroom_id:t.dataset.class,p_user_id:t.dataset.v1883LeaderToggle,p_active:active});if(r.error){t.disabled=false;toast(errorText(r.error),true);return}toast(active?"แต่งตั้งหัวหน้าห้องแล้ว":"ยกเลิกหัวหน้าห้องแล้ว");await showLeaderFromStudentList(t.dataset.v1883LeaderToggle,t.dataset.studentName||"นักศึกษา");return}
   const custom=t.closest("[data-v14-route]");
   if(custom){e.preventDefault();e.stopImmediatePropagation();window.DOCNR_BASE?.navigate?.(custom.dataset.v14Route);return}
   const retry=t.closest("[data-v14-retry]");if(retry){e.preventDefault();window.DOCNR_BASE?.navigate?.(retry.dataset.v14Retry);return}
@@ -694,10 +697,29 @@ async function renderAdminProfiles(){
   const draw=()=>{
     const q=$("#v14-profile-q").value.trim().toLowerCase(),level=$("#v14-profile-level").value,room=$("#v14-profile-room").value,dept=$("#v14-profile-dept").value,major=$("#v14-profile-major").value,status=$("#v14-profile-status").value;
     const f=rows.filter(p=>(!level||p.grade_level===level)&&(!room||p.room_label===room)&&(!dept||p.department===dept)&&(!major||p.major===major)&&(!status||(p.approval_status||"approved")===status)&&(!q||`${p.full_name||""} ${p.display_name||""} ${p.student_code||""} ${p.phone||""} ${p.class_name||""} ${p.department||""} ${p.major||""}`.toLowerCase().includes(q)));
-    $("#v14-profile-grid").innerHTML=f.map(p=>`<button class="v14-profile-card" data-v14-profile="${p.id}"><div class="v14-avatar-placeholder">${esc((p.full_name||"?").slice(0,1))}</div><div><b>${esc(p.full_name||"-")}</b><small>ชื่อเล่น: ${esc(p.display_name&&p.display_name!==p.full_name?p.display_name:"-")}</small><small>${esc(p.student_code||"")} • ${esc(p.grade_level||"")}${esc(p.room_label||"")} • ${esc(p.major||"")}</small></div><span class="v14-status ${(p.approval_status||"approved")==="approved"?"approved":"pending"}">${(p.approval_status||"approved")==="approved"?"ใช้งาน":"ตรวจสถานะ"}</span></button>`).join("")||`<div class="v14-empty">ไม่พบข้อมูลตามตัวกรอง</div>`;
+    $("#v14-profile-grid").innerHTML=f.map(p=>`<article class="v14-profile-card v1883-student-row"><button type="button" class="v1883-profile-main" data-v14-profile="${p.id}"><div class="v14-avatar-placeholder">${esc((p.full_name||"?").slice(0,1))}</div><div><b>${esc(p.full_name||"-")}</b><small>ชื่อเล่น: ${esc(p.display_name&&p.display_name!==p.full_name?p.display_name:"-")}</small><small>${esc(p.student_code||"")} • ${esc(p.grade_level||"")}${esc(p.room_label||"")} • ${esc(p.major||"")}</small></div></button><div class="v1883-profile-actions"><span class="v14-status ${(p.approval_status||"approved")==="approved"?"approved":"pending"}">${(p.approval_status||"approved")==="approved"?"ใช้งาน":"ตรวจสถานะ"}</span><button type="button" class="btn sm v1883-leader-btn" data-v1883-leader-profile="${p.id}" data-student-name="${esc(p.full_name||p.student_code||"นักศึกษา")}">👑 กำหนดหัวหน้าห้อง</button></div></article>`).join("")||`<div class="v14-empty">ไม่พบข้อมูลตามตัวกรอง</div>`;
   };
   draw();["#v14-profile-q","#v14-profile-level","#v14-profile-room","#v14-profile-dept","#v14-profile-major","#v14-profile-status"].forEach(id=>{const el=$(id);if(el){el.oninput=draw;el.onchange=draw}});
 }
+async function showLeaderFromStudentList(userId,studentName="นักศึกษา"){
+  const c=client();
+  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">CLASSROOM LEADER</span><h2>👑 กำหนดหัวหน้าห้อง</h2><p>${esc(studentName)} • กำลังตรวจห้องเรียน...</p></div><button class="btn" data-v14-close>✕</button></div><div id="v1883-leader-box"><div class="v14-loading"><div class="v14-spinner"></div><b>กำลังโหลดห้องที่นักศึกษาสังกัด...</b></div></div>`);
+  const box=$("#v1883-leader-box");
+  const mr=await c.from("classroom_memberships").select("classroom_id,seat_number,active").eq("user_id",userId).eq("active",true);
+  if(mr.error){box.innerHTML=`<div class="alert error">${esc(errorText(mr.error))}</div>`;return}
+  const ids=[...new Set((mr.data||[]).map(x=>x.classroom_id).filter(Boolean))];
+  if(!ids.length){box.innerHTML=`<div class="alert warn"><b>ยังไม่พบห้องเรียนของนักศึกษาคนนี้</b><div>กรุณากำหนดห้อง/กลุ่มให้นักศึกษาก่อน แล้วจึงแต่งตั้งหัวหน้าห้อง</div></div>`;return}
+  const cr=await c.from("classrooms").select("id,name,level,academic_year,semester,active").in("id",ids).order("name");
+  if(cr.error){box.innerHTML=`<div class="alert error">${esc(errorText(cr.error))}</div>`;return}
+  const rooms=cr.data||[];const status=[];
+  for(const room of rooms){
+    const rr=await c.rpc("admin_classroom_roster",{p_classroom_id:room.id});
+    const row=(rr.data||[]).find(x=>x.user_id===userId);
+    status.push({...room,isLeader:!!row?.is_leader});
+  }
+  box.innerHTML=`<div class="v1883-leader-note"><b>เลือกห้องที่ต้องการกำหนดสิทธิ์</b><span>หัวหน้าห้องสามารถใช้สิทธิ์เช็คชื่อและดูสถานะห้องตามสิทธิ์ที่ระบบกำหนดไว้</span></div><div class="v1883-leader-room-list">${status.map(r=>`<div class="v1883-leader-room"><div><b>${esc(r.name||"ห้องเรียน")}</b><small>${esc(r.level||"")} ${r.academic_year?`• ปี ${esc(r.academic_year)}`:""} ${r.semester?`• ภาคเรียน ${esc(r.semester)}`:""}</small></div><span class="v14-status ${r.isLeader?"approved":"muted"}">${r.isLeader?"หัวหน้าห้อง":"สมาชิกห้อง"}</span><button type="button" class="btn sm ${r.isLeader?"red":"green"}" data-v1883-leader-toggle="${userId}" data-class="${r.id}" data-active="${r.isLeader?"false":"true"}" data-student-name="${esc(studentName)}">${r.isLeader?"ยกเลิกหัวหน้าห้อง":"👑 แต่งตั้งหัวหน้าห้อง"}</button></div>`).join("")}</div>`;
+}
+
 async function showAdminProfile(id){
   const c=client();
   const [pr,er,assignR,subR,attR]=await Promise.all([

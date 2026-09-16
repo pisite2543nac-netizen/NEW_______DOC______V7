@@ -329,3 +329,13 @@ html[data-theme="dark"] .v186-check-table tbody .v186-sticky{background:#132019!
 /* responsive */
 @media(max-width:1200px){.v186-filters{grid-template-columns:repeat(2,minmax(180px,1fr))!important}}
 @media(max-width:780px){.topbar,#topbar{padding:10px 12px!important}.topbar-actions{gap:8px!important}.topbar-actions .user-name{display:none!important}.content{padding:14px!important}.v186-filters{grid-template-columns:1fr!important}.v186-print-head h2{font-size:1.45rem!important}.v186-col-name{min-width:180px!important;width:180px!important}}
+
+
+/* V18.8.3 Admin: classroom leader directly from student list */
+.v1883-student-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:14px!important;align-items:center!important;padding:12px 14px!important}
+.v1883-profile-main{appearance:none;border:0;background:transparent;color:inherit;display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:center;text-align:left;cursor:pointer;padding:0;min-width:0}
+.v1883-profile-main>div:nth-child(2){display:grid;gap:3px;min-width:0}.v1883-profile-main b{font-size:1rem}.v1883-profile-main small{color:var(--v16-muted);white-space:normal}
+.v1883-profile-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.v1883-leader-btn{white-space:nowrap;color:var(--v16-primary)!important;border-color:color-mix(in srgb,var(--v16-primary) 30%,white)!important;background:color-mix(in srgb,var(--v16-primary) 7%,white)!important}
+.v1883-leader-note{display:grid;gap:4px;padding:12px 14px;border-radius:13px;background:var(--v16-primary-soft);border:1px solid var(--v16-border);margin-bottom:12px}.v1883-leader-note span{font-size:.82rem;color:var(--v16-muted)}
+.v1883-leader-room-list{display:grid;gap:10px}.v1883-leader-room{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:13px 14px;border:1px solid var(--v16-border);border-radius:14px;background:var(--v16-card)}.v1883-leader-room>div{display:grid;gap:3px}.v1883-leader-room small{color:var(--v16-muted)}
+@media(max-width:760px){.v1883-student-row{grid-template-columns:1fr!important}.v1883-profile-actions{justify-content:flex-start;padding-left:60px}.v1883-leader-room{grid-template-columns:1fr}.v1883-leader-room .btn{width:100%}}
