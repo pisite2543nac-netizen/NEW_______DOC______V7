@@ -146,16 +146,3 @@ body.docnr-fullscreen .topbar{padding-top:max(8px,env(safe-area-inset-top))}
 .v173-unit-work{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #dbe5ef;border-radius:12px;background:#fff}.v173-unit-work>span{min-width:0;overflow-wrap:anywhere}.v173-unit-work>div{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.v168-admin-unit .v173-unit-work-list{margin-top:12px}
 @media(max-width:760px){.v173-capture-review{grid-template-columns:1fr}.v173-capture-review img{max-height:52dvh}.v173-unit-work{align-items:flex-start;flex-direction:column}.v173-unit-work>div{width:100%;justify-content:stretch}.v173-unit-work>div .btn{flex:1}.docnr-fullscreen-btn{padding-left:10px;padding-right:10px}}
 @media print{.docnr-fullscreen-btn,#install,.mobile-menu,.sidebar,.topbar{display:none!important}.docnr-copy-protected body,.docnr-copy-protected *{-webkit-user-select:auto!important;user-select:auto!important}}
-
-
-/* V17.6 desktop mouse-wheel safeguard */
-@media(min-width:781px){
-  body.nav-open{overflow-y:auto!important;overflow-x:hidden!important;touch-action:auto!important}
-  html,body{overflow-y:auto}
-}
-
-
-/* V17.8 deadline notification permission */
-.v178-notify-permission{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 12px;padding:12px;border:1px solid #f59e0b66;border-radius:14px;background:#fffbeb}
-.v178-notify-permission.ready{border-color:#22c55e66;background:#f0fdf4}.v178-notify-permission>div{display:grid;gap:3px}.v178-notify-permission small{color:#64748b}.v178-ready-dot{color:#16a34a;font-weight:800;white-space:nowrap}
-@media(max-width:620px){.v178-notify-permission{align-items:stretch;flex-direction:column}.v178-notify-permission .btn{width:100%}}

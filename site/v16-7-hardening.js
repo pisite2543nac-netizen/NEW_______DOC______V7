@@ -76,18 +76,47 @@ function questionHtml(q, i){
   return `<section class="v167-question"><div><b>${i+1}. ${esc(prompt)}</b>${points?`<small>${points} คะแนน</small>`:""}</div>${options}</section>`;
 }
 function printPageHtml(w, st){
-  const payload=st.barcode_payload||`?token=${encodeURIComponent(st.token||"")}`,tokenOnly=st.token||"",revoked=!!st.revoked_at;
-  const questions=Array.isArray(w.questions)?w.questions:[],pageCount=Math.max(2,Number(w.settings?.page_count||2)),per=Math.max(1,Math.ceil(questions.length/pageCount)),classText=`${st.grade_level||""}${st.room_label||""}`||st.class_name||"-";
-  const pages=[];for(let p=0;p<pageCount;p++)pages.push(questions.slice(p*per,(p+1)*per));
-  return pages.map((page,pi)=>`<article class="v167-print-page ${revoked?"revoked":""}">
-    <header class="v167-print-header"><div><div class="v167-school">วิทยาลัยเทคนิคนางรอง</div><div>DOC-FULL-NR • ใบงานพิมพ์ย้อนหลังฉบับรายบุคคล</div></div><div class="v167-ref">${esc(w.reference_code||"")} • หน้า ${pi+1}/${pageCount}</div></header>
-    <div class="v167-student-strip"><div><span>รหัสนักศึกษา</span><b>${esc(st.student_code||"-")}</b></div><div><span>ชื่อ-นามสกุล</span><b>${esc(st.full_name||"-")}</b></div><div><span>ชั้น/ห้อง</span><b>${esc(classText)}</b></div></div>
-    <div class="v167-title"><small>${esc(w.subject_code||"")} ${esc(w.subject_name||"")}</small><h1>${esc(w.title||"ใบงาน")}</h1><p>${esc(w.description||"")}</p></div>
-    ${pi===0?`<div class="v167-code-block"><div class="v167-barcode-box v167-primary-code"><svg class="v167-barcode" data-payload="${esc(payload)}"></svg><small>Barcode หลัก • ผูกกับผู้เรียนรายนี้</small></div><div class="v167-code-fallback"><svg class="v167-token-barcode" data-payload="${esc(tokenOnly)}"></svg><small>Barcode สำรอง • Token เท่านั้น</small></div><div class="v167-qr" data-payload="${esc(payload)}"></div><div class="v167-deadline"><span>Barcode หมดอายุ</span><b>${esc(fmt(st.expires_at||w.due_at))}</b><small>สำหรับส่งย้อนหลัง • คะแนนสูงสุดตามเกณฑ์งานย้อนหลัง</small></div></div>`:`<div class="v167-instructions"><b>ใบงานต่อเนื่อง</b><div>${esc(w.reference_code||"")} • ${esc(st.student_code||"")} • หน้า ${pi+1}/${pageCount}</div></div>`}
-    ${revoked?`<div class="v167-revoked">รหัสฉบับนี้ถูกยกเลิก กรุณาสร้าง/พิมพ์ฉบับใหม่ก่อนแจก</div>`:""}${pi===0&&w.instructions?`<div class="v167-instructions"><b>คำชี้แจง</b><div>${esc(w.instructions)}</div></div>`:""}
-    <div class="v167-questions">${page.map((q,j)=>questionHtml(q,pi*per+j)).join("")||`<div class="v167-answer-lines tall"><i></i><i></i><i></i><i></i><i></i></div>`}</div>
-    <footer>สำเนารายบุคคล • ส่งย้อนหลัง • ${esc(w.reference_code||"")} • หน้า ${pi+1}/${pageCount}</footer>
-  </article>`).join("");
+  const payload = st.barcode_payload || `?token=${encodeURIComponent(st.token||"")}`;
+  const tokenOnly = st.token || "";
+  const revoked = !!st.revoked_at;
+  const questions = Array.isArray(w.questions) ? w.questions : [];
+  const classText = `${st.grade_level||""}${st.room_label||""}` || st.class_name || "-";
+  return `<article class="v167-print-page ${revoked?"revoked":""}">
+    <header class="v167-print-header">
+      <div><div class="v167-school">วิทยาลัยเทคนิคนางรอง</div><div>DOC-FULL-NR • ใบงานกระดาษฉบับรายบุคคล</div></div>
+      <div class="v167-ref">${esc(w.reference_code||"")}</div>
+    </header>
+    <div class="v167-student-strip">
+      <div><span>รหัสนักศึกษา</span><b>${esc(st.student_code||"-")}</b></div>
+      <div><span>ชื่อ-นามสกุล</span><b>${esc(st.full_name||"-")}</b></div>
+      <div><span>ชั้น/ห้อง</span><b>${esc(classText)}</b></div>
+    </div>
+    <div class="v167-title">
+      <small>${esc(w.subject_code||"")} ${esc(w.subject_name||"")}</small>
+      <h1>${esc(w.title||"ใบงาน")}</h1>
+      <p>${esc(w.description||"")}</p>
+    </div>
+    <div class="v167-code-block">
+      <div class="v167-barcode-box v167-primary-code">
+        <svg class="v167-barcode" data-payload="${esc(payload)}"></svg>
+        <small>Barcode หลัก • ฝัง Token + ชื่อใบงาน + วันหมดอายุ</small>
+      </div>
+      <div class="v167-code-fallback">
+        <svg class="v167-token-barcode" data-payload="${esc(tokenOnly)}"></svg>
+        <small>Barcode สำรอง • Token เท่านั้น</small>
+      </div>
+      <div class="v167-qr" data-payload="${esc(payload)}"></div>
+      <div class="v167-deadline">
+        <span>กำหนดส่ง / Barcode หมดอายุ</span>
+        <b>${esc(fmt(st.expires_at||w.due_at))}</b>
+        <small>QR เป็นช่องทางสำรองกรณีกล้องอ่าน Barcode ไม่ได้</small>
+      </div>
+    </div>
+    ${revoked?`<div class="v167-revoked">รหัสฉบับนี้ถูกยกเลิก กรุณาสร้าง/พิมพ์ฉบับใหม่ก่อนแจก</div>`:""}
+    ${w.instructions?`<div class="v167-instructions"><b>คำชี้แจง</b><div>${esc(w.instructions)}</div></div>`:""}
+    <div class="v167-questions">${questions.map(questionHtml).join("") || `<div class="v167-answer-lines tall"><i></i><i></i><i></i><i></i><i></i></div>`}</div>
+    <footer>สำเนานี้ระบุตัวผู้เรียนเฉพาะราย • ตอนรับงานระบบจะตรวจข้อมูลกับ Server และเก็บภาพทั้งแผ่นเป็นหลักฐาน</footer>
+  </article>`;
 }
 async function openPaperPrintPack(wid){
   if(!wid) return;
