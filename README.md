@@ -125,3 +125,7 @@ Subject room และงานหลักใช้ Supabase Realtime สำห
 - Production สำเร็จเมื่อ Installer ขึ้น `COMPLETED` และ `Public verification: PASSED` เท่านั้น
 - Installer สร้าง Backup + Staging ก่อนแตะ main และ rollback หาก Pages/Public verification ไม่ผ่าน
 - หลัง V16.6 ห้ามย้อนกลับไปรัน Installer V16–V16.5
+
+
+## V19.2 Production UX/UI
+V19.2 เป็นชั้น UX/UI สำหรับเตรียมเริ่มใช้งานจริง โดยคงระบบ V19.1 ทั้งหมดไว้ เพิ่ม responsive/adaptive layout, mobile bottom navigation, tablet drawer, green-white/night design system, safe-area, touch/accessibility และ browser contracts หลายขนาดหน้าจอ รายละเอียดอยู่ใน `V19_2_PRODUCTION_UX_AUDIT.md`.

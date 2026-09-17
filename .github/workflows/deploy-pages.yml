@@ -53,12 +53,14 @@ jobs:
           python tests/v19_classroom_flow_contract.py
           python tests/v191_complete_user_requests_contract.py
           python tests/v1913_responsive_fit_contract.py
+          python tests/v192_production_ux_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js
           node --check site/v16-platform.js
           node --check site/v16-7-hardening.js
           node --check site/v16-8-course-flow.js
+          node --check site/v19-ux-runtime.js
           node --check site/v16-exam.js
           node --check site/sw.js
           node --check site/v18-supabase.js
@@ -71,6 +73,7 @@ jobs:
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v187_exam_admin_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v187_exam_source_adaptation_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v1913_responsive_fit_browser_contract.py
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v192_production_ux_browser_contract.py
       - name: Decode PWA app icons
         shell: bash
         run: |

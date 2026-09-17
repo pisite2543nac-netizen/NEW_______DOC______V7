@@ -1,0 +1,33 @@
+DOC-FULL-NR V19.2 TEST RESULTS
+==============================
+
+STATIC / REGRESSION
+- static_validation.py: PASS
+- unified_contract.py: PASS
+- button_contract.py: PASS
+- V17.3 / V17.4 / V17.5 / V17.6 / V17.6.1: PASS
+- V17.7 / V17.8 / V17.9: PASS
+- V18.1 / V18.2: PASS
+- V19 classroom flow: PASS
+- V19.1 complete user requests: PASS
+- V19.1.3 responsive compatibility: PASS
+- V19.2 production UX contract: PASS
+
+BROWSER
+- base browser contract: PASS
+- course CODE browser contract: PASS
+- real-use browser contract: PASS
+- V18.1 core browser contract: PASS
+- V18.6 room checklist browser contract: PASS
+- V18.7 exam admin browser contract: PASS
+- V18.7 exam student/source adaptation browser contract: PASS
+- V19.1.3 responsive browser contract: PASS
+- V19.2 production UX browser contract: PASS
+- 14 common viewport/orientation layouts: PASS
+
+SYNTAX
+- app.js: PASS
+- v16-platform.js: PASS
+- v16-8-course-flow.js: PASS
+- v19-ux-runtime.js: PASS
+- sw.js: PASS

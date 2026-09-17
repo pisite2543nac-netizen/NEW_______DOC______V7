@@ -1,6 +1,6 @@
 {
-  "release": "V19.1.3 RESPONSIVE FIT SYSTEM",
-  "date": "2026-09-16",
+  "release": "V19.2 PRODUCTION UX/UI + RESPONSIVE READY",
+  "date": "2026-09-17",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
   "pages": "https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/",
@@ -21,12 +21,12 @@
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "19.1",
-  "notes": "Stabilized full system preserving existing DOC-FULL-NR architecture. Includes Admin classroom-leader assignment, level-aware major abbreviations, green-white/night theme, room checklist, 550-question exam center, editable Digital schedules by exact date/time or duration hours, attendance gate enforced server-side, late Paper fallback, multi-page scan, gradebook, responsive PWA, expanded regression tests, and security hardening.",
+  "version": "19.2",
+  "notes": "Production UX/UI stabilization over the complete V19.1 system. Preserves business logic while adding a unified green-white design layer, adaptive density, mobile quick navigation, tablet drawer/backdrop, safe-area handling, keyboard/table accessibility, dark mode consistency, touch targets, reduced-motion/high-contrast support, and responsive validation across common desktop/tablet/phone viewports.",
   "gradebook": "actual finalized grading scores, logical work-pair denominator",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
-  "release_date": "2026-09-16",
+  "release_date": "2026-09-17",
   "grade_report": "A4 landscape and Excel-compatible .xls: term/year title, subject code/name, columns student code/name/group, behavior, work, midterm, final, total.",
   "work_detail_visibility": "Admin web only; hidden from print/download summary.",
   "phone_policy": "profiles.phone is contact data only; no OTP/SMS gate; student profile remains read-only",
@@ -52,7 +52,7 @@
   "exam_question_bank": 550,
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
   "exam_bank_source": "ALL_Test_pisite2543nac.github.io-main(1).zip / initial-question-bank-all-subjects.json, SHA256 cc56e27cbb6f38f9aee094d7aa2ed382bd3497f22a7f72b536ab763e082fd284; copied byte-identically to site/data/exam-question-bank-v18.json",
-  "frontend_acceptance": "profile/course-code/paper-scan/room-work-checklist/adapted-exam/classroom-flow V19.1 static + browser contracts",
+  "frontend_acceptance": "full legacy/static contracts + core browser flows + V19.1.3 responsive compatibility + V19.2 production UX browser contract across 14 common viewport/orientation layouts",
   "base_release": "V19.0 STABILIZED CLASSROOM FLOW",
   "v19_features": {
     "admin_class_leader_from_student_list": true,
@@ -76,5 +76,19 @@
     "V18.2 COMPLETE SYSTEM FINAL",
     "V19.0 STABILIZED CLASSROOM FLOW",
     "V19.1 COMPLETE STABILIZED SYSTEM"
-  ]
+  ],
+  "production_ux": {
+    "unified_green_white_theme": true,
+    "dark_mode": true,
+    "adaptive_density": true,
+    "mobile_bottom_navigation": true,
+    "tablet_drawer_backdrop": true,
+    "safe_area_support": true,
+    "coarse_pointer_touch_targets": true,
+    "keyboard_table_accessibility": true,
+    "reduced_motion": true,
+    "high_contrast": true,
+    "common_viewports_tested": 14,
+    "business_logic_changed": false
+  }
 }

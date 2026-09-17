@@ -387,7 +387,7 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.1.3</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.2</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
