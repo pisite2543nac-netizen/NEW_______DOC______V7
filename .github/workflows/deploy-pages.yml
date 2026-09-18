@@ -55,6 +55,7 @@ jobs:
           python tests/v1913_responsive_fit_contract.py
           python tests/v192_production_ux_contract.py
           python tests/v193_gradebook_contract.py
+          python tests/v194_classroom_back_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js

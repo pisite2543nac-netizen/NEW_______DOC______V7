@@ -22,11 +22,12 @@
   <div class="exam-shell">
     <header class="exam-top">
       <div class="exam-brand"><div class="exam-logo"><img src="./icons/icon-192.png" alt="DOC-FULL-NR"></div><div><b>DOC-FULL-NR Exam Center</b><div class="muted smalltext">ระบบสอบออนไลน์ • วิทยาลัยเทคนิคนางรอง</div></div></div>
-      <div class="row"><span id="exam-user" class="muted"></span><a class="btn" href="./">← กลับระบบการเรียน</a></div>
+      <div class="row"><span id="exam-user" class="muted"></span><button class="btn" id="exam-global-back" type="button">← ย้อนกลับ</button><a class="btn" href="./">🏠 ระบบการเรียน</a></div>
     </header>
     <main id="exam-app" class="exam-main"><div class="v14-loading"><div class="v14-spinner"></div><b>กำลังเปิด Exam Center...</b></div></main>
   </div>
   <script type="module" src="./mobile.js?v=20260916-v17-9"></script>
-  <script type="module" src="./v16-exam.js?v=20260916-v18-7"></script>
+  <script>document.addEventListener("DOMContentLoaded",()=>{const b=document.getElementById("exam-global-back");if(b)b.onclick=()=>{if(document.referrer&&new URL(document.referrer).origin===location.origin&&history.length>1)history.back();else location.href="./"}})</script>
+  <script type="module" src="./v16-exam.js?v=20260918-v19-4"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 {
-  "release": "V19.3 GRADEBOOK 17-UNIT + MANUAL SCORE CONTROL",
+  "release": "V19.4 CLASSROOM CONTROL + GLOBAL BACK • V19.3 GRADEBOOK 17-UNIT",
   "date": "2026-09-18",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -21,8 +21,8 @@
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "19.3",
-  "notes": "Locks score weights at Work 40 / Behavior 20 / Midterm 20 / Final 20. Work score averages the 17 official units into 40 points. Admin can adjust behavior and midterm/final raw scores from the class gradebook with audit logging. Grade and pass/fail are calculated automatically and included in print/Excel.",
+  "version": "19.4",
+  "notes": "V19.4 adds Admin open/close subject classrooms and a universal Back button for Admin/User while preserving V19.3 GRADEBOOK 17-UNIT scoring, manual score adjustment, audit logging, automatic grade and pass/fail.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
@@ -52,7 +52,7 @@
   "exam_question_bank": 550,
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
   "exam_bank_source": "ALL_Test_pisite2543nac.github.io-main(1).zip / initial-question-bank-all-subjects.json, SHA256 cc56e27cbb6f38f9aee094d7aa2ed382bd3497f22a7f72b536ab763e082fd284; copied byte-identically to site/data/exam-question-bank-v18.json",
-  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX compatibility + V19.3 gradebook contract",
+  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX compatibility + V19.3 gradebook contract + V19.4 classroom/back contract",
   "base_release": "V19.0 STABILIZED CLASSROOM FLOW",
   "v19_features": {
     "admin_class_leader_from_student_list": true,

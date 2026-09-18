@@ -6,7 +6,7 @@ const sb=getClient();
 const S={
   session:null, profile:null, route:"dashboard", routeArg:null, installPrompt:null,
   editor:null, pendingWorksheet:new URLSearchParams(location.search).get("worksheet"),
-  autosaveTimer:null, serverOffsetMs:0
+  autosaveTimer:null, serverOffsetMs:0, navHistory:[]
 };
 
 const $=(s,r=document)=>r.querySelector(s);
@@ -313,10 +313,33 @@ function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:USER_ROUTES).has(rou
 function paintNav(){
   const active=activeNavRoute(S.route);
   $$("#sidebar .nav [data-route]").forEach(b=>b.classList.toggle("active",b.dataset.route===active));
+  syncGlobalBackButton();
+}
+function navKey(route,arg){return `${String(route||"")}::${String(arg||"")}`}
+function fallbackBackTarget(){
+  const parent={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"workadmin",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
+  if(S.route==="courses"&&S.routeArg)return {route:"courses",arg:null};
+  return {route:parent[S.route]||"dashboard",arg:null};
+}
+function syncGlobalBackButton(){
+  const btn=$("#global-back");if(!btn)return;
+  const show=S.route!=="dashboard"||!!S.routeArg||S.navHistory.length>0;
+  btn.hidden=!show;btn.disabled=!show;
+}
+async function goBackUnified(){
+  let target=null;
+  while(S.navHistory.length&&!target){const x=S.navHistory.pop();if(x&&routeAllowed(x.route)&&navKey(x.route,x.arg)!==navKey(S.route,S.routeArg))target=x}
+  if(!target)target=fallbackBackTarget();
+  S.route=target.route;S.routeArg=target.arg??null;$("#sidebar")?.classList.remove("open");paintNav();
+  await routeCurrent();return true;
 }
 async function navigateUnified(route,arg=null){
   route=String(route||"dashboard");
   if(!routeAllowed(route))route="dashboard";
+  if(navKey(S.route,S.routeArg)!==navKey(route,arg)){
+    S.navHistory.push({route:S.route||"dashboard",arg:S.routeArg??null});
+    if(S.navHistory.length>30)S.navHistory.splice(0,S.navHistory.length-30);
+  }
   S.route=route;S.routeArg=arg;$("#sidebar")?.classList.remove("open");paintNav();
   await routeCurrent();
   return true;
@@ -387,12 +410,12 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.3</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.4</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
       <header class="topbar" id="topbar">
-        <div class="row"><button class="btn mobile-menu" id="menubtn">☰</button><b id="pagetitle"></b></div>
+        <div class="row topbar-leading"><button class="btn mobile-menu" id="menubtn">☰</button><button class="btn sm global-back" id="global-back" type="button" title="ย้อนกลับหน้าก่อนหน้า" aria-label="ย้อนกลับหน้าก่อนหน้า">← <span>ย้อนกลับ</span></button><b id="pagetitle"></b></div>
         <div class="row topbar-actions">
           <button class="btn sm" id="theme-toggle" title="สลับธีม">🌙 ไนท์โหมด</button>
           <button class="btn install sm" id="install">ติดตั้งแล้ว</button>
@@ -408,6 +431,7 @@ function renderShell(){
   $$("[data-route]").forEach(b=>b.onclick=()=>navigateUnified(b.dataset.route));
   $("#logout").onclick=async()=>{try{window.DOCNR_V16_6?.cleanup?.()}catch{}await sb.auth.signOut()};
   $("#menubtn").onclick=()=>$("#sidebar").classList.toggle("open");
+  const backBtn=$("#global-back");if(backBtn)backBtn.onclick=()=>goBackUnified().catch(e=>toast(friendlyError(e),"error"));syncGlobalBackButton();
   $("#install").onclick=installGuide;
   const themeBtn=$("#theme-toggle");if(themeBtn)themeBtn.onclick=toggleTheme;
   applyTheme();
