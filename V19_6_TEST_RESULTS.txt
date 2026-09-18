@@ -1,0 +1,22 @@
+DOC-FULL-NR V19.6 FINAL TEST RESULTS
+Date: 2026-09-18
+Release: Production Print System / Subject Color Identity / Full 17-Unit Worksheet Pack
+
+PASS — JavaScript syntax: all production /site/*.js
+PASS — Static contracts: 22/22
+PASS — Browser contracts: 11/11
+PASS — V19.6 Print Center desktop/mobile
+PASS — Print-media visibility smoke test
+PASS — V19.2 responsive/UX on 14 common viewport/orientation layouts
+PASS — V19.3 gradebook 17-unit / 40-point + raw score controls
+PASS — V19.4 classroom open/close + global back
+PASS — V19.5 ready-made exam preset 25 course + 25 very-hard analytical
+PASS — V19.6 subject-color identity across all 11 subjects
+PASS — V19.6 blank worksheet single print
+PASS — V19.6 full blank worksheet pack (cover + all 17 units)
+PASS — V19.6 personalized Paper print RPC smoke test on Production (transaction rollback)
+PASS — Production subject colors verified for all 11 subjects
+
+Known build note:
+- Production deploy is the static /site PWA. The legacy/root Vite source is retained for compatibility and was not used as the Production deployment target.
+- npm build requires node_modules to be installed; the container used for final validation did not have the npm dependencies installed. This does not affect /site static deployment tests above.

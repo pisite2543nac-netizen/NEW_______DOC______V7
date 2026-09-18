@@ -452,11 +452,11 @@ function latePaperHtml(pack){
   const w=pack?.worksheet||{},s=pack?.student||{},sub=pack?.subject||{},t=pack?.token||{},qs=Array.isArray(w.questions)?w.questions:[];
   const cut=Math.max(1,Math.ceil(qs.length/2)),pages=[qs.slice(0,cut),qs.slice(cut)];
   while(pages.length<2)pages.push([]);
-  const barcodeId=`v175-barcode-${Date.now()}`;
-  return `<div class="v175-late-paper-wrap">
+  const barcodeId=`v175-barcode-${Date.now()}`,subjectColor=sub.color_hex||"#1565C0";
+  return `<div class="v175-late-paper-wrap" style="--subject-color:${esc(subjectColor)}">
     <div class="row end no-print"><button class="btn" data-v175-close-paper>ปิด</button><button class="btn primary" data-v175-print-paper>🖨️ พิมพ์ / Save PDF</button></div>
-    ${pages.slice(0,2).map((page,pi)=>`<section class="v175-paper-page">
-      <header class="v175-paper-head"><div><b>วิทยาลัยเทคนิคนางรอง</b><h2>${esc(sub.code||"")} • ${esc(sub.name||"")}</h2><h3>${esc(cleanTopic(w.title||"ใบงานส่งย้อนหลัง"))}</h3></div><div class="v175-paper-code">${pi===0?`<svg id="${barcodeId}"></svg><small>${esc(w.reference_code||"")}</small>`:`<b>หน้า ${pi+1}/2</b>`}</div></header>
+    ${pages.slice(0,2).map((page,pi)=>`<section class="v175-paper-page" style="--subject-color:${esc(subjectColor)}">
+      <header class="v175-paper-head"><img class="v175-paper-logo" src="./icons/icon-192.png" alt=""><div><b>วิทยาลัยเทคนิคนางรอง</b><h2>${esc(sub.code||"")} • ${esc(sub.name||"")}</h2><h3>${esc(cleanTopic(w.title||"ใบงานส่งย้อนหลัง"))}</h3></div><div class="v175-paper-code">${pi===0?`<svg id="${barcodeId}"></svg><small>${esc(w.reference_code||"")}</small>`:`<b>หน้า ${pi+1}/2</b>`}</div></header>
       <div class="v175-student-row"><span>ชื่อ ${esc(s.full_name||"-")}</span><span>รหัส ${esc(s.student_code||"-")}</span><span>ห้อง ${esc(s.class_name||s.room_label||"-")}</span></div>
       <div class="alert warn">ใบงานสำหรับส่งย้อนหลัง • คะแนนเป็นไปตามเกณฑ์งานย้อนหลังของรายวิชา • ต้องส่งกระดาษจริงให้ผู้สอน</div>
       <div class="v175-paper-questions">${page.map((q,i)=>`<div class="v175-paper-q"><b>${pi*cut+i+1}. ${esc(q.text||"")}</b><div class="v175-answer-lines">${"<span></span>".repeat(7)}</div></div>`).join("")||`<div class="v175-paper-q"><b>พื้นที่เขียนคำตอบ/งานเพิ่มเติม</b><div class="v175-answer-lines">${"<span></span>".repeat(14)}</div></div>`}</div>

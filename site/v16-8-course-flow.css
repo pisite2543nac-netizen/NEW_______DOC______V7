@@ -111,11 +111,11 @@
 .v175-pair-modal{display:grid;grid-template-columns:1fr 1fr;gap:14px}.v175-pair-modal .card{display:grid;align-content:start;gap:10px}
 .v175-late-paper-wrap{background:#e5e7eb;padding:14px;max-height:86vh;overflow:auto}
 .v175-paper-page{width:210mm;min-height:297mm;margin:10px auto;background:#fff;color:#111;padding:12mm;box-shadow:0 4px 18px #0002;display:flex;flex-direction:column}
-.v175-paper-head{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #0f172a;padding-bottom:8px}.v175-paper-head h2,.v175-paper-head h3{margin:4px 0}
+.v175-paper-head{display:grid;grid-template-columns:18mm 1fr auto;align-items:center;justify-content:space-between;gap:12px;border-bottom:3px solid var(--subject-color,#0f172a);padding-bottom:8px}.v175-paper-logo{width:16mm;height:16mm;object-fit:contain}.v175-paper-head h2{color:var(--subject-color,#0f172a)}.v175-paper-head h2,.v175-paper-head h3{margin:4px 0}
 .v175-paper-code{width:62mm;text-align:center}.v175-paper-code svg{width:100%;max-height:58px}
 .v175-student-row{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:8px;margin:10px 0;padding:8px;border:1px solid #cbd5e1}
 .v175-paper-questions{display:grid;gap:16px;flex:1}.v175-paper-q{break-inside:avoid}.v175-answer-lines{display:grid;gap:9px;margin-top:10px}.v175-answer-lines span{display:block;border-bottom:1px dotted #64748b;height:18px}
-.v175-paper-page footer{margin-top:14px;border-top:1px solid #cbd5e1;padding-top:6px;font-size:10px;color:#64748b;text-align:right}
+.v175-paper-page footer{margin-top:14px;border-top:1px solid var(--subject-color,#cbd5e1);padding-top:6px;font-size:10px;color:#64748b;text-align:right}
 @media(max-width:900px){.v175-pair-modal{grid-template-columns:1fr}.v175-workpair{grid-template-columns:1fr}.v175-workpair-action{width:100%}.v175-workpair-action .btn{width:100%}.v175-late-paper-wrap{padding:6px}.v175-paper-page{width:100%;min-height:auto;padding:14px}.v175-student-row{grid-template-columns:1fr}.v175-paper-head{display:grid}.v175-paper-code{width:100%}}
 @media print{
   body.v175-print-paper #app,body.v175-print-paper .toast,body.v175-print-paper .v14-toast,body.v175-print-paper .no-print{display:none!important}

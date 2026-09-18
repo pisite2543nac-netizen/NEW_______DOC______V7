@@ -16,7 +16,7 @@ checks={
  'pass fail':"then 'ผ่าน' else 'ไม่ผ่าน'" in mig and 'v193-pass-pill' in js,
  'export grade result':'<th>เกรด</th><th>ผล</th>' in js,
  'responsive score ui':'.v193-score-panel' in css and '@media(max-width:760px)' in css,
- 'version':'V19.3 GRADEBOOK 17-UNIT' in ver,
+ 'version':'"v19_3_gradebook"' in ver and '"official_work_units": 17' in ver,
 }
 for k,v in checks.items(): print(f'{k}:', 'PASS' if v else 'FAIL')
 assert all(checks.values())

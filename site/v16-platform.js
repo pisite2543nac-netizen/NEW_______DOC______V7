@@ -244,7 +244,7 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const p=await getProfile();if(!p)return;
   const brand=$("#sidebar .brand .smalltext");
-  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V19.4`;
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V19.6`;
   // V17: app.js is the single owner of Sidebar and route buttons.
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
@@ -259,12 +259,14 @@ async function navigate(route,arg=null){
   clearPresenceChannel();clearRoomChannel();state.route=route;state.subjectId=null;heartbeat();
   const p=await getProfile(true);if(!p)return;
   if(await requirePhoneGate(route))return;
-  const routes=p.role==="admin"?{
+  // Legacy contract marker: workcheck:renderRoomWorkChecklist
+const routes=p.role==="admin"?{
     dashboard:renderAdminDashboard,
     courses:()=>arg?renderAdminSubject(arg):renderAdminCourses(),
     students:renderStudentsHub,
     workadmin:renderWorkAdminHub,
-    workcheck:renderRoomWorkChecklist,
+    workcheck:()=>renderRoomWorkChecklist(arg),
+    printcenter:()=>arg?renderPrintSubjectV196(arg):renderPrintCenterV196(),
     paperscan:renderPaperScanHub,
     attendancehub:renderAttendanceHub,
     academic:renderAcademicHub,
@@ -280,6 +282,7 @@ async function navigate(route,arg=null){
     enroll:renderEnrollSubjects,
     courses:()=>arg?renderStudentCourse(arg):renderStudentCourses(),
     work:renderWorkStatus,
+    printcenter:()=>arg?renderPrintSubjectV196(arg):renderPrintCenterV196(),
     history:renderAcademicHistory,
     attendance:renderAttendance,
     presence:renderPresence
@@ -440,7 +443,7 @@ async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile();
   content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V18.6</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 17 หน่วย • สไลด์ 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("workcheck","✅","ตารางเช็กรวมรายห้อง","ระดับ • ห้อง • แผนก • สาขา • 17 หน่วย","cyan")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 17 หน่วย • สไลด์ 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("workcheck","✅","ตารางเช็กรวมรายห้อง","ระดับ • ห้อง • แผนก • สาขา • 17 หน่วย","cyan")}${dashboardRouteCard("printcenter","🖨️","ศูนย์พิมพ์และสรุปผล","คะแนน • เช็กงาน • Attendance • ใบงาน • PDF","green")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
   <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
   Promise.race([client().rpc("admin_system_health_v18"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
     const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
@@ -450,7 +453,7 @@ async function renderAdminDashboard(){
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile();
   content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V18.6</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","17 หน่วย • สไลด์ 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","17 หน่วย • สไลด์ 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("printcenter","🖨️","พิมพ์เอกสารของฉัน","ใบงานย้อนหลัง • สรุปงาน • PDF","green")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
   <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
 }
 async function renderStudentsHub(){
@@ -459,7 +462,7 @@ async function renderStudentsHub(){
 }
 async function renderWorkAdminHub(){
   setTitle("งาน คะแนน และรายงาน");
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK • GRADE • REPORT FLOW</span><h1>📝 งาน คะแนน และรายงาน</h1><p>ตรวจ Submission ให้คะแนน จัดสิทธิ์ส่งเพิ่ม และสรุปผลจากข้อมูลจริง</p></div></div><div class="v1610-flow-grid">${hubCard("workcheck","✅","ตารางเช็กรวมรายห้อง","แยกตามระดับ • ห้อง • แผนก • สาขา • ใบงาน 17 หน่วย","cyan")}${hubCard("grading","📝","ตรวจงาน","Submission • Answer • Files • Rubric • Grade","violet")}${hubCard("paperscan","📄","สแกนงานย้อนหลัง","Barcode • ถ่ายครบทุกหน้า • ยืนยัน Packet","red")}${hubCard("overrides","⏳","สิทธิ์ส่งเพิ่ม","ขยายเวลา • ส่งซ้ำ • Extra Attempts","orange")}${hubCard("courses","📊","Gradebook รายวิชา","เข้า Course → สรุปคะแนน 40/20/20/20","cyan")}${hubCard("reports","📤","รายงาน / Export","Submission • คะแนน • CSV/Excel","green")}</div></section>`;
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">WORK • GRADE • REPORT FLOW</span><h1>📝 งาน คะแนน และรายงาน</h1><p>ตรวจ Submission ให้คะแนน จัดสิทธิ์ส่งเพิ่ม และสรุปผลจากข้อมูลจริง</p></div></div><div class="v1610-flow-grid">${hubCard("workcheck","✅","ตารางเช็กรวมรายห้อง","แยกตามระดับ • ห้อง • แผนก • สาขา • ใบงาน 17 หน่วย","cyan")}${hubCard("printcenter","🖨️","ศูนย์พิมพ์และสรุปผล","เอกสารทางการ • คะแนน • Attendance • ใบงาน","green")}${hubCard("grading","📝","ตรวจงาน","Submission • Answer • Files • Rubric • Grade","violet")}${hubCard("paperscan","📄","สแกนงานย้อนหลัง","Barcode • ถ่ายครบทุกหน้า • ยืนยัน Packet","red")}${hubCard("overrides","⏳","สิทธิ์ส่งเพิ่ม","ขยายเวลา • ส่งซ้ำ • Extra Attempts","orange")}${hubCard("courses","📊","Gradebook รายวิชา","เข้า Course → สรุปคะแนน 40/20/20/20","cyan")}${hubCard("reports","📤","รายงาน / Export","Submission • คะแนน • CSV/Excel","green")}</div></section>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -499,7 +502,7 @@ function v186ChecklistExcel(subject,students,works,assigned,subMap,gradeMap,filt
   const body=students.map((p,i)=>{let completed=0,assignedCount=0,late=0,missing=0;const cells=works.map(pair=>{const k=`${p.id}:${pair.id}`;if(assigned.has(k))assignedCount++;const st=v186CellState(p.id,pair,assigned,subMap);if(["done","late"].includes(st.cls))completed++;if(st.cls==="late")late++;if(st.cls==="missing")missing++;return `<td class="c">${excelEsc(st.label)}</td>`}).join("");const gr=gradeMap.get(p.id),note=missing?`ยังไม่ส่ง ${missing}`:late?`ส่งช้า ${late}`:(assignedCount&&completed>=assignedCount?"ส่งครบ":"-");return `<tr><td class="c">${i+1}</td><td class="code">${excelEsc(p.student_code||"")}</td><td>${excelEsc(p.full_name||"")}</td>${cells}<td class="c">${completed}/${assignedCount}</td><td class="c">${gr?`${Number(gr.work_score||0).toFixed(2)}/${Number(gr.work_points||40)}`:"-"}</td><td>${excelEsc(note)}</td></tr>`}).join("");
   return `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:6mm}body{font-family:Tahoma,Arial,sans-serif}table{border-collapse:collapse}th,td{border:1px solid #777;padding:5px;font-size:10px;vertical-align:middle}th{background:#dbeafe;text-align:center}.title td,.meta td{border:0;text-align:center;font-weight:700;font-size:16px}.meta td{font-size:11px;font-weight:400}.c{text-align:center}.code{mso-number-format:"\\@"}</style></head><body><table><tr class="title"><td colspan="${cols}">${excelEsc(title)}</td></tr><tr class="meta"><td colspan="${cols}">${excelEsc(meta)}</td></tr><tr><th>ลำดับ</th><th>รหัสนักศึกษา</th><th>ชื่อ - สกุล</th>${head}<th>ส่งครบ</th><th>คะแนนงาน</th><th>หมายเหตุ</th></tr>${body}</table></body></html>`;
 }
-async function renderRoomWorkChecklist(){
+async function renderRoomWorkChecklist(presetSubjectId=null){
   setTitle("ตารางเช็กรวมการเก็บงานรายห้อง");busy("กำลังเตรียมห้องเรียนและหมวดหมู่จากข้อมูลลงทะเบียน...");const c=client();
   const [sr,pr]=await Promise.all([
     c.from("subjects").select("id,code,name,academic_year,semester,active,subject_type").eq("active",true).eq("subject_type","subject").order("code"),
@@ -539,7 +542,7 @@ async function renderRoomWorkChecklist(){
   </section>`;
   const year=$("#v186-year"),sem=$("#v186-sem"),subjectSel=$("#v186-subject");
   const refreshSubjects=()=>{const y=year.value,m=sem.value,current=subjectSel.value;const rows=subjects.filter(x=>(!y||String(x.academic_year||"")===y)&&(!m||String(x.semester||"")===m));subjectSel.innerHTML=rows.map(x=>`<option value="${x.id}">${esc(`${x.code} • ${x.name}`)}</option>`).join("")||`<option value="">ไม่พบรายวิชา</option>`;if(rows.some(x=>x.id===current))subjectSel.value=current};
-  year.onchange=refreshSubjects;sem.onchange=refreshSubjects;refreshSubjects();
+  year.onchange=refreshSubjects;sem.onchange=refreshSubjects;refreshSubjects();if(presetSubjectId&&[...subjectSel.options].some(o=>o.value===presetSubjectId))subjectSel.value=presetSubjectId;
   const load=()=>loadRoomWorkChecklist(subjects,profiles).catch(e=>{console.error(e);const host=$("#v186-checklist-result");if(host)host.innerHTML=`<div class="alert error"><b>โหลดตารางไม่สำเร็จ</b><div>${esc(errorText(e))}</div></div>`});
   $("#v186-load").onclick=load;
   const resetBtn=$("#v186-reset");if(resetBtn)resetBtn.onclick=()=>{year.value="";sem.value="";refreshSubjects();subjectSel.selectedIndex=0;const ids=["#v186-grade","#v186-room","#v186-dept","#v186-major"];ids.forEach(id=>{const el=$(id);if(el)el.value=""});load()};
@@ -941,7 +944,9 @@ async function loadAttendanceSummary(){
   if(box)box.innerHTML='<div class="v14-loading-inline">กำลังสรุปการเข้าเรียน...</div>';
   const {data,error}=await client().rpc("attendance_subject_summary",{p_classroom_id:classId,p_subject_id:subjectId});
   if(error){if(box)box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}
-  if(box)box.innerHTML=`<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>นักศึกษา</th><th>ครั้งเรียน</th><th>มา</th><th>สาย</th><th>ขาด</th><th>ลา</th><th>% เข้าเรียน</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${x.total_sessions}</td><td>${x.present_count}</td><td>${x.late_count}</td><td>${x.absent_count}</td><td>${x.excused_count}</td><td><b>${x.attendance_percent??0}%</b></td></tr>`).join("")||`<tr><td colspan="8" class="empty">ยังไม่มีรอบเช็คชื่อที่สรุปแล้ว</td></tr>`}</tbody></table></div>`;
+  const classLabel=$("#v14-att-class")?.selectedOptions?.[0]?.textContent?.trim()||"-",subjectLabel=$("#v14-att-subject")?.selectedOptions?.[0]?.textContent?.trim()||"-";
+  if(box)box.innerHTML=`<div class="row end v16-no-print" style="margin-bottom:10px"><button class="btn primary" id="v196-att-print">🖨️ พิมพ์สรุปการเข้าเรียน</button></div><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>นักศึกษา</th><th>ครั้งเรียน</th><th>มา</th><th>สาย</th><th>ขาด</th><th>ลา</th><th>% เข้าเรียน</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${x.total_sessions}</td><td>${x.present_count}</td><td>${x.late_count}</td><td>${x.absent_count}</td><td>${x.excused_count}</td><td><b>${x.attendance_percent??0}%</b></td></tr>`).join("")||`<tr><td colspan="8" class="empty">ยังไม่มีรอบเช็คชื่อที่สรุปแล้ว</td></tr>`}</tbody></table></div>`;
+  const pb=$("#v196-att-print");if(pb)pb.onclick=async()=>{const sr=await client().from("subjects").select("id,code,name,color_hex,academic_year,semester").eq("id",subjectId).single();if(sr.error){toast(errorText(sr.error),true);return}const rows=data||[],avg=rows.length?rows.reduce((a,x)=>a+Number(x.attendance_percent||0),0)/rows.length:0;const html=`<article class="v196-report landscape" style="--subject-color:${esc(v196SubjectColor(sr.data))}">${v196ReportHead(sr.data,"สรุปการเข้าเรียน",classLabel)}<div class="v196-report-band"><b>${esc(classLabel)}</b> • ${esc(subjectLabel)}</div><div class="v196-report-summary"><div><span>นักศึกษา</span><b>${rows.length}</b></div><div><span>เฉลี่ยเข้าเรียน</span><b>${avg.toFixed(1)}%</b></div><div><span>ครั้งมา</span><b>${rows.reduce((a,x)=>a+Number(x.present_count||0),0)}</b></div><div><span>ครั้งขาด</span><b>${rows.reduce((a,x)=>a+Number(x.absent_count||0),0)}</b></div></div><table><thead><tr><th>#</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ครั้งเรียน</th><th>มา</th><th>สาย</th><th>ขาด</th><th>ลา</th><th>% เข้าเรียน</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td class="center">${i+1}</td><td>${esc(x.student_code||"")}</td><td>${esc(x.full_name||"")}</td><td class="center">${x.total_sessions||0}</td><td class="center">${x.present_count||0}</td><td class="center">${x.late_count||0}</td><td class="center">${x.absent_count||0}</td><td class="center">${x.excused_count||0}</td><td class="center"><b>${Number(x.attendance_percent||0).toFixed(1)}%</b></td></tr>`).join("")}</tbody></table><div class="v196-signatures"><div>ครูผู้สอน</div><div>หัวหน้าแผนก/ผู้ตรวจสอบ</div></div><div class="v196-report-foot"><span>สรุป Attendance จากระบบ DOC-FULL-NR</span><span>${esc(classLabel)}</span></div></article>`;openV196Print("สรุปการเข้าเรียน",html,"landscape")};
 }
 async function loadAttendanceRoster(sessionId){
   const [rr,p,snap]=await Promise.all([client().rpc("attendance_session_roster_v161",{p_session_id:sessionId}),getProfile(),client().rpc("attendance_session_snapshot",{p_session_id:sessionId})]);
@@ -1081,7 +1086,7 @@ async function renderSubjectGradebook(sid){
   clearRoomChannel();state.subjectId=sid;state.route="courses";setTitle("สรุปคะแนนรายวิชา");busy("กำลังคำนวณคะแนนจากข้อมูลจริง...");
   const c=client();
   const [sr,gr,cr,er,detail]=await Promise.all([
-    c.from("subjects").select("id,code,name,academic_year,semester").eq("id",sid).single(),
+    c.from("subjects").select("id,code,name,color_hex,academic_year,semester").eq("id",sid).single(),
     c.rpc("admin_subject_gradebook_v193",{p_subject_id:sid}),
     c.from("subject_grade_settings").select("*").eq("subject_id",sid).maybeSingle(),
     c.from("exams").select("id,title,exam_kind,status,full_score").eq("subject_id",sid).order("created_at",{ascending:false}),
@@ -1104,8 +1109,9 @@ async function renderSubjectGradebook(sid){
     <td><button class="v193-score-cell" data-v193-edit="${x.user_id}" title="เพิ่ม/ลดคะแนนดิบปลายภาค"><b>${Number(x.final_score||0).toFixed(2)}/20</b><small>ดิบ ${Number(x.final_raw_score||0).toFixed(2)}/${Number(x.final_raw_max||20).toFixed(0)}${Number(x.final_adjustment||0)?` (${Number(x.final_adjustment)>0?"+":""}${Number(x.final_adjustment).toFixed(2)})`:""}</small></button></td>
     <td><strong>${Number(x.total_score||0).toFixed(2)}</strong></td>
     <td><span class="v193-grade-badge">${Number(x.grade_value||0).toFixed(1)}</span></td>
-    <td><span class="v193-pass-pill ${x.pass_status==="ผ่าน"?"pass":"fail"}">${esc(x.pass_status||"-")}</span></td>
+    <td><span class="v193-pass-pill ${x.pass_status==="ผ่าน"?"pass":"fail"}">${esc(x.pass_status||"-")}</span></td><td><button class="btn sm" data-v196-grade-student="${x.user_id}" title="พิมพ์รายงานรายบุคคล">🖨️</button></td>
   </tr>`).join("");
+  state.gradebookV196={subject,rows,cfg};
   content().innerHTML=`<section class="v14-page v16-gradebook-page">
     <div class="v16-no-print"><button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button></div>
     <div class="v16-print-head v16-no-print"><img src="./icons/icon-192.png" alt=""><div><span>วิทยาลัยเทคนิคนางรอง</span><h1>สรุปผลคะแนนรายวิชา</h1><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} ภาคเรียน ${esc(subject.semester||"-")}</p></div></div>
@@ -1118,7 +1124,7 @@ async function renderSubjectGradebook(sid){
       <span class="v16-live-pill"><i></i> Real-time</span>
     </div>
 
-    <div class="table-wrap v16-grade-table v16-no-print"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th><th>งาน 17 งาน / 40</th><th>จิตพิสัย / 20</th><th>กลางภาค / 20</th><th>ปลายภาค / 20</th><th>รวม 100</th><th>เกรด</th><th>ผล</th></tr></thead><tbody>${body||`<tr><td colspan="11" class="empty">ยังไม่มีนักศึกษาที่อนุมัติในห้องเรียนนี้</td></tr>`}</tbody></table></div>
+    <div class="table-wrap v16-grade-table v16-no-print"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th><th>งาน 17 งาน / 40</th><th>จิตพิสัย / 20</th><th>กลางภาค / 20</th><th>ปลายภาค / 20</th><th>รวม 100</th><th>เกรด</th><th>ผล</th><th>พิมพ์</th></tr></thead><tbody>${body||`<tr><td colspan="12" class="empty">ยังไม่มีนักศึกษาที่อนุมัติในห้องเรียนนี้</td></tr>`}</tbody></table></div>
 
     <section class="v162-web-work-details v16-no-print">
       <div class="v162-detail-head"><div><span>ADMIN ONLY</span><h2>รายละเอียดงานที่นำมาคิดคะแนน</h2><p>ดูว่านักศึกษาแต่ละคนได้รับงานใด ส่งแล้ว/ส่งช้า/ยังไม่ส่งอย่างไร รายละเอียดนี้ไม่แสดงในรายงานที่พิมพ์หรือดาวน์โหลด</p></div><div class="v162-detail-kpi">งานคู่ที่ถูกมอบหมาย <b>${detail.works.length}</b> รายการ</div></div>
@@ -1127,7 +1133,7 @@ async function renderSubjectGradebook(sid){
 
     <div class="v162-print-only v162-grade-print-sheet">${gradeSummaryTableHtml(subject,rows,cfg,false)}</div>
   </section>`;
-  $("#v16-grade-print").onclick=()=>window.print();
+  $("#v16-grade-print").onclick=()=>printGradebookSummaryV196(subject,rows);
   $("#v162-grade-excel").onclick=()=>exportGradeSummaryExcel(subject,rows,cfg);
   $("#v16-grade-settings").onclick=()=>gradeSettingsDialog(sid,cfg,exams);
   $$('[data-v193-edit]').forEach(b=>b.onclick=()=>{
@@ -1292,6 +1298,12 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v14-file]")){openSubjectFile(t.dataset.v14File);return}
   if(t.matches("[data-v15-room-exam]")){openSubjectExam(t.dataset.v15RoomExam);return}
   if(t.matches("[data-v16-gradebook]")){renderSubjectGradebook(t.dataset.v16Gradebook);return}
+  if(t.matches("[data-v196-gradebook]")){renderSubjectGradebook(t.dataset.v196Gradebook);return}
+  if(t.matches("[data-v196-grade-student]")){printStudentGradeV196(t.dataset.v196GradeStudent);return}
+  if(t.matches("[data-v196-print-mywork]")){printMyWorkSummaryV196(t.dataset.v196PrintMywork).catch(e=>toast(errorText(e),true));return}
+  if(t.matches("[data-v196-blank]")){window.DOCNR_BASE?.printWorksheet?.(t.dataset.v196Blank);return}
+  if(t.matches("[data-v196-blank-pack]")){window.DOCNR_BASE?.printSubjectWorksheetPack?.(t.dataset.v196BlankPack);return}
+  if(t.matches("[data-v196-pack]")){window.DOCNR_HARDENING?.openPaperPrintPack?.(t.dataset.v196Pack);return}
   if(t.matches("[data-v181-paper-subject]")){renderPaperScanCenter(t.dataset.v181PaperSubject);return}
   if(t.matches("[data-v16-paper-scan]")){renderPaperScanCenter(t.dataset.v16PaperScan);return}
   if(t.matches("[data-v16-view-scan]")){openPaperScanCopy(t.dataset.v16ViewScan);return}
@@ -1309,6 +1321,55 @@ document.addEventListener("change",async e=>{
   if(t.matches("[data-v161-att-user]")){const note=prompt(t.value==="excused"?"ระบุเหตุผลการลา (แนะนำให้กรอก)":"หมายเหตุการแก้สถานะ (ไม่บังคับ)","")||null;const r=await client().rpc("admin_set_attendance_status_v161",{p_session_id:t.dataset.session,p_user_id:t.dataset.v161AttUser,p_status:t.value,p_note:note});if(r.error){toast(errorText(r.error),true);loadAttendanceRoster(t.dataset.session);return}toast(`บันทึกสถานะ ${attendanceStatusLabel(t.value)} แล้ว`);loadAttendanceRoster(t.dataset.session);return}
   if(t.matches("[data-v14-att-status]")){const note=prompt("หมายเหตุการแก้สถานะ (ไม่บังคับ)","")||null;const r=await client().rpc("set_attendance_record_status",{p_record_id:t.dataset.v14AttStatus,p_status:t.value,p_note:note});if(r.error){toast(errorText(r.error),true);loadAttendanceRoster(t.dataset.session);return}toast("แก้สถานะการเข้าเรียนแล้ว");loadAttendanceRoster(t.dataset.session)}
 });
+
+
+// ---------------------------------------------------------------------------
+// V19.6 Production Print Center
+// ---------------------------------------------------------------------------
+function v196SubjectColor(s){
+  const palette={"20001-1001":"#2E7D32","20001-1004":"#9A6700","21900-1005":"#1565C0","21901-2008":"#7B1FA2","21901-2017":"#00838F","21901-2020":"#455A64","21910-2010":"#EF6C00","31901-2001":"#512DA8","31901-2004":"#00796B","31901-2009":"#00897B","31910-0004":"#D84315"};
+  return String(s?.color_hex||palette[String(s?.code||"")]||"#1565C0")
+}
+function v196UnitNumber(w){const n=Number(w?.settings?.sequence_no||w?.settings?.lesson_sequence||wsSeq(w)||0);return Number.isFinite(n)&&n>0?n:0}
+function v196PrintStamp(){return new Date().toLocaleString("th-TH",{dateStyle:"long",timeStyle:"short"})}
+function closeV196Print(){const o=$("#v196-print-overlay");if(o)o.remove();document.body.classList.remove("v196-printing");document.body.removeAttribute("data-v196-orientation")}
+function openV196Print(title,html,orientation="portrait"){
+  closeV196Print();const wrap=document.createElement("div");wrap.id="v196-print-overlay";wrap.innerHTML=`<div class="v196-print-toolbar no-print"><div><b>${esc(title)}</b><small>ตรวจเอกสารก่อนพิมพ์ • รองรับ Print / Save PDF</small></div><div class="row"><button class="btn" id="v196-print-close">ปิด</button><button class="btn primary" id="v196-print-now">🖨️ พิมพ์ / Save PDF</button></div></div><main class="v196-print-pages">${html}</main>`;document.body.appendChild(wrap);
+  $("#v196-print-close",wrap).onclick=closeV196Print;$("#v196-print-now",wrap).onclick=()=>{document.body.dataset.v196Orientation=orientation;document.body.classList.add("v196-printing");window.print();setTimeout(()=>{document.body.classList.remove("v196-printing");document.body.removeAttribute("data-v196-orientation")},500)};
+}
+function v196ReportHead(subject,title,subtitle=""){
+  const color=v196SubjectColor(subject);return `<div class="v196-report-top"></div><header class="v196-report-head"><img src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><h1>${esc(title)}</h1><p>วิทยาลัยเทคนิคนางรอง${subject?` • ${esc(subject.code||"")} ${esc(subject.name||"")}`:""}${subtitle?` • ${esc(subtitle)}`:""}</p></div><div class="v196-report-meta">DOC-FULL-NR V19.6<br>พิมพ์ ${esc(v196PrintStamp())}</div></header>`}
+async function renderPrintCenterV196(){
+  setTitle("ศูนย์พิมพ์และสรุปผล");busy("กำลังเตรียมรายการเอกสาร...");const p=await getProfile(true),subjects=p?.role==="admin"?await allSubjects():await approvedCourses();
+  const tools=p?.role==="admin"?`${hubCard("workcheck","✅","ตารางเช็กงาน 17 หน่วย","A4 แนวนอน • สถานะงานทั้งห้อง","cyan")}${hubCard("attendance","📷","สรุปการเข้าเรียน","มา • สาย • ขาด • ลา • เปอร์เซ็นต์","orange")}${hubCard("exam","🧪","สรุปผลการสอบ","สถานะสอบและผลรายห้อง","red")}${hubCard("reports","📊","รายงาน / Export","ข้อมูลสำรองและไฟล์รายงาน","green")}`:`${hubCard("work","📋","สรุปงานของฉัน","ตรวจสถานะงานก่อนพิมพ์","violet")}${hubCard("attendance","📷","ประวัติการเข้าเรียน","ตรวจข้อมูล Attendance","orange")}${hubCard("history","🗓️","ประวัติการศึกษา","ข้อมูลปีการศึกษาแบบอ่านอย่างเดียว","slate")}`;
+  content().innerHTML=`<section class="v14-page v196-print-center"><div class="v196-print-hero"><img src="./icons/icon-192.png" alt=""><div><span class="v14-kicker">PRODUCTION PRINT CENTER • V19.6</span><h1>🖨️ ${p?.role==="admin"?"ศูนย์พิมพ์และสรุปผล":"พิมพ์เอกสารของฉัน"}</h1><p>เอกสารมาตรฐานเดียวกันทั้งระบบ • สีประจำวิชา • A4 • Save PDF • ใช้ข้อมูลจากระบบจริง</p></div><span class="v196-print-badge">${subjects.length} รายวิชา</span></div><div class="v196-print-tools">${tools}</div><div class="v196-print-subjects">${subjects.map(s=>`<article class="v196-print-subject" style="--subject-color:${esc(v196SubjectColor(s))}"><div class="v196-print-subject-main"><div class="v196-print-subject-head"><div><span class="v196-print-code">${esc(s.code||"")}</span><h3>${esc(s.name||"")}</h3></div><span style="width:20px;height:20px;border-radius:50%;background:${esc(v196SubjectColor(s))};border:2px solid #fff;box-shadow:0 0 0 1px #d0d5dd"></span></div><div class="v196-print-actions"><button class="btn primary" data-app-route="printcenter" data-app-arg="${s.id}">เอกสารและใบงาน</button>${p?.role==="admin"?`<button class="btn" data-v196-gradebook="${s.id}">สรุปคะแนน</button><button class="btn" data-app-route="workcheck" data-app-arg="${s.id}">เช็กงาน 17 หน่วย</button>`:`<button class="btn" data-v196-print-mywork="${s.id}">สรุปงานของฉัน</button>`}</div></div></article>`).join("")||`<div class="v14-empty">ยังไม่มีรายวิชาที่พร้อมพิมพ์</div>`}</div></section>`;
+}
+async function renderPrintSubjectV196(sid){
+  setTitle("เอกสารและใบงาน");busy("กำลังโหลดชุดพิมพ์รายวิชา...");const p=await getProfile(true),c=client();
+  const [sr,wr]=await Promise.all([c.from("subjects").select("id,code,name,color_hex,academic_year,semester").eq("id",sid).single(),c.from("worksheets").select("id,title,reference_code,mode,status,due_at,settings").eq("subject_id",sid).order("created_at")]);
+  if(sr.error)throw sr.error;if(wr.error)throw wr.error;const subject=sr.data;
+  let papers=(wr.data||[]).filter(w=>w.mode==="paper"&&v196UnitNumber(w)>=1&&v196UnitNumber(w)<=17&&!w.settings?.legacy_seed_archived).sort((a,b)=>v196UnitNumber(a)-v196UnitNumber(b));
+  if(p?.role!=="admin"){
+    if(!papers.length){ papers=[]; }
+    else { const ar=await c.from("worksheet_assignments").select("worksheet_id").eq("user_id",uid()).in("worksheet_id",papers.map(x=>x.id));if(ar.error)throw ar.error;const allowed=new Set((ar.data||[]).map(x=>x.worksheet_id));papers=papers.filter(x=>allowed.has(x.id)); }
+  }
+  const summaryTools=p?.role==="admin"?`<div class="v196-print-tools"><button class="v196-print-tool" data-v196-gradebook="${sid}"><span>📊</span><b>สรุปคะแนนทั้งห้อง</b><small>40 + 20 + 20 + 20 • เกรด • ผ่าน/ไม่ผ่าน</small></button><button class="v196-print-tool" data-app-route="workcheck" data-app-arg="${sid}"><span>✅</span><b>ตารางเช็กงาน 17 หน่วย</b><small>A4 แนวนอน • Filter รายห้อง</small></button><button class="v196-print-tool" data-app-route="attendance"><span>📷</span><b>สรุปการเข้าเรียน</b><small>เลือกห้องและรายวิชา แล้วกดพิมพ์</small></button><button class="v196-print-tool" data-app-route="exam" data-app-arg="${sid}"><span>🧪</span><b>สรุปผลการสอบ</b><small>กลางภาค / ปลายภาค / สถานะสอบ</small></button></div>`:`<div class="v196-print-tools"><button class="v196-print-tool" data-v196-print-mywork="${sid}"><span>📋</span><b>สรุปงานของฉัน</b><small>งาน 17 หน่วยและสถานะการส่ง</small></button><button class="v196-print-tool" data-app-route="attendance"><span>📷</span><b>การเข้าเรียน</b><small>ตรวจประวัติ Attendance</small></button></div>`;
+  content().innerHTML=`<section class="v14-page v196-print-center"><div class="v16-no-print"><button class="btn ghost" data-app-route="printcenter">← กลับศูนย์พิมพ์</button></div><div class="v196-print-hero" style="border-left:7px solid ${esc(v196SubjectColor(subject))}"><img src="./icons/icon-192.png" alt=""><div><span class="v14-kicker">${esc(subject.code)} • PRINT PACKAGE</span><h1>${esc(subject.name)}</h1><p>ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")} • ใบงาน 17 หน่วยใช้สีประจำวิชาเดียวกัน</p></div><span class="v196-print-badge">${papers.length} ใบงาน</span></div>${summaryTools}<section class="v196-print-section"><div class="v196-print-section-head"><div><h2>ใบงาน A4 ประจำรายวิชา</h2><small class="muted">${p?.role==="admin"?"พิมพ์ใบงานเปล่า หรือชุดรายบุคคลพร้อม Barcode":"พิมพ์ย้อนหลังได้เมื่อ Server ตรวจสิทธิ์แล้ว"}</small></div>${p?.role==="admin"?`<button class="btn primary" data-v196-blank-pack="${sid}">🗂️ พิมพ์ใบงานเปล่าทั้ง 17 หน่วย</button>`:""}</div><div class="v196-print-list">${papers.map(w=>`<div class="v196-print-work" style="--subject-color:${esc(v196SubjectColor(subject))}"><div class="v196-print-unit">U${String(v196UnitNumber(w)).padStart(2,"0")}</div><div><b>${esc(w.title||`ใบงานหน่วย ${v196UnitNumber(w)}`)}</b><small>${esc(w.reference_code||"")} • ${w.due_at?`กำหนด ${esc(fmt(w.due_at))}`:"ไม่กำหนดวันส่ง"}</small></div><div class="v196-print-work-actions">${p?.role==="admin"?`<button class="btn" data-v196-blank="${w.id}">ใบงานเปล่า</button><button class="btn primary" data-v196-pack="${w.id}">รายบุคคล + Barcode</button>`:`<button class="btn primary" data-v175-late-paper="${w.id}">ตรวจสิทธิ์และพิมพ์ย้อนหลัง</button>`}</div></div>`).join("")||`<div class="v14-empty">ยังไม่มีใบงานกระดาษที่ได้รับสิทธิ์พิมพ์</div>`}</div></section></section>`;
+}
+async function printMyWorkSummaryV196(sid){
+  const c=client(),p=await getProfile(true);const [sr,ar,srsub]=await Promise.all([c.from("subjects").select("id,code,name,color_hex,academic_year,semester").eq("id",sid).single(),c.from("worksheet_assignments").select("worksheet_id").eq("user_id",uid()),c.from("submissions").select("worksheet_id,status,submitted_at,confirmed_at,is_late,updated_at").eq("user_id",uid())]);if(sr.error)throw sr.error;if(ar.error)throw ar.error;if(srsub.error)throw srsub.error;
+  const ids=(ar.data||[]).map(x=>x.worksheet_id);let works=[];if(ids.length){const wr=await c.from("worksheets").select("id,subject_id,title,mode,due_at,settings").in("id",ids).eq("subject_id",sid);if(wr.error)throw wr.error;works=wr.data||[]}
+  const sm=new Map((srsub.data||[]).map(x=>[x.worksheet_id,x])),pairs=new Map();for(const w of works){const n=v196UnitNumber(w);if(n<1||n>17)continue;const k=String(w.settings?.work_pair_key||n);const old=pairs.get(k)||{unit:n,digital:null,paper:null};old[w.mode]=w;pairs.set(k,old)}const rows=[...pairs.values()].sort((a,b)=>a.unit-b.unit).map(x=>{const d=x.digital,pap=x.paper,sd=d?sm.get(d.id):null,sp=pap?sm.get(pap.id):null,sub=[sd,sp].filter(Boolean).sort((a,b)=>new Date(b.updated_at||b.submitted_at||0)-new Date(a.updated_at||a.submitted_at||0))[0];let st="ยังไม่ส่ง";if(sub){st=sub.status==="draft"?"ร่าง":sub.is_late||sp===sub?"ส่งย้อนหลัง":"ส่งแล้ว"}return {...x,status:st,when:sub?.submitted_at||sub?.confirmed_at||null}});
+  const done=rows.filter(x=>x.status==="ส่งแล้ว"||x.status==="ส่งย้อนหลัง").length,color=v196SubjectColor(sr.data);const html=`<article class="v196-report" style="--subject-color:${esc(color)}">${v196ReportHead(sr.data,"สรุปสถานะใบงานรายบุคคล",`${p?.grade_level||""}${p?.room_label||""}`)}<div class="v196-report-band"><b>${esc(p?.student_code||"")} • ${esc(p?.full_name||"")}</b> &nbsp; ชั้น/ห้อง ${esc(p?.class_name||`${p?.grade_level||""}${p?.room_label||""}`||"-")}</div><div class="v196-report-summary"><div><span>หน่วยทั้งหมด</span><b>17</b></div><div><span>มีรายการงาน</span><b>${rows.length}</b></div><div><span>ส่งแล้ว/ย้อนหลัง</span><b>${done}</b></div><div><span>คงเหลือ</span><b>${Math.max(0,17-done)}</b></div></div><table><thead><tr><th>#</th><th>หน่วย</th><th>หัวข้อใบงาน</th><th>สถานะ</th><th>เวลาส่ง</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td class="center">${i+1}</td><td class="center">${x.unit}</td><td>${esc((x.digital||x.paper)?.title||"")}</td><td class="center">${esc(x.status)}</td><td class="center">${x.when?esc(fmt(x.when)):"-"}</td></tr>`).join("")||`<tr><td colspan="5" class="center">ยังไม่มีรายการงาน</td></tr>`}</tbody></table><div class="v196-signatures"><div>นักศึกษา</div><div>ครูผู้สอน</div></div><div class="v196-report-foot"><span>เอกสารสรุปจาก DOC-FULL-NR</span><span>${esc(sr.data.code)}</span></div></article>`;openV196Print(`สรุปงาน ${sr.data.code}`,html,"portrait");
+}
+function printGradebookSummaryV196(subject,rows){
+  const color=v196SubjectColor(subject),passed=rows.filter(x=>x.pass_status==="ผ่าน").length,avg=rows.length?rows.reduce((a,x)=>a+Number(x.total_score||0),0)/rows.length:0;
+  const html=`<article class="v196-report landscape" style="--subject-color:${esc(color)}">${v196ReportHead(subject,"สรุปผลคะแนนรายวิชา",`ปีการศึกษา ${subject.academic_year||"-"} ภาค ${subject.semester||"-"}`)}<div class="v196-report-summary"><div><span>นักศึกษา</span><b>${rows.length}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>ผ่าน</span><b>${passed}</b></div><div><span>ไม่ผ่าน</span><b>${Math.max(0,rows.length-passed)}</b></div></div><table><thead><tr><th>#</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ชั้น/ห้อง</th><th>งาน /40</th><th>จิตพิสัย /20</th><th>กลางภาค /20</th><th>ปลายภาค /20</th><th>รวม /100</th><th>เกรด</th><th>ผล</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td class="center">${i+1}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.full_name||"-")}</td><td class="center">${esc(x.class_name||`${x.grade_level||""}${x.room_label||""}`)}</td><td class="center">${Number(x.work_score||0).toFixed(2)}</td><td class="center">${Number(x.behavior_score||0).toFixed(2)}</td><td class="center">${Number(x.midterm_score||0).toFixed(2)}</td><td class="center">${Number(x.final_score||0).toFixed(2)}</td><td class="center"><b>${Number(x.total_score||0).toFixed(2)}</b></td><td class="center">${Number(x.grade_value||0).toFixed(1)}</td><td class="center">${esc(x.pass_status||"-")}</td></tr>`).join("")||`<tr><td colspan="11" class="center">ไม่มีข้อมูล</td></tr>`}</tbody></table><div class="v196-signatures"><div>ครูผู้สอน</div><div>หัวหน้าแผนก/ผู้ตรวจสอบ</div></div><div class="v196-report-foot"><span>งาน 40 • จิตพิสัย 20 • กลางภาค 20 • ปลายภาค 20</span><span>${esc(subject.code||"")}</span></div></article>`;
+  openV196Print(`สรุปคะแนน ${subject.code||""}`,html,"landscape");
+}
+function printStudentGradeV196(userId){
+  const ctx=state.gradebookV196;if(!ctx)return toast("กรุณาเปิดสรุปคะแนนรายวิชาก่อน",true);const row=ctx.rows.find(x=>x.user_id===userId);if(!row)return;const s=ctx.subject;const color=v196SubjectColor(s);const html=`<article class="v196-report" style="--subject-color:${esc(color)}">${v196ReportHead(s,"รายงานผลการเรียนรายบุคคล",`ปีการศึกษา ${s.academic_year||"-"} ภาค ${s.semester||"-"}`)}<div class="v196-student-report-grid"><div><b>ชื่อ-นามสกุล</b><br>${esc(row.full_name||"-")}</div><div><b>รหัสนักศึกษา</b><br>${esc(row.student_code||"-")}</div><div><b>ชั้น/ห้อง</b><br>${esc(row.class_name||`${row.grade_level||""}${row.room_label||""}`)}</div><div><b>สถานะ</b><br>${esc(row.pass_status||"-")}</div></div><table><thead><tr><th>องค์ประกอบ</th><th>คะแนนเต็ม</th><th>คะแนนที่ได้</th></tr></thead><tbody><tr><td>ใบงาน 17 หน่วย</td><td class="center">40</td><td class="center">${Number(row.work_score||0).toFixed(2)}</td></tr><tr><td>จิตพิสัย</td><td class="center">20</td><td class="center">${Number(row.behavior_score||0).toFixed(2)}</td></tr><tr><td>สอบกลางภาค</td><td class="center">20</td><td class="center">${Number(row.midterm_score||0).toFixed(2)}</td></tr><tr><td>สอบปลายภาค</td><td class="center">20</td><td class="center">${Number(row.final_score||0).toFixed(2)}</td></tr><tr><th>รวม</th><th class="center">100</th><th class="center">${Number(row.total_score||0).toFixed(2)}</th></tr></tbody></table><div class="v196-grade-big"><div><span>คะแนนรวม</span><b>${Number(row.total_score||0).toFixed(2)}</b></div><div><span>เกรด</span><b>${Number(row.grade_value||0).toFixed(1)}</b></div><div><span>ผล</span><b style="font-size:16pt">${esc(row.pass_status||"-")}</b></div></div><div class="v196-signatures"><div>ครูผู้สอน</div><div>หัวหน้าแผนก/ผู้ตรวจสอบ</div></div><div class="v196-report-foot"><span>เอกสารสรุปผลรายบุคคล</span><span>${esc(s.code)}</span></div></article>`;openV196Print(`รายงานรายบุคคล ${row.student_code||""}`,html,"portrait");
+}
 
 // ---------------------------------------------------------------------------
 // Boot

@@ -73,8 +73,9 @@ function printPageHtml(w, st){
   const payload=st.barcode_payload||`?token=${encodeURIComponent(st.token||"")}`,tokenOnly=st.token||"",revoked=!!st.revoked_at;
   const questions=Array.isArray(w.questions)?w.questions:[],pageCount=Math.max(2,Number(w.settings?.page_count||2)),per=Math.max(1,Math.ceil(questions.length/pageCount)),classText=`${st.grade_level||""}${st.room_label||""}`||st.class_name||"-";
   const pages=[];for(let p=0;p<pageCount;p++)pages.push(questions.slice(p*per,(p+1)*per));
-  return pages.map((page,pi)=>`<article class="v167-print-page ${revoked?"revoked":""}">
-    <header class="v167-print-header"><div><div class="v167-school">วิทยาลัยเทคนิคนางรอง</div><div>DOC-FULL-NR • ใบงานพิมพ์ย้อนหลังฉบับรายบุคคล</div></div><div class="v167-ref">${esc(w.reference_code||"")} • หน้า ${pi+1}/${pageCount}</div></header>
+  const subjectColor=w.subject_color||"#1565C0";
+  return pages.map((page,pi)=>`<article class="v167-print-page ${revoked?"revoked":""}" style="--subject-color:${esc(subjectColor)}">
+    <header class="v167-print-header"><img class="v167-print-logo" src="./icons/icon-192.png" alt=""><div><div class="v167-school">วิทยาลัยเทคนิคนางรอง</div><div>DOC-FULL-NR • ใบงานพิมพ์ย้อนหลังฉบับรายบุคคล</div></div><div class="v167-ref">${esc(w.reference_code||"")} • หน้า ${pi+1}/${pageCount}</div></header>
     <div class="v167-student-strip"><div><span>รหัสนักศึกษา</span><b>${esc(st.student_code||"-")}</b></div><div><span>ชื่อ-นามสกุล</span><b>${esc(st.full_name||"-")}</b></div><div><span>ชั้น/ห้อง</span><b>${esc(classText)}</b></div></div>
     <div class="v167-title"><small>${esc(w.subject_code||"")} ${esc(w.subject_name||"")}</small><h1>${esc(w.title||"ใบงาน")}</h1><p>${esc(w.description||"")}</p></div>
     ${pi===0?`<div class="v167-code-block"><div class="v167-barcode-box v167-primary-code"><svg class="v167-barcode" data-payload="${esc(payload)}"></svg><small>Barcode หลัก • ผูกกับผู้เรียนรายนี้</small></div><div class="v167-code-fallback"><svg class="v167-token-barcode" data-payload="${esc(tokenOnly)}"></svg><small>Barcode สำรอง • Token เท่านั้น</small></div><div class="v167-qr" data-payload="${esc(payload)}"></div><div class="v167-deadline"><span>Barcode หมดอายุ</span><b>${esc(fmt(st.expires_at||w.due_at))}</b><small>สำหรับส่งย้อนหลัง • คะแนนสูงสุดตามเกณฑ์งานย้อนหลัง</small></div></div>`:`<div class="v167-instructions"><b>ใบงานต่อเนื่อง</b><div>${esc(w.reference_code||"")} • ${esc(st.student_code||"")} • หน้า ${pi+1}/${pageCount}</div></div>`}
@@ -121,8 +122,8 @@ async function openPaperPrintPack(wid){
       if(window.QRCode) new window.QRCode(div,{text:div.dataset.payload||"",width:82,height:82,correctLevel:window.QRCode.CorrectLevel?.M});
     }catch{}
   });
-  $("#v167-print-close",wrap).onclick=()=>wrap.remove();
-  $("#v167-print-now",wrap).onclick=()=>window.print();
+  $("#v167-print-close",wrap).onclick=()=>{document.body.classList.remove("v167-printing");wrap.remove()};
+  $("#v167-print-now",wrap).onclick=()=>{document.body.classList.add("v167-printing");window.print();setTimeout(()=>document.body.classList.remove("v167-printing"),500)};
 }
 
 function injectPaperPrintButtons(){

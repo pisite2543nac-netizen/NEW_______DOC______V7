@@ -294,20 +294,20 @@ function signupDialog(){
 
 function navItems(){
   return isAdmin()
-    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["students","นักศึกษาและสิทธิ์"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
-    : [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["work","งานของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
+    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["students","นักศึกษาและสิทธิ์"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["printcenter","ศูนย์พิมพ์และสรุปผล"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
+    : [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["work","งานของฉัน"],["printcenter","พิมพ์เอกสารของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
 }
 const ROUTE_TITLES={
-  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",workadmin:"งาน คะแนน และรายงาน",workcheck:"ตารางเช็กรวมการเก็บงานรายห้อง",paperscan:"สแกนใบงานย้อนหลัง",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",academic:"ปีการศึกษาและระบบ",
+  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",workadmin:"งาน คะแนน และรายงาน",workcheck:"ตารางเช็กรวมการเก็บงานรายห้อง",printcenter:"ศูนย์พิมพ์และสรุปผล",paperscan:"สแกนใบงานย้อนหลัง",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",academic:"ปีการศึกษาและระบบ",
   catalog:"รายวิชาทั้งหมด",work:"งานของฉัน",attendance:"เช็คชื่อ",profile:"ข้อมูลของฉัน",
   accounts:"อนุมัติบัญชี",enrollments:"สมาชิกวิชา",profiles:"โปรไฟล์นักศึกษา",presence:"สถานะออนไลน์",promotion:"เลื่อนชั้น / ปีการศึกษา",history:"ประวัติการศึกษา",
   users:"ผู้ใช้งาน",grading:"ตรวจงาน",overrides:"สิทธิ์ส่งเพิ่ม",reports:"รายงาน",audit:"Audit log",system:"ตั้งค่าระบบ",enroll:"รายวิชาทั้งหมด"
 };
-const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","presence","promotion","history","enroll"]);
+const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","printcenter","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","presence","promotion","history","enroll"]);
 const BASE_ROUTES=new Set(["users","grading","overrides","reports","audit","system","profile"]);
-const ADMIN_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","paperscan","attendancehub","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
-const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","work","attendance","exam","profile","history","presence"]);
-const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
+const ADMIN_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","printcenter","paperscan","attendancehub","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
+const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","work","printcenter","attendance","exam","profile","history","presence"]);
+const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",printcenter:"printcenter",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
 function activeNavRoute(route){return ROUTE_GROUP[route]||route}
 function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:USER_ROUTES).has(route)}
 function paintNav(){
@@ -410,8 +410,8 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.4</div></div></div>
-      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.6</div></div></div>
+      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
       <header class="topbar" id="topbar">
@@ -1267,9 +1267,70 @@ async function profile(){
   </div>`;
   $("#changepass").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),password=String(f.get("password")||"");if(password.length<8)return toast("รหัสผ่านต้องมีอย่างน้อย 8 ตัว","error");const {error}=await sb.auth.updateUser({password});if(error)return toast(friendlyError(error),"error");e.target.reset();toast("เปลี่ยนรหัสผ่านแล้ว")};
 }
+function v196SubjectColorFallback(code,color){
+  const palette={
+    "20001-1001":"#2E7D32","20001-1004":"#9A6700","21900-1005":"#1565C0",
+    "21901-2008":"#7B1FA2","21901-2017":"#00838F","21901-2020":"#455A64",
+    "21910-2010":"#EF6C00","31901-2001":"#512DA8","31901-2004":"#00796B",
+    "31901-2009":"#00897B","31910-0004":"#D84315"
+  };
+  return String(color||palette[String(code||"")]||"#1565C0");
+}
+function v196WorksheetUnit(w){
+  const n=Number(w?.settings?.sequence_no||w?.settings?.lesson_sequence||0);
+  return Number.isFinite(n)&&n>0?n:0;
+}
+function v196WorksheetSheetHtml(w,page,pageNo,pageCount,opts={}){
+  const subject=w.subjects||opts.subject||{};
+  const subjectCode=subject.code||"",color=v196SubjectColorFallback(subjectCode,subject.color_hex);
+  const docRef=w.reference_code||`FMAC01-${subjectCode.replace(/[^0-9A-Za-z]/g,"")}-U${String(v196WorksheetUnit(w)||1).padStart(2,"0")}`;
+  const dueText=w.due_at?new Date(w.due_at).toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}):"____________";
+  const maxScore=(w.questions||[]).reduce((n,q)=>n+Number(q.points||0),0)||10,showScore=isAdmin();
+  const per=Math.max(1,Math.ceil((w.questions||[]).length/pageCount));
+  const start=(pageNo-1)*per;
+  const qrId=opts.qrId||`qr-${String(w.id).replace(/[^A-Za-z0-9_-]/g,"")}-${pageNo}`;
+  const barcodeId=opts.barcodeId||`bc-${String(w.id).replace(/[^A-Za-z0-9_-]/g,"")}-${pageNo}`;
+  return `<div class="formal-sheet v176-formal-page v196-worksheet-sheet" style="--subject-color:${color}">
+    <div class="formal-topline"></div><div class="formal-header"><div class="formal-school"><img class="formal-logo" src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><div class="formal-school-name">วิทยาลัยเทคนิคนางรอง</div><div class="formal-dept">แผนกวิชาคอมพิวเตอร์และเทคโนโลยีสารสนเทศ</div><div class="formal-title">ใบงานปฏิบัติการ <span>(Laboratory Worksheet)</span></div></div></div>
+    <div class="formal-docbox"><div><span>รหัสเอกสาร</span> <b>FM-AC-01</b></div><div><span>ฉบับที่</span> <b>01</b> <span class="formal-page">หน้า ${pageNo}/${pageCount}</span></div><div class="formal-expire"><b>วันหมดอายุใบงาน:</b> ${esc(dueText)}</div>${pageNo===1?`<svg id="${barcodeId}"></svg><div class="formal-ref">${esc(docRef)}</div>`:`<div class="formal-ref">${esc(docRef)} • ต่อ</div>`}</div></div>
+    <div class="formal-subject-band"><div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(subject.name||"")}</div><div class="smalltext"><b>หน่วยที่ ${v196WorksheetUnit(w)||"-"}</b> • ${esc(w.title||"")}</div></div>${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}</div>
+    <div class="formal-student-grid"><div>ชื่อ-นามสกุล <span class="formal-line"></span></div><div>รหัสประจำตัว <span class="formal-line short"></span></div><div>ระดับชั้น <span class="formal-line short"></span></div><div>วันที่ <span class="formal-line short"></span></div></div>
+    ${pageNo===1?`<div class="formal-instruction"><b>คำชี้แจง</b> ${esc(w.instructions||"ให้นักศึกษาศึกษาเนื้อหาในหน่วยการเรียนรู้ และตอบคำถามให้ครบถ้วน")}</div>`:""}
+    <div class="formal-questions">${page.map((q,j)=>`<div class="formal-question"><div class="formal-qnum">${start+j+1}</div><div class="formal-qbody"><div>${esc(q.text||q.prompt||"")}</div><div class="formal-answer-space"></div></div></div>`).join("")||`<div class="formal-question"><div class="formal-qnum">•</div><div class="formal-qbody"><div>พื้นที่บันทึกเพิ่มเติม</div><div class="formal-answer-space"></div></div></div>`}</div>
+    ${pageNo===1?`<div class="formal-code-row"><div id="${qrId}" class="v196-sheet-qr"></div><div class="smalltext"><b>QR สำหรับเปิดใบงานออนไลน์</b><br>${esc(docRef)}</div></div>`:""}
+    <div class="formal-footer">วิทยาลัยเทคนิคนางรอง • ${esc(docRef)} • หน้า ${pageNo}/${pageCount}</div></div>`;
+}
+function v196RenderWorksheetCodes(items){
+  for(const x of items||[]){
+    const qr=document.getElementById(x.qrId);
+    if(window.QRCode&&qr){try{new QRCode(qr,{text:x.link,width:82,height:82})}catch{}}
+    const bc=document.getElementById(x.barcodeId);
+    if(window.JsBarcode&&bc){try{JsBarcode(`#${x.barcodeId}`,x.docRef,{format:"CODE128",width:1.15,height:42,displayValue:false,margin:0})}catch{}}
+  }
+}
+async function printSubjectWorksheetPack(subjectId){
+  const {data:subject,error:se}=await sb.from("subjects").select("id,code,name,color_hex,academic_year,semester").eq("id",subjectId).single();if(se)return toast(friendlyError(se),"error");
+  const {data:works,error:we}=await sb.from("worksheets").select("id,title,mode,due_at,instructions,questions,settings,reference_code,status").eq("subject_id",subjectId).eq("mode","paper");if(we)return toast(friendlyError(we),"error");
+  const rows=(works||[]).filter(w=>{const n=v196WorksheetUnit(w);return n>=1&&n<=17&&!w.settings?.legacy_seed_archived}).sort((a,b)=>v196WorksheetUnit(a)-v196WorksheetUnit(b));
+  if(!rows.length)return toast("ยังไม่มีใบงานกระดาษสำหรับรายวิชานี้","error");
+  const color=v196SubjectColorFallback(subject.code,subject.color_hex),codes=[];
+  const cover=`<div class="formal-sheet v176-formal-page v196-workbook-cover" style="--subject-color:${color}"><div class="formal-topline"></div><div class="v196-workbook-cover-inner"><img src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง"><span>ชุดใบงานประจำรายวิชา</span><h1>${esc(subject.code)}<br>${esc(subject.name)}</h1><div class="v196-workbook-meta">ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")}</div><div class="v196-workbook-unit-grid">${rows.map(w=>`<div><b>หน่วย ${String(v196WorksheetUnit(w)).padStart(2,"0")}</b><span>${esc(w.title||"")}</span></div>`).join("")}</div><div class="v196-workbook-student"><div>ชื่อ-นามสกุล ______________________________________</div><div>รหัสนักศึกษา ____________________ ห้อง __________ เลขที่ ______</div></div></div><div class="formal-footer">วิทยาลัยเทคนิคนางรอง • DOC-FULL-NR V19.6 • ชุดใบงาน ${rows.length} หน่วย</div></div>`;
+  let sheets="";
+  for(const w0 of rows){
+    const w={...w0,subjects:subject},qs=w.questions||[],pageCount=Math.max(2,Number(w.settings?.page_count||2)),per=Math.max(1,Math.ceil(qs.length/pageCount));
+    for(let p=0;p<pageCount;p++){
+      const page=qs.slice(p*per,(p+1)*per),qrId=`pack-qr-${String(w.id).replace(/[^A-Za-z0-9_-]/g,"")}-${p+1}`,barcodeId=`pack-bc-${String(w.id).replace(/[^A-Za-z0-9_-]/g,"")}-${p+1}`;
+      sheets+=v196WorksheetSheetHtml(w,page,p+1,pageCount,{qrId,barcodeId,subject});
+      if(p===0){const docRef=w.reference_code||`FMAC01-${String(subject.code||"").replace(/[^0-9A-Za-z]/g,"")}-U${String(v196WorksheetUnit(w)||1).padStart(2,"0")}`;codes.push({qrId,barcodeId,docRef,link:`${location.origin}${location.pathname}?worksheet=${encodeURIComponent(w.id)}`})}
+    }
+  }
+  modal(`<div class="no-print row between formal-actions"><div><b>ชุดใบงาน ${esc(subject.code)} ${esc(subject.name)}</b><div class="muted smalltext">หน้าปก + ใบงาน ${rows.length} หน่วย • ใช้สีประจำวิชา • A4 • Save PDF</div></div><div class="row"><button class="btn primary" id="printpacknow">พิมพ์ทั้งชุด / Save PDF</button><button class="btn" data-close>ปิด</button></div></div>${cover}${sheets}`,{wide:true});
+  v196RenderWorksheetCodes(codes);
+  $("#printpacknow").onclick=()=>{document.body.classList.add("printing");window.print();setTimeout(()=>document.body.classList.remove("printing"),500)};
+}
 async function printWorksheet(id){
   const {data:w,error}=await sb.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single();if(error)return toast(friendlyError(error),"error");
-  const color=w.subjects?.color_hex||"#9A2F42",subjectCode=w.subjects?.code||"",docRef=w.reference_code||`FMAC01-${subjectCode.replace(/[^0-9A-Za-z]/g,"")}`;
+  const color=v196SubjectColorFallback(w.subjects?.code,w.subjects?.color_hex),subjectCode=w.subjects?.code||"",docRef=w.reference_code||`FMAC01-${subjectCode.replace(/[^0-9A-Za-z]/g,"")}-U${String(v196WorksheetUnit(w)||1).padStart(2,"0")}`;
   const dueText=w.due_at?new Date(w.due_at).toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}):"____________";
   const maxScore=(w.questions||[]).reduce((n,q)=>n+Number(q.points||0),0)||10,showScore=isAdmin(),link=`${location.origin}${location.pathname}?worksheet=${encodeURIComponent(w.id)}`;
   const qs=w.questions||[],pageCount=Math.max(2,Number(w.settings?.page_count||2)),per=Math.max(1,Math.ceil(qs.length/pageCount)),pages=[];
@@ -1320,6 +1381,7 @@ window.DOCNR_BASE = Object.freeze({
   navigate:navigateUnified,
   openWorksheet,
   printWorksheet,
+  printSubjectWorksheetPack,
   paperTokensDialog
 });
 
