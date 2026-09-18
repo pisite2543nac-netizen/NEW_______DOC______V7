@@ -984,7 +984,9 @@ function gradeSummaryRows(rows){
     work:scoreText(x.work_score),
     mid:scoreText(x.midterm_score),
     final:scoreText(x.final_score),
-    total:scoreText(x.total_score)
+    total:scoreText(x.total_score),
+    grade:scoreText(x.grade_value),
+    result:x.pass_status||((Number(x.total_score||0)>=50)?"ผ่าน":"ไม่ผ่าน")
   }));
 }
 function gradeSummaryTableHtml(subject,rows,cfg,forExcel=false){
@@ -1001,13 +1003,13 @@ function gradeSummaryTableHtml(subject,rows,cfg,forExcel=false){
     td{border:1px solid #333;font-size:13px;padding:6px 5px;vertical-align:middle}
     td.c{text-align:center}.code{mso-number-format:"\\@"}.group{mso-number-format:"\\@"}
   </style>`:"";
-  const colgroup=`<colgroup><col style="width:6%"><col style="width:14%"><col style="width:26%"><col style="width:18%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup>`;
+  const colgroup=`<colgroup><col style="width:5%"><col style="width:12%"><col style="width:22%"><col style="width:14%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:4%"><col style="width:8%"></colgroup>`;
   return `${style}<table class="report v162-grade-report-table">${colgroup}
-    <tr class="title"><td colspan="9">ภาคเรียนที่ ${excelEsc(sem)} ปีการศึกษา ${excelEsc(year)}</td></tr>
-    <tr class="subtitle"><td colspan="9">รหัสวิชา : ${excelEsc(subject.code||"")} : ${excelEsc(subject.name||"")}</td></tr>
-    <tr class="space"><td colspan="9"></td></tr>
-    <tr><th>ลำดับ</th><th>รหัสนักเรียนนักศึกษา</th><th>ชื่อ-สกุล</th><th>กลุ่มเรียน</th><th>จิตพิสัย(${scoreText(cfg.behavior_points||20)})</th><th>ภาระงาน(${scoreText(cfg.work_points||40)})</th><th>กลางภาค(${scoreText(cfg.midterm_points||20)})</th><th>ปลายภาค(${scoreText(cfg.final_points||20)})</th><th>รวม(100)</th></tr>
-    ${data.map(x=>`<tr><td class="c">${x.no}</td><td class="c code">${excelEsc(x.code)}</td><td>${excelEsc(x.name)}</td><td class="group">${excelEsc(x.group)}</td><td class="c">${x.behavior}</td><td class="c">${x.work}</td><td class="c">${x.mid}</td><td class="c">${x.final}</td><td class="c"><b>${x.total}</b></td></tr>`).join("")}
+    <tr class="title"><td colspan="11">ภาคเรียนที่ ${excelEsc(sem)} ปีการศึกษา ${excelEsc(year)}</td></tr>
+    <tr class="subtitle"><td colspan="11">รหัสวิชา : ${excelEsc(subject.code||"")} : ${excelEsc(subject.name||"")}</td></tr>
+    <tr class="space"><td colspan="11"></td></tr>
+    <tr><th>ลำดับ</th><th>รหัสนักเรียนนักศึกษา</th><th>ชื่อ-สกุล</th><th>กลุ่มเรียน</th><th>จิตพิสัย(20)</th><th>ภาระงาน 17 งาน(40)</th><th>กลางภาค(20)</th><th>ปลายภาค(20)</th><th>รวม(100)</th><th>เกรด</th><th>ผล</th></tr>
+    ${data.map(x=>`<tr><td class="c">${x.no}</td><td class="c code">${excelEsc(x.code)}</td><td>${excelEsc(x.name)}</td><td class="group">${excelEsc(x.group)}</td><td class="c">${x.behavior}</td><td class="c">${x.work}</td><td class="c">${x.mid}</td><td class="c">${x.final}</td><td class="c"><b>${x.total}</b></td><td class="c"><b>${x.grade}</b></td><td class="c">${excelEsc(x.result)}</td></tr>`).join("")}
   </table>`;
 }
 function exportGradeSummaryExcel(subject,rows,cfg){
@@ -1072,7 +1074,7 @@ async function renderSubjectGradebook(sid){
   const c=client();
   const [sr,gr,cr,er,detail]=await Promise.all([
     c.from("subjects").select("id,code,name,academic_year,semester").eq("id",sid).single(),
-    c.rpc("admin_subject_gradebook",{p_subject_id:sid}),
+    c.rpc("admin_subject_gradebook_v193",{p_subject_id:sid}),
     c.from("subject_grade_settings").select("*").eq("subject_id",sid).maybeSingle(),
     c.from("exams").select("id,title,exam_kind,status,full_score").eq("subject_id",sid).order("created_at",{ascending:false}),
     loadSubjectWorkDetailData(sid)
@@ -1088,25 +1090,27 @@ async function renderSubjectGradebook(sid){
   const fullWork=rows.filter(x=>Number(x.assigned_work_count||0)>0&&Number(x.completed_work_count||0)>=Number(x.assigned_work_count||0)).length;
   const body=rows.map((x,i)=>`<tr>
     <td>${i+1}</td><td><b>${esc(x.student_code||"-")}</b></td><td>${esc(x.full_name||"-")}</td><td>${esc(x.class_name||`${x.grade_level||""}${x.room_label||""}`)}</td>
-    <td><b>${x.completed_work_count}/${x.assigned_work_count}</b><small>${Number(x.work_score||0).toFixed(2)}/${Number(x.work_points||40)}</small></td>
-    <td><button class="v16-score-edit" data-v16-behavior="${x.user_id}" data-score="${Number(x.behavior_score||0)}">${Number(x.behavior_score||0).toFixed(2)}/${Number(x.behavior_points||20)}</button></td>
-    <td>${Number(x.midterm_score||0).toFixed(2)}/${Number(x.midterm_points||20)}</td>
-    <td>${Number(x.final_score||0).toFixed(2)}/${Number(x.final_points||20)}</td>
+    <td><b>${Number(x.work_score||0).toFixed(2)}/40</b><small>ส่ง/ตรวจ ${Number(x.completed_work_count||0)}/17 งาน</small></td>
+    <td><button class="v193-score-cell" data-v193-edit="${x.user_id}" title="ปรับคะแนนจิตพิสัย">${Number(x.behavior_score||0).toFixed(2)}/20 <span>✎</span></button></td>
+    <td><button class="v193-score-cell" data-v193-edit="${x.user_id}" title="เพิ่ม/ลดคะแนนดิบกลางภาค"><b>${Number(x.midterm_score||0).toFixed(2)}/20</b><small>ดิบ ${Number(x.midterm_raw_score||0).toFixed(2)}/${Number(x.midterm_raw_max||20).toFixed(0)}${Number(x.midterm_adjustment||0)?` (${Number(x.midterm_adjustment)>0?"+":""}${Number(x.midterm_adjustment).toFixed(2)})`:""}</small></button></td>
+    <td><button class="v193-score-cell" data-v193-edit="${x.user_id}" title="เพิ่ม/ลดคะแนนดิบปลายภาค"><b>${Number(x.final_score||0).toFixed(2)}/20</b><small>ดิบ ${Number(x.final_raw_score||0).toFixed(2)}/${Number(x.final_raw_max||20).toFixed(0)}${Number(x.final_adjustment||0)?` (${Number(x.final_adjustment)>0?"+":""}${Number(x.final_adjustment).toFixed(2)})`:""}</small></button></td>
     <td><strong>${Number(x.total_score||0).toFixed(2)}</strong></td>
+    <td><span class="v193-grade-badge">${Number(x.grade_value||0).toFixed(1)}</span></td>
+    <td><span class="v193-pass-pill ${x.pass_status==="ผ่าน"?"pass":"fail"}">${esc(x.pass_status||"-")}</span></td>
   </tr>`).join("");
   content().innerHTML=`<section class="v14-page v16-gradebook-page">
     <div class="v16-no-print"><button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button></div>
     <div class="v16-print-head v16-no-print"><img src="./icons/icon-192.png" alt=""><div><span>วิทยาลัยเทคนิคนางรอง</span><h1>สรุปผลคะแนนรายวิชา</h1><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} ภาคเรียน ${esc(subject.semester||"-")}</p></div></div>
     <div class="v16-summary-kpis v16-no-print"><div><span>นักศึกษา</span><b>${rows.length}</b></div><div><span>ส่งงานครบ</span><b>${fullWork}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>คะแนนเต็ม</span><b>100</b></div></div>
-    <div class="v16-grade-rules v16-no-print"><b>เกณฑ์คะแนน</b><span>งาน ${cfg.work_points} • จิตพิสัย ${cfg.behavior_points} • สอบกลางภาค ${cfg.midterm_points} • สอบปลายภาค ${cfg.final_points}</span><small>คะแนนงานคำนวณจากคะแนนที่ครูตรวจจริง • Digital/Paper คู่เดียวกันนับ 1 งาน • งานย้อนหลังมีเครดิตสูงสุด 50% • งานที่ส่งแต่ยังไม่ตรวจยังไม่ถูกนับเป็นคะแนน</small></div>
+    <div class="v16-grade-rules v16-no-print"><b>เกณฑ์คะแนน V19.3</b><span>ใบงาน 17 งาน = 40 • จิตพิสัย = 20 • กลางภาค = 20 • ปลายภาค = 20 • รวม 100</span><small>คะแนนใบงานคิดค่าเฉลี่ยจากทั้ง 17 หน่วยแล้วแปลงเป็น 40 คะแนน โดยใช้คะแนนที่ครูตรวจจริง • Digital/Paper หน่วยเดียวกันนับ 1 งาน • งานย้อนหลังมีเครดิตสูงสุด 50% • เกรด: 80=4, 75=3.5, 70=3, 65=2.5, 60=2, 55=1.5, 50=1, ต่ำกว่า 50=0</small></div>
     <div class="v16-grade-actions v16-no-print">
-      <button class="btn" id="v16-grade-settings">⚙️ ตั้งค่าองค์ประกอบคะแนน</button>
+      <button class="btn" id="v16-grade-settings">⚙️ เลือกชุดสอบกลาง/ปลายภาค</button>
       <button class="btn" id="v162-grade-excel">⬇️ ดาวน์โหลด Excel</button>
       <button class="btn primary" id="v16-grade-print">🖨️ พิมพ์สรุปคะแนน</button>
       <span class="v16-live-pill"><i></i> Real-time</span>
     </div>
 
-    <div class="table-wrap v16-grade-table v16-no-print"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th><th>งาน ${cfg.work_points}</th><th>จิตพิสัย ${cfg.behavior_points}</th><th>กลางภาค ${cfg.midterm_points}</th><th>ปลายภาค ${cfg.final_points}</th><th>รวม 100</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">ยังไม่มีนักศึกษาที่อนุมัติในห้องเรียนนี้</td></tr>`}</tbody></table></div>
+    <div class="table-wrap v16-grade-table v16-no-print"><table><thead><tr><th>#</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ห้อง</th><th>งาน 17 งาน / 40</th><th>จิตพิสัย / 20</th><th>กลางภาค / 20</th><th>ปลายภาค / 20</th><th>รวม 100</th><th>เกรด</th><th>ผล</th></tr></thead><tbody>${body||`<tr><td colspan="11" class="empty">ยังไม่มีนักศึกษาที่อนุมัติในห้องเรียนนี้</td></tr>`}</tbody></table></div>
 
     <section class="v162-web-work-details v16-no-print">
       <div class="v162-detail-head"><div><span>ADMIN ONLY</span><h2>รายละเอียดงานที่นำมาคิดคะแนน</h2><p>ดูว่านักศึกษาแต่ละคนได้รับงานใด ส่งแล้ว/ส่งช้า/ยังไม่ส่งอย่างไร รายละเอียดนี้ไม่แสดงในรายงานที่พิมพ์หรือดาวน์โหลด</p></div><div class="v162-detail-kpi">งานคู่ที่ถูกมอบหมาย <b>${detail.works.length}</b> รายการ</div></div>
@@ -1118,13 +1122,8 @@ async function renderSubjectGradebook(sid){
   $("#v16-grade-print").onclick=()=>window.print();
   $("#v162-grade-excel").onclick=()=>exportGradeSummaryExcel(subject,rows,cfg);
   $("#v16-grade-settings").onclick=()=>gradeSettingsDialog(sid,cfg,exams);
-  $$("[data-v16-behavior]").forEach(b=>b.onclick=async()=>{
-    const max=Number(cfg.behavior_points||20);
-    const val=prompt(`คะแนนจิตพิสัย 0–${max}`,String(b.dataset.score||max));if(val===null)return;
-    const score=Number(val);if(!Number.isFinite(score)||score<0||score>max){toast(`คะแนนต้องอยู่ระหว่าง 0–${max}`,true);return}
-    const note=prompt("หมายเหตุ (ไม่บังคับ)","")||null;
-    const r=await c.rpc("admin_set_behavior_score",{p_subject_id:sid,p_user_id:b.dataset.v16Behavior,p_score:score,p_note:note});
-    if(r.error){toast(errorText(r.error),true);return}toast("บันทึกคะแนนจิตพิสัยแล้ว");renderSubjectGradebook(sid);
+  $$('[data-v193-edit]').forEach(b=>b.onclick=()=>{
+    const row=rows.find(x=>x.user_id===b.dataset.v193Edit);if(row)gradeStudentScoreDialogV193(sid,row,cfg);
   });
   const rt=await realtimeClient();if(rt){
     const refresh=()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.subjectId===sid&&!$("#v14-overlay"))renderSubjectGradebook(sid).catch(()=>{})},1000)};
@@ -1138,23 +1137,46 @@ async function renderSubjectGradebook(sid){
 }
 function gradeSettingsDialog(sid,cfg,exams){
   const mids=exams.filter(x=>x.exam_kind==="midterm"),finals=exams.filter(x=>x.exam_kind==="final");
-  overlay(`<div class="v14-modal-head"><div><h2>ตั้งค่าองค์ประกอบคะแนน</h2><p>ค่าแนะนำและค่าเริ่มต้นคือ 40 / 20 / 20 / 20 รวม 100 คะแนน</p></div><button class="btn" data-v14-close>✕</button></div>
+  overlay(`<div class="v14-modal-head"><div><h2>เลือกชุดสอบสำหรับรวมคะแนน</h2><p>สัดส่วนคะแนนถูกล็อกตามเกณฑ์: งาน 40 • จิตพิสัย 20 • กลางภาค 20 • ปลายภาค 20</p></div><button class="btn" data-v14-close>✕</button></div>
   <form id="v16-grade-settings-form" class="v16-form-stack">
-    <div class="v14-form-grid">
-      <label>งาน<input class="input" name="work" type="number" min="0" max="100" step=".01" value="${cfg.work_points??40}"></label>
-      <label>จิตพิสัย<input class="input" name="behavior" type="number" min="0" max="100" step=".01" value="${cfg.behavior_points??20}"></label>
-      <label>กลางภาค<input class="input" name="midterm" type="number" min="0" max="100" step=".01" value="${cfg.midterm_points??20}"></label>
-      <label>ปลายภาค<input class="input" name="final" type="number" min="0" max="100" step=".01" value="${cfg.final_points??20}"></label>
-    </div>
-    <label>คะแนนจิตพิสัยเริ่มต้น<input class="input" name="defaultBehavior" type="number" min="0" max="20" step=".01" value="${cfg.default_behavior_score??20}"></label>
-    <label>ชุดสอบกลางภาค<select class="input" name="midExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${mids.map(x=>`<option value="${x.id}" ${x.id===cfg.midterm_exam_id?"selected":""}>${esc(x.title)}</option>`).join("")}</select></label>
-    <label>ชุดสอบปลายภาค<select class="input" name="finalExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${finals.map(x=>`<option value="${x.id}" ${x.id===cfg.final_exam_id?"selected":""}>${esc(x.title)}</option>`).join("")}</select></label>
-    <div class="row end"><button class="btn primary">บันทึก</button></div>
+    <div class="alert info"><b>คะแนนรวม 100 คะแนน</b><div>ใบงาน 17 งานเฉลี่ยรวมเป็น 40 คะแนน และระบบตัดเกรดอัตโนมัติจากคะแนนรวม</div></div>
+    <label>ชุดสอบกลางภาค<select class="input" name="midExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${mids.map(x=>`<option value="${x.id}" ${x.id===cfg.midterm_exam_id?"selected":""}>${esc(x.title)} • เต็ม ${scoreText(x.full_score||20)}</option>`).join("")}</select></label>
+    <label>ชุดสอบปลายภาค<select class="input" name="finalExam"><option value="">เลือกอัตโนมัติจากชุดล่าสุด</option>${finals.map(x=>`<option value="${x.id}" ${x.id===cfg.final_exam_id?"selected":""}>${esc(x.title)} • เต็ม ${scoreText(x.full_score||20)}</option>`).join("")}</select></label>
+    <div class="row end"><button class="btn primary">บันทึกชุดสอบ</button></div>
   </form>`);
   $("#v16-grade-settings-form").onsubmit=async e=>{
-    e.preventDefault();const f=new FormData(e.target),vals=["work","behavior","midterm","final"].map(k=>Number(f.get(k)));if(Math.abs(vals.reduce((a,b)=>a+b,0)-100)>.001){toast("องค์ประกอบคะแนนต้องรวม 100",true);return}
-    const r=await client().rpc("admin_set_subject_grade_settings",{p_subject_id:sid,p_work_points:vals[0],p_behavior_points:vals[1],p_midterm_points:vals[2],p_final_points:vals[3],p_default_behavior_score:Number(f.get("defaultBehavior")||20),p_midterm_exam_id:String(f.get("midExam")||"")||null,p_final_exam_id:String(f.get("finalExam")||"")||null});
-    if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกเกณฑ์คะแนนแล้ว");renderSubjectGradebook(sid);
+    e.preventDefault();const f=new FormData(e.target);
+    const r=await client().rpc("admin_set_subject_grade_settings",{p_subject_id:sid,p_work_points:40,p_behavior_points:20,p_midterm_points:20,p_final_points:20,p_default_behavior_score:20,p_midterm_exam_id:String(f.get("midExam")||"")||null,p_final_exam_id:String(f.get("finalExam")||"")||null});
+    if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกชุดสอบแล้ว");renderSubjectGradebook(sid);
+  };
+}
+function v193StepInput(name,label,value,min,max,help=""){
+  return `<div class="v193-score-panel"><div><b>${esc(label)}</b>${help?`<small>${esc(help)}</small>`:""}</div><div class="v193-stepper"><button class="btn sm" type="button" data-v193-step="-1" data-target="${name}">−1</button><input class="input" name="${name}" type="number" step="0.01" min="${min}" max="${max}" value="${Number(value||0).toFixed(2)}"><button class="btn sm" type="button" data-v193-step="1" data-target="${name}">+1</button></div></div>`;
+}
+function gradeStudentScoreDialogV193(sid,row,cfg){
+  const midMax=Number(row.midterm_raw_max||20),finMax=Number(row.final_raw_max||20),midBase=Number(row.midterm_base_raw||0),finBase=Number(row.final_base_raw||0);
+  overlay(`<div class="v14-modal-head"><div><h2>ปรับคะแนนรายบุคคล</h2><p>${esc(row.student_code||"")} • ${esc(row.full_name||"")}</p></div><button class="btn" data-v14-close>✕</button></div>
+  <form id="v193-score-form" class="v16-form-stack v193-score-form">
+    <div class="v193-score-summary"><span>งาน <b>${Number(row.work_score||0).toFixed(2)}/40</b></span><span>รวมปัจจุบัน <b>${Number(row.total_score||0).toFixed(2)}/100</b></span><span>เกรด <b>${Number(row.grade_value||0).toFixed(1)}</b></span></div>
+    ${v193StepInput("behavior","จิตพิสัย",row.behavior_score,0,20,"กำหนดได้ 0–20 คะแนน")}
+    ${v193StepInput("midRaw","คะแนนดิบกลางภาค",row.midterm_raw_score,0,midMax,`คะแนนจากระบบ ${midBase.toFixed(2)} / ${midMax.toFixed(2)} • ปรับเพิ่ม/ลดได้`)}
+    ${v193StepInput("finalRaw","คะแนนดิบปลายภาค",row.final_raw_score,0,finMax,`คะแนนจากระบบ ${finBase.toFixed(2)} / ${finMax.toFixed(2)} • ปรับเพิ่ม/ลดได้`)}
+    <div class="v193-reset-row"><button type="button" class="btn" id="v193-reset-mid">คืนค่ากลางภาคจากระบบ</button><button type="button" class="btn" id="v193-reset-final">คืนค่าปลายภาคจากระบบ</button></div>
+    <label>หมายเหตุการปรับคะแนน<textarea class="input" name="note" rows="2" placeholder="เช่น แก้คะแนนตามหลักฐาน / เพิ่มคะแนนกิจกรรม / หักคะแนนตามเงื่อนไข"></textarea></label>
+    <div class="alert warn"><b>การปรับคะแนนสอบเป็น “คะแนนดิบ”</b><div>ระบบจะนำคะแนนดิบหลังปรับไปแปลงเป็นกลางภาค 20 และปลายภาค 20 อัตโนมัติ พร้อมบันทึก Audit Log</div></div>
+    <div class="row end"><button class="btn primary">บันทึกและคำนวณใหม่</button></div>
+  </form>`);
+  const form=$("#v193-score-form");
+  $$('[data-v193-step]').forEach(btn=>btn.onclick=()=>{const el=form.elements[btn.dataset.target];if(!el)return;const min=Number(el.min||0),max=Number(el.max||9999),next=Math.min(max,Math.max(min,Number(el.value||0)+Number(btn.dataset.v193Step||0)));el.value=next.toFixed(2)});
+  $("#v193-reset-mid").onclick=()=>{form.elements.midRaw.value=midBase.toFixed(2)};
+  $("#v193-reset-final").onclick=()=>{form.elements.finalRaw.value=finBase.toFixed(2)};
+  form.onsubmit=async e=>{
+    e.preventDefault();const f=new FormData(form),behavior=Number(f.get("behavior")),midRaw=Number(f.get("midRaw")),finalRaw=Number(f.get("finalRaw"));
+    if(!Number.isFinite(behavior)||behavior<0||behavior>20){toast("จิตพิสัยต้องอยู่ระหว่าง 0–20",true);return}
+    if(!Number.isFinite(midRaw)||midRaw<0||midRaw>midMax){toast(`คะแนนดิบกลางภาคต้องอยู่ระหว่าง 0–${midMax}`,true);return}
+    if(!Number.isFinite(finalRaw)||finalRaw<0||finalRaw>finMax){toast(`คะแนนดิบปลายภาคต้องอยู่ระหว่าง 0–${finMax}`,true);return}
+    const r=await client().rpc("admin_adjust_subject_scores_v193",{p_subject_id:sid,p_user_id:row.user_id,p_behavior_score:behavior,p_midterm_delta:Number((midRaw-midBase).toFixed(2)),p_final_delta:Number((finalRaw-finBase).toFixed(2)),p_note:String(f.get("note")||"")||null});
+    if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกคะแนนและคำนวณเกรดใหม่แล้ว");renderSubjectGradebook(sid);
   };
 }
 
@@ -1300,3 +1322,5 @@ function cleanup(){
 window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V18.6-ROOM-WORK-CHECKLIST-AUDITED"});
 window.addEventListener("pagehide",cleanup);
 boot().catch(e=>console.error("DOC-FULL-NR V16.6 boot",e));
+
+// Compatibility marker: admin_set_behavior_score (superseded by admin_adjust_subject_scores_v193 in V19.3).

@@ -1,4 +1,4 @@
-/* DOC-FULL-NR V19.2 — Production UX/UI layer
+/* DOC-FULL-NR V19.3 — Production UX/UI + Gradebook layer
    Loaded last. Presentation only; business logic remains untouched. */
 :root{
   --ux-green-900:#123c2b;--ux-green-800:#18563a;--ux-green-700:#1f7a4f;--ux-green-600:#25945d;--ux-green-500:#32a96c;
@@ -100,3 +100,15 @@ html[data-theme="dark"] th{background:#1a3024!important;color:#d8eee0!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 @media (prefers-contrast:more){.card,.btn,.input,input,select,textarea,.table-wrap{border-width:2px!important}.muted{color:color-mix(in srgb,var(--ux-text) 72%,transparent)!important}}
 @media print{.docnr-mobile-bottom-nav,.docnr-sidebar-backdrop{display:none!important}}
+
+/* V19.3 gradebook — 17 units / 40 + editable raw exam scores + grade cut */
+.v193-score-cell{display:grid;gap:3px;width:100%;min-width:108px;padding:7px 9px;border:1px solid var(--ux-line);border-radius:11px;background:var(--ux-surface);color:var(--ux-text);text-align:center;cursor:pointer;transition:.18s ease}
+.v193-score-cell:hover{border-color:var(--ux-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--ux-primary) 12%,transparent);transform:translateY(-1px)}
+.v193-score-cell small{font-size:.72rem;color:var(--ux-muted);line-height:1.25}.v193-score-cell>span{font-size:.78rem;color:var(--ux-primary)}
+.v193-grade-badge{display:inline-grid;place-items:center;min-width:42px;height:34px;padding:0 9px;border-radius:999px;background:color-mix(in srgb,var(--ux-primary) 12%,var(--ux-surface));color:var(--ux-primary);font-weight:900}
+.v193-pass-pill{display:inline-flex;align-items:center;justify-content:center;min-width:68px;padding:7px 10px;border-radius:999px;font-weight:800;font-size:.82rem}.v193-pass-pill.pass{background:#e7f7ed;color:#176b3a}.v193-pass-pill.fail{background:#fff0f0;color:#b42318}
+.v193-score-form{min-width:min(680px,92vw)}.v193-score-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.v193-score-summary span{padding:12px 14px;border:1px solid var(--ux-line);border-radius:14px;background:var(--ux-surface-2);color:var(--ux-muted)}.v193-score-summary b{display:block;margin-top:3px;color:var(--ux-text);font-size:1.08rem}
+.v193-score-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,320px);gap:14px;align-items:center;padding:14px;border:1px solid var(--ux-line);border-radius:16px;background:var(--ux-surface)}.v193-score-panel>div:first-child{display:grid;gap:4px}.v193-score-panel small{color:var(--ux-muted);line-height:1.45}.v193-stepper{display:grid;grid-template-columns:auto minmax(90px,1fr) auto;gap:8px;align-items:center}.v193-stepper .input{text-align:center;font-weight:800}.v193-reset-row{display:flex;gap:10px;flex-wrap:wrap}
+.v16-grade-table table{min-width:1180px}.v16-grade-table th{white-space:nowrap}.v16-grade-table td{vertical-align:middle}
+@media(max-width:760px){.v193-score-summary{grid-template-columns:1fr}.v193-score-panel{grid-template-columns:1fr}.v193-stepper{grid-template-columns:72px minmax(80px,1fr) 72px}.v193-reset-row .btn{flex:1}.v193-score-form{min-width:0;width:100%}}
+@media(prefers-reduced-motion:reduce){.v193-score-cell{transition:none}.v193-score-cell:hover{transform:none}}

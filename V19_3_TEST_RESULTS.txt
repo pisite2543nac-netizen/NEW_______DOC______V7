@@ -1,0 +1,151 @@
+== tests/static_validation.py ==
+STATIC VALIDATION PASS
+release=V17 MASTER FLOW; active_files= 15 manifest_icons= 6 router_owner=app.js
+== tests/unified_contract.py ==
+MASTER FLOW CONTRACT PASS
+admin main routes= 8 user main routes= 7 single router owner=app.js
+== tests/button_contract.py ==
+BUTTON CONTRACT PASS
+critical actions= 27 obsolete sequential-bypass controls=0
+== tests/course_code_contract.py ==
+COURSE CODE CONTRACT PASS
+== tests/branding_contract.py ==
+V17.2 BRANDING CONTRACT PASS
+== tests/runtime_v173_contract.py ==
+V17.3 RUNTIME CONTRACT PASS
+== tests/learning_content_v174_contract.py ==
+V17.4 LEARNING CONTENT CONTRACT PASS
+== tests/v175_workpair_contract.py ==
+V17.5 WORKPAIR CONTRACT PASS
+== tests/v176_fullset_contract.py ==
+V17.6 FULLSET CONTRACT PASS
+== tests/v1761_icon_contract.py ==
+V17.6.1 ICON CONTRACT PASS
+== tests/v177_transaction_contract.py ==
+V17.7 TRANSACTION CONTRACT PASS
+== tests/v178_notification_contract.py ==
+V17.8 NOTIFICATION CONTRACT PASS
+== tests/v179_full_system_hardening_contract.py ==
+V17.9 FULL SYSTEM HARDENING CONTRACT PASS
+== tests/v181_complete_learning_system_contract.py ==
+V18.1 COMPLETE LEARNING SYSTEM CONTRACT PASS
+subjects=11 exam_questions=550 paper=multi-page profile=detail course_code=V18 offline=IndexedDB
+== tests/v182_complete_system_final_contract.py ==
+V18.2 COMPLETE SYSTEM FINAL CONTRACT PASS; questions=550 subjects=11 paper=multi-page course-code=working profile=working
+== tests/v19_classroom_flow_contract.py ==
+class_leader_button: PASS
+digital_access_guard: PASS
+attendance_error: PASS
+admin_schedule_button: PASS
+exact_datetime: PASS
+duration_hours: PASS
+unlock_v19: PASS
+update_schedule_v19: PASS
+large_actions: PASS
+light_course_ui: PASS
+backend_gate_helper: PASS
+backend_submit_trigger: PASS
+existing_backfill: PASS
+V19 CLASSROOM FLOW CONTRACT PASS
+== tests/v191_complete_user_requests_contract.py ==
+green_white_theme: PASS
+night_mode: PASS
+responsive_mobile: PASS
+classroom_leader_admin: PASS
+vocational_major_mapping: PASS
+major_mapping_backend: PASS
+room_work_checklist: PASS
+room_work_excel_print: PASS
+exam_550: PASS
+unit_schedule_admin: PASS
+schedule_exact_datetime: PASS
+schedule_hours: PASS
+deadline_to_paper: PASS
+attendance_gate_client: PASS
+attendance_gate_backend: PASS
+unit_slides: PASS
+large_action_tiles: PASS
+paper_scan: PASS
+gradebook: PASS
+security_hardening: PASS
+V19.1 COMPLETE USER REQUESTS CONTRACT PASS
+== tests/v1913_responsive_fit_contract.py ==
+fit css before production ui: PASS
+full width content: PASS
+fluid sidebar: PASS
+tablet drawer: PASS
+mobile layout: PASS
+table internal scroll: PASS
+zoom compensation: PASS
+service worker cache: PASS
+V19.1.3 RESPONSIVE FIT COMPATIBILITY CONTRACT PASS
+== tests/v192_production_ux_contract.py ==
+production ui loaded last: PASS
+ux runtime loaded: PASS
+green theme: PASS
+dark theme: PASS
+phone bottom nav: PASS
+tablet drawer backdrop: PASS
+touch targets: PASS
+reduced motion: PASS
+high contrast: PASS
+safe area: PASS
+compact laptop: PASS
+table accessibility: PASS
+responsive state: PASS
+version label: PASS
+V19.2 PRODUCTION UX CONTRACT PASS
+== tests/v193_gradebook_contract.py ==
+17 official units: PASS
+fixed 40 20 20 20: PASS
+new gradebook rpc: PASS
+manual score rpc: PASS
+audit adjustment: PASS
+raw mid final controls: PASS
+automatic grade: PASS
+pass fail: PASS
+export grade result: PASS
+responsive score ui: PASS
+version: PASS
+V19.3 GRADEBOOK CONTRACT PASS
+JS site/app.js
+JS site/camera-registration.js
+JS site/mobile.js
+JS site/v16-platform.js
+JS site/v16-7-hardening.js
+JS site/v16-8-course-flow.js
+JS site/v19-ux-runtime.js
+JS site/v16-exam.js
+JS site/sw.js
+JS site/v18-supabase.js
+JS site/v18-offline.js
+== tests/browser_contract.py ==
+BROWSER CONTRACT PASS
+dashboard direct route -> students hub -> users route bridge PASS
+== tests/course_code_browser_contract.py ==
+COURSE CODE BROWSER CONTRACT PASS
+Admin registry -> copy/change controls -> student CODE -> direct course room PASS
+== tests/real_use_browser_contract.py ==
+REAL USE BROWSER CONTRACT PASS
+== tests/v181_core_browser_contract.py ==
+V18.1 CORE BROWSER CONTRACT PASS
+Admin profile modal + fixed overlay + top-level Paper Scan hub PASS
+== tests/v186_room_work_checklist_browser_contract.py ==
+V18.6 ROOM CHECKLIST BROWSER CONTRACT PASS
+registration filters -> subject enrollment -> logical work-pair matrix -> named headers -> detail modal PASS
+== tests/v187_exam_admin_browser_contract.py ==
+V18.7 EXAM ADMIN BROWSER CONTRACT PASS
+Admin exam dashboard -> subject readiness -> 550-bank KPI -> exam set controls PASS
+== tests/v187_exam_source_adaptation_browser_contract.py ==
+V18.7 EXAM SOURCE ADAPTATION BROWSER CONTRACT PASS
+student assigned exams -> pre-exam instructions -> V18 start -> 50-question navigator -> answer/autosave UI PASS
+== tests/v1913_responsive_fit_browser_contract.py ==
+V19.1.3 RESPONSIVE FIT BROWSER CONTRACT PASS
+1920 / 1366 / 1024 / 768 / 390 viewport layout PASS
+== tests/v192_production_ux_browser_contract.py ==
+V19.2 PRODUCTION UX BROWSER CONTRACT PASS
+14 common viewport/orientation layouts PASS
+== tests/v193_gradebook_browser_contract.py ==
+V19.3 GRADEBOOK BROWSER CONTRACT PASS
+17-unit/40 score + raw mid/final adjustment + grade/pass UI PASS
+ALL_V193_TESTS_PASS

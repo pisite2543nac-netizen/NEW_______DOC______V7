@@ -1,4 +1,4 @@
-/* DOC-FULL-NR V19.2 production UX runtime — no business logic */
+/* DOC-FULL-NR V19.3 production UX runtime — no business logic */
 (()=>{
   const root=document.documentElement;
   const qs=(s,p=document)=>p.querySelector(s);
