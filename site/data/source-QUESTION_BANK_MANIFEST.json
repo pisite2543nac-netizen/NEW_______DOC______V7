@@ -149,5 +149,12 @@
     "frontend": "F8E3R7",
     "mobile": "M2B6X9",
     "computer-programming": "P5G8N4"
+  },
+  "v19_5_preset": {
+    "course_reference": 25,
+    "analysis_very_hard": 25,
+    "questions_per_subject": 50,
+    "subjects": 11,
+    "total_questions": 550
   }
 }

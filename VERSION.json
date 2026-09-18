@@ -1,5 +1,5 @@
 {
-  "release": "V19.4 CLASSROOM CONTROL + GLOBAL BACK • V19.3 GRADEBOOK 17-UNIT",
+  "release": "V19.5 READY-MADE EXAM PRESET 25+25 • V19.4 CLASSROOM CONTROL + GLOBAL BACK • V19.3 GRADEBOOK 17-UNIT",
   "date": "2026-09-18",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -21,8 +21,8 @@
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "19.4",
-  "notes": "V19.4 adds Admin open/close subject classrooms and a universal Back button for Admin/User while preserving V19.3 GRADEBOOK 17-UNIT scoring, manual score adjustment, audit logging, automatic grade and pass/fail.",
+  "version": "19.5",
+  "notes": "V19.5 adds ready-made 50-question exam presets for all 11 subjects: 25 course-reference questions plus 25 very-hard analytical/discrimination questions, with answer-choice giveaway wording removed from the analytical bank.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
@@ -51,8 +51,8 @@
   "system_hardening": "idempotent grading/exam/attendance/paper scan/unit unlock + assignment reconcile + integrity monitor",
   "exam_question_bank": 550,
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
-  "exam_bank_source": "ALL_Test_pisite2543nac.github.io-main(1).zip / initial-question-bank-all-subjects.json, SHA256 cc56e27cbb6f38f9aee094d7aa2ed382bd3497f22a7f72b536ab763e082fd284; copied byte-identically to site/data/exam-question-bank-v18.json",
-  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX compatibility + V19.3 gradebook contract + V19.4 classroom/back contract",
+  "exam_bank_source": "V19.5 curated from the original 550-question ALL_Test-adapted bank: 25 course-reference + 25 analytical per subject; hard-option giveaway wording removed; current SHA256 623e28853ce20354b9e8f3f80f3d08a0bbb0a606091426795123987089205aef",
+  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX compatibility + V19.3 gradebook contract + V19.4 classroom/back contract + V19.5 exam preset contract",
   "base_release": "V19.0 STABILIZED CLASSROOM FLOW",
   "v19_features": {
     "admin_class_leader_from_student_list": true,
@@ -103,5 +103,17 @@
     "audit_score_adjustment": true,
     "grade_cut": "80=4,75=3.5,70=3,65=2.5,60=2,55=1.5,50=1,<50=0",
     "pass_score": 50
-  }
+  },
+  "exam_preset": {
+    "subjects": 11,
+    "questions_per_subject": 50,
+    "course_reference_questions": 25,
+    "analysis_very_hard_questions": 25,
+    "duration_minutes": 75,
+    "full_score": 20,
+    "choices_per_question": 4,
+    "student_score_visible": false,
+    "answer_key_visible": false
+  },
+  "exam_bank_sha256": "623e28853ce20354b9e8f3f80f3d08a0bbb0a606091426795123987089205aef"
 }

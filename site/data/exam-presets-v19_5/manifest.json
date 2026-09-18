@@ -1,0 +1,87 @@
+{
+  "version": "V19.5",
+  "preset": "25_course_25_analysis_very_hard",
+  "total_subjects": 11,
+  "questions_per_subject": 50,
+  "course_questions": 25,
+  "analysis_questions": 25,
+  "subjects": [
+    {
+      "code": "20001-1001",
+      "name": "สุขภาพความปลอดภัยและสิ่งแวดล้อม",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "20001-1004",
+      "name": "กฎหมายแรงงาน",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "21900-1005",
+      "name": "เครือข่ายคอมพิวเตอร์",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "21901-2008",
+      "name": "การออกแบบส่วนติดต่อผู้ใช้",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "21901-2017",
+      "name": "เทคโนโลยีการนำเข้าข้อมูลเข้าสู่ระบบคอมพิวเตอร์",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "21901-2020",
+      "name": "ปฏิบัติงานบริการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "21910-2010",
+      "name": "การเขียนโปรแกรมภาษาคอมพิวเตอร์",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "31901-2001",
+      "name": "การออกแบบส่วนติดต่อผู้ใช้ขั้นสูง",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "31901-2004",
+      "name": "การพัฒนาซอฟต์แวร์ด้วยเทคโนโลยี Front-End",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "31901-2009",
+      "name": "การพัฒนาซอฟต์แวร์สำหรับอุปกรณ์เคลื่อนที่",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    },
+    {
+      "code": "31910-0004",
+      "name": "การเขียนโปรแกรมคอมพิวเตอร์",
+      "questions": 50,
+      "course": 25,
+      "analysis": 25
+    }
+  ]
+}
