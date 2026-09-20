@@ -1,0 +1,38 @@
+DOC-FULL-NR V19.7 TEST RESULTS — 2026-09-20
+
+SOURCE AUDIT
+PASS  User-provided Code Typing Academy archive inspected
+PASS  562 files / ~141 MB / 100 academic stages identified
+PASS  Firebase/PVP/chat/cosmetic systems not imported into DOC-FULL-NR runtime
+
+STATIC / SYNTAX
+PASS  site/v19-programming-activity.js node --check
+PASS  site/v16-platform.js node --check
+PASS  site/sw.js node --check
+PASS  programming-activity-v197.json JSON parse
+PASS  VERSION.json JSON parse
+PASS  V19.7 programming activity contract
+PASS  V19.6 print system contract
+PASS  V19.5 exam preset contract
+PASS  previous static regression contracts through V19 classroom flow
+
+BROWSER
+PASS  V19.7 programming activity: 1366x768, 1024x768, 768x1024, 390x844, 844x390
+PASS  V19.6 print system desktop/mobile + print-media
+PASS  V19.3 gradebook browser
+PASS  V19.2 production UX 14 viewport/orientation regression
+
+PRODUCTION BACKEND
+PASS  100 stages = HTML 50 + Python 50
+PASS  Official Challenge = 30 stages / 40 activity points
+PASS  6 default Teacher Quests
+PASS  Direct authenticated table writes/reads revoked for core activity tables
+PASS  Anonymous start/admin RPC execution denied
+PASS  Student transaction/rollback flow: home -> progress -> start session -> submit stage
+PASS  Rollback confirmed attempts=0, sessions=0
+PASS  Admin dashboard ambiguity discovered and fixed in v19_7_2
+
+IMPORTANT
+- V19.7 activity points remain separate from the 100-point course grade.
+- Existing global Supabase advisor warnings remain; this release does not claim the entire project is warning-free.
+- Frontend V19.7 is not considered live until the one-click installer is run and GitHub Actions deployment succeeds.

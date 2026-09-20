@@ -1,6 +1,6 @@
 {
-  "release": "V19.6 PRODUCTION PRINT SYSTEM • SUBJECT COLOR IDENTITY • V19.5 READY-MADE EXAM 25+25",
-  "date": "2026-09-18",
+  "release": "V19.7 PROGRAMMING SPECIAL ACTIVITY • CODE TYPING ACADEMY • V19.6 PRINT SYSTEM",
+  "date": "2026-09-20",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
   "pages": "https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/",
@@ -21,7 +21,7 @@
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "19.6",
+  "version": "19.7",
   "notes": "V19.6 adds a production print center for Admin/User, consistent A4 portrait/landscape summary forms, subject-color identity across all 11 subjects, room grade summary, 17-unit checklist, attendance/exam summaries, individual reports, blank worksheets, a full cover+17-unit blank worksheet pack, personalized Paper worksheets with Barcode/QR, and server-authorized late Paper printing.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
@@ -139,5 +139,31 @@
     "student_answer_key_hidden": true,
     "full_blank_17_unit_pack": true,
     "subject_color_frontend_fallback": true
+  },
+  "programming_special_activity": {
+    "subject_code": "21910-2010",
+    "subject_name": "การเขียนโปรแกรมภาษาคอมพิวเตอร์",
+    "source": "Code Typing Academy V6.0.2 (adapted)",
+    "html_stages": 50,
+    "python_stages": 50,
+    "total_stages": 100,
+    "official_stages": 30,
+    "official_activity_points": 40,
+    "separate_from_course_grade_100": true,
+    "practice_mode": true,
+    "ranking_mode": true,
+    "teacher_quests": true,
+    "daily_focus": true,
+    "server_authoritative_sessions": true,
+    "server_hash_validation": true,
+    "supabase_auth_authoritative": true,
+    "excluded": [
+      "Firebase Auth/Firestore",
+      "PVP wagering",
+      "open-world chat/2D zone",
+      "large cosmetic shop/inventory assets"
+    ],
+    "admin_dashboard": true,
+    "user_activity_home": true
   }
 }

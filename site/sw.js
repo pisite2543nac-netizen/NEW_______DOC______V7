@@ -1,4 +1,5 @@
 // Compatibility markers: v19-responsive-fit.css?v=20260917-v19-2 | doc-full-nr-v19-2-production-ux-20260917
+// DOC-FULL-NR V19.7 programming special activity cache marker
 // V19.6 production print system cache marker
 // V19.5 exam preset 25+25 production cache marker
 // V19.4 classroom/back production cache marker
@@ -19,14 +20,14 @@
 // compatibility marker: doc-full-nr-v17-2-college-branding-20260915
 // DOC-FULL-NR V17.3 FULL SYSTEM cache
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v19-6-production-print-system-20260918";
+const CACHE="doc-full-nr-v19-7-programming-special-activity-20260920";
 const SHELL=[
   "./","./index.html","./exam.html",
-  "./styles.css?v=20260918-v19-6","./mobile.css?v=20260918-v19-6","./v18-core-ui.css?v=20260918-v19-6","./v16-minimal.css?v=20260918-v19-6",
-  "./v16-7-hardening.css?v=20260918-v19-6","./v16-8-course-flow.css?v=20260918-v19-6","./v19-responsive-fit.css?v=20260918-v19-6","./v19-production-ui.css?v=20260918-v19-6","./v19-print-system.css?v=20260918-v19-6","./v18-7-exam-adapted.css?v=20260918-v19-6",
-  "./camera-registration.js?v=20260918-v19-6","./app.js?v=20260918-v19-6","./mobile.js?v=20260918-v19-6","./v16-platform.js?v=20260918-v19-6",
-  "./v16-7-hardening.js?v=20260918-v19-6","./v16-8-course-flow.js?v=20260918-v19-6","./v16-exam.js?v=20260918-v19-6","./v19-ux-runtime.js?v=20260918-v19-6",
-  "./manifest.webmanifest?v=20260918-v19-6","./data/exam-question-bank-v18.json","./data/exam-question-bank-manifest-v18.json",
+  "./styles.css?v=20260920-v19-7","./mobile.css?v=20260920-v19-7","./v18-core-ui.css?v=20260920-v19-7","./v16-minimal.css?v=20260920-v19-7",
+  "./v16-7-hardening.css?v=20260920-v19-7","./v16-8-course-flow.css?v=20260920-v19-7","./v19-responsive-fit.css?v=20260920-v19-7","./v19-production-ui.css?v=20260920-v19-7","./v19-print-system.css?v=20260920-v19-7","./v19-programming-activity.css?v=20260920-v19-7","./v18-7-exam-adapted.css?v=20260920-v19-7",
+  "./camera-registration.js?v=20260920-v19-7","./app.js?v=20260920-v19-7","./mobile.js?v=20260920-v19-7","./v16-platform.js?v=20260920-v19-7",
+  "./v16-7-hardening.js?v=20260920-v19-7","./v16-8-course-flow.js?v=20260920-v19-7","./v16-exam.js?v=20260920-v19-7","./v19-programming-activity.js?v=20260920-v19-7","./v19-ux-runtime.js?v=20260920-v19-7",
+  "./manifest.webmanifest?v=20260920-v19-7","./data/programming-activity-v197.json","./data/exam-question-bank-v18.json","./data/exam-question-bank-manifest-v18.json",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png",
   "./favicon-v1761.ico","./favicon.ico","./icons/nangrong-favicon-16-v1761.png","./icons/nangrong-favicon-32-v1761.png","./icons/nangrong-favicon-48-v1761.png","./icons/nangrong-app-180-v1761.png","./icons/nangrong-app-192-v1761.png","./icons/nangrong-app-512-v1761.png","./icons/nangrong-maskable-512-v1761.png"
 ];
