@@ -1,4 +1,4 @@
-// DOC-FULL-NR V19.7 • Programming Special Activity / Code Typing Academy
+// DOC-FULL-NR V19.8 • Standalone Special Activities Hub / Code Typing Academy
 // Adapted from user-provided Code Typing Academy V6.0.2 without Firebase/PVP/chat/cosmetic dependencies.
 import { getClient, getUserId } from './v18-supabase.js';
 
@@ -8,7 +8,7 @@ const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtSec=n=>{n=Math.max(0,Number(n)||0);const m=Math.floor(n/60),s=Math.floor(n%60);return `${m}:${String(s).padStart(2,'0')}`};
 const tierTH={bronze:'Bronze',silver:'Silver',gold:'Gold',platinum:'Platinum',diamond:'Diamond',master:'Master'};
-let catalogPromise=null, focusTimer=null, activeSubject=null, activeRole=null;
+let catalogPromise=null, focusTimer=null, activeSubject=null, activeRole=null, activeOrigin='hub';
 
 function toast(msg,bad=false){
   const t=$('#toast'); if(!t)return; t.textContent=msg; t.classList.toggle('error',!!bad); t.classList.add('show');
@@ -30,14 +30,39 @@ async function profile(){
   if(error)throw error;return data;
 }
 async function subject(sid){const {data,error}=await getClient().from('subjects').select('id,code,name,color_hex').eq('id',sid).single();if(error)throw error;return data}
-function backButton(sid){return `<button class="btn ghost" data-v197-back="${sid}">← กลับห้องเรียนรายวิชา</button>`}
+async function programmingSubject(){const {data,error}=await getClient().from('subjects').select('id,code,name,color_hex').eq('code',V197_SUBJECT).eq('active',true).eq('subject_type','subject').single();if(error)throw error;return data}
+function backButton(sid){return `<button class="btn ghost" data-v197-back="${sid}">← กลับหมวดกิจกรรมพิเศษ</button>`}
 function tierBadge(t){return `<span class="v197-tier v197-tier-${esc(t||'bronze')}">${esc(tierTH[t]||t||'Bronze')}</span>`}
 function difficultyLabel(d){return d==='easy'?'พื้นฐาน':d==='medium'?'ปานกลาง':'ยาก'}
 function cleanupFocus(){if(focusTimer){clearInterval(focusTimer);focusTimer=null}}
-function navigateBack(sid){cleanupFocus();window.DOCNR_BASE?.navigate?.('courses',sid)}
+function navigateBack(){cleanupFocus();window.DOCNR_BASE?.navigate?.('specialactivity',null)}
 
-async function openSpecial(sid){
-  cleanupFocus(); activeSubject=sid;
+async function openHub(){
+  cleanupFocus();activeOrigin='hub';
+  const content=$('#content');if(!content)return;
+  $('#pagetitle')&&($('#pagetitle').textContent='กิจกรรมพิเศษ');
+  content.innerHTML=`<section class="v14-page"><div class="card v197-loading">กำลังโหลดหมวดกิจกรรมพิเศษ...</div></section>`;
+  try{
+    const [p,s,c]=await Promise.all([profile(),programmingSubject(),catalog()]);
+    if(!p)throw new Error('AUTH_REQUIRED');
+    activeRole=p.role;activeSubject=s.id;
+    const total=(c.stages||[]).length;
+    content.innerHTML=`<section class="v14-page v198-hub" id="v198-special-hub">
+      <header class="v198-hub-hero"><div><span class="v14-kicker">SPECIAL ACTIVITIES</span><h1>🎮 กิจกรรมพิเศษ</h1><p>พื้นที่กิจกรรมเสริมแยกจากรายวิชาและคะแนนหลัก ใช้บัญชี DOC-FULL-NR ชุดเดิมและเก็บความคืบหน้าบนระบบกลาง</p></div><div class="v197-safe-note">${p.role==='admin'?'ADMIN CONTROL':'USER ACTIVITY'}</div></header>
+      <div class="v198-activity-grid">
+        <article class="card v198-activity-card" style="--v197-accent:${esc(s.color_hex||'#EF6C00')}">
+          <div class="v198-activity-icon">⌨️</div><div class="v198-activity-main"><span class="v14-kicker">CODE TYPING ACADEMY</span><h2>ฝึกพิมพ์และอ่านโค้ด HTML + Python</h2><p>${total} ด่าน • Practice • Ranking • Teacher Quest • Daily Focus • Official Challenge</p><div class="v198-tags"><span>HTML 50</span><span>Python 50</span><span>Server Verified</span><span>ไม่รวมเกรด 100 คะแนน</span></div></div>
+          <button class="btn primary v198-open-activity" data-v198-open-code="${esc(s.id)}">${p.role==='admin'?'จัดการกิจกรรม':'เปิดกิจกรรม'}</button>
+        </article>
+        <article class="card v198-activity-card v198-coming"><div class="v198-activity-icon">＋</div><div class="v198-activity-main"><span class="v14-kicker">READY FOR MORE</span><h2>รองรับกิจกรรมพิเศษเพิ่มเติม</h2><p>หมวดนี้แยกจากรายวิชาแล้ว สามารถเพิ่มกิจกรรมใหม่ภายหลังได้โดยไม่รบกวนระบบใบงาน คะแนน หรือข้อสอบ</p></div></article>
+      </div>
+    </section>`;
+    $('[data-v198-open-code]',content)?.addEventListener('click',e=>openSpecial(e.currentTarget.dataset.v198OpenCode,'hub'));
+  }catch(e){content.innerHTML=`<section class="v14-page"><div class="alert error"><b>เปิดหมวดกิจกรรมพิเศษไม่สำเร็จ</b><div>${esc(errText(e))}</div></div></section>`}
+}
+
+async function openSpecial(sid,origin='hub'){
+  cleanupFocus(); activeSubject=sid; activeOrigin=origin;
   try{
     const [p,s,c]=await Promise.all([profile(),subject(sid),catalog()]);
     if(!p||s.code!==V197_SUBJECT){toast('กิจกรรมนี้ใช้เฉพาะวิชา 21910-2010',true);return}
@@ -63,8 +88,8 @@ async function renderUser(root,s,catalogData,p){
   const stages=catalogData.stages||[];
   const completed=Number(pr.completed_stages||0),tokens=Number(pr.tokens||0);
   root.innerHTML=`<section class="v14-page v197-page" id="v197-root" style="--v197-accent:${esc(s.color_hex||'#EF6C00')}">
-    <div class="v197-topline">${backButton(s.id)}<span class="v197-safe-note">กิจกรรมพิเศษ • ไม่รวมคะแนนรายวิชา 100 คะแนน</span></div>
-    <header class="v197-hero"><div><span class="v14-kicker">SPECIAL ACTIVITY • ${esc(s.code)}</span><h1>⌨️ Code Typing Academy</h1><p>ฝึกพิมพ์และอ่านโค้ด HTML + Python แบบไต่ระดับ 100 ด่าน • วัด WPM, Accuracy, เวลา และความต่อเนื่อง</p></div><div class="v197-profile-badge"><b>${esc(p.full_name||p.student_code||'ผู้เรียน')}</b>${tierBadge(rating.tier)}<small>กิจกรรมเสริม ไม่กระทบเกรดรายวิชา</small></div></header>
+    <div class="v197-topline">${backButton(s.id)}<span class="v197-safe-note">กิจกรรมพิเศษอิสระ • ไม่รวมคะแนนรายวิชา 100 คะแนน</span></div>
+    <header class="v197-hero"><div><span class="v14-kicker">SPECIAL ACTIVITY • STANDALONE</span><h1>⌨️ Code Typing Academy</h1><p>ฝึกพิมพ์และอ่านโค้ด HTML + Python แบบไต่ระดับ 100 ด่าน • วัด WPM, Accuracy, เวลา และความต่อเนื่อง</p></div><div class="v197-profile-badge"><b>${esc(p.full_name||p.student_code||'ผู้เรียน')}</b>${tierBadge(rating.tier)}<small>กิจกรรมอิสระ ไม่กระทบเกรดรายวิชา</small></div></header>
     ${settings.enabled===false?`<div class="card v197-closed"><b>🔒 Admin ปิดกิจกรรมพิเศษชั่วคราว</b><p>ความคืบหน้าเดิมยังถูกเก็บไว้ และจะกลับมาใช้งานต่อได้เมื่อเปิดกิจกรรม</p></div>`:''}
     <div class="v197-kpis">
       <div><span>ผ่านแล้ว</span><b>${completed}/100</b><small>${Math.round(completed)}%</small></div>
@@ -131,7 +156,7 @@ async function renderAdmin(root,s,catalogData,p){
   const c=getClient();const [homeR,dashR,questR]=await Promise.all([
     c.rpc('my_programming_activity_home_v197',{p_subject_id:s.id}),c.rpc('admin_programming_activity_dashboard_v197',{p_subject_id:s.id}),c.rpc('admin_programming_quests_v197',{p_subject_id:s.id})
   ]);for(const r of [homeR,dashR,questR])if(r.error)throw r.error;const settings=homeR.data?.settings||{},rows=dashR.data||[],quests=questR.data||[];
-  root.innerHTML=`<section class="v14-page v197-page" id="v197-root" style="--v197-accent:${esc(s.color_hex||'#EF6C00')}"><div class="v197-topline">${backButton(s.id)}<span class="v197-safe-note">Admin • กิจกรรมพิเศษแยกจากคะแนนรายวิชา</span></div><header class="v197-hero"><div><span class="v14-kicker">ADMIN SPECIAL ACTIVITY • ${esc(s.code)}</span><h1>⌨️ Code Typing Academy</h1><p>บริหารกิจกรรม HTML 50 + Python 50 ด่าน • Quest • Ranking • Focus • Official Challenge 30 ด่าน/40 คะแนนกิจกรรม</p></div><div class="v197-admin-count"><b>${rows.length}</b><span>นักศึกษาในรายวิชา</span></div></header>
+  root.innerHTML=`<section class="v14-page v197-page" id="v197-root" style="--v197-accent:${esc(s.color_hex||'#EF6C00')}"><div class="v197-topline">${backButton(s.id)}<span class="v197-safe-note">Admin • กิจกรรมพิเศษแยกเป็นระบบอิสระ</span></div><header class="v197-hero"><div><span class="v14-kicker">ADMIN SPECIAL ACTIVITY • STANDALONE</span><h1>⌨️ Code Typing Academy</h1><p>บริหารกิจกรรม HTML 50 + Python 50 ด่าน • Quest • Ranking • Focus • Official Challenge 30 ด่าน/40 คะแนนกิจกรรม</p></div><div class="v197-admin-count"><b>${rows.length}</b><span>ผู้เรียนที่ใช้งานกิจกรรม</span></div></header>
   <section class="card"><div class="v197-section-head"><div><span class="v14-kicker">SYSTEM CONTROL</span><h2>⚙️ ตั้งค่ากิจกรรม</h2></div><span class="v197-safe-note">ไม่เปลี่ยนคะแนน 100 คะแนนของรายวิชา</span></div><form id="v197-settings" class="v197-settings-grid">${settingCheck('enabled','เปิดกิจกรรม',settings.enabled)}${settingCheck('leaderboard_enabled','Ranking',settings.leaderboard_enabled)}${settingCheck('official_enabled','Official Challenge',settings.official_enabled)}${settingCheck('quests_enabled','Teacher Quest',settings.quests_enabled)}${settingCheck('focus_enabled','Daily Focus',settings.focus_enabled)}${settingCheck('sequential_unlock','ปลดล็อกทีละด่าน',settings.sequential_unlock)}<label>Accuracy ผ่านขั้นต่ำ<input class="input" name="min_accuracy" type="number" min="70" max="100" value="${Number(settings.min_accuracy||90)}"></label><label>Focus เป้าหมาย (นาที)<input class="input" name="focus_target_minutes" type="number" min="5" max="180" value="${Number(settings.focus_target_minutes||60)}"></label><label>Focus Token<input class="input" name="focus_reward_tokens" type="number" min="0" max="500" value="${Number(settings.focus_reward_tokens||15)}"></label><button class="btn primary" type="submit">บันทึกการตั้งค่า</button></form></section>
   <section class="card"><div class="v197-section-head"><div><span class="v14-kicker">CLASS ACTIVITY DASHBOARD</span><h2>📊 ความคืบหน้านักศึกษา</h2></div></div><div class="table-wrap"><table class="v197-admin-table"><thead><tr><th>#</th><th>รหัส/ชื่อ</th><th>ห้อง</th><th>ผ่าน</th><th>HTML</th><th>Python</th><th>ครั้ง</th><th>WPM</th><th>Acc.</th><th>Rating</th><th>Tier</th><th>Token</th><th>Official</th><th>Focus วันนี้</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td><b>${esc(x.student_code||'-')}</b><br>${esc(x.full_name||'')}</td><td>${esc(x.class_name||'-')}</td><td>${x.completed_stages}/100</td><td>${x.html_best_stage}/50</td><td>${x.python_best_stage}/50</td><td>${x.total_attempts}</td><td>${Number(x.best_wpm||0).toFixed(1)}</td><td>${Number(x.avg_accuracy||0).toFixed(1)}%</td><td>${Number(x.rating||0).toFixed(1)}</td><td>${tierBadge(x.tier)}</td><td>${x.tokens}</td><td>${x.official_completed}/30 • ${Number(x.official_score||0).toFixed(2)}/40${x.official_submitted?' ✓':''}</td><td>${fmtSec(x.focus_today_seconds||0)}</td></tr>`).join('')||'<tr><td colspan="14" class="empty">ยังไม่มีนักศึกษาในกิจกรรม</td></tr>'}</tbody></table></div></section>
   <section class="v197-main-grid"><div class="card"><div class="v197-section-head"><div><span class="v14-kicker">TEACHER QUEST</span><h2>🎯 ภารกิจจากครู</h2></div></div><div class="v197-admin-quests">${quests.map(q=>`<div class="v197-admin-quest"><div><b>${esc(q.title)}</b><small>${q.language.toUpperCase()} Stage ${q.stage_no} • ${esc(q.objective_type)} ${q.target_value||''} • +${q.reward_tokens} Token • Tier ${esc(q.min_tier)}</small></div><button class="btn sm ${q.active?'red':'green'}" data-v197-quest-toggle="${q.id}" data-active="${q.active?'false':'true'}">${q.active?'ปิด':'เปิด'}</button></div>`).join('')||'<div class="v14-empty">ยังไม่มี Quest</div>'}</div></div><div class="card"><div class="v197-section-head"><div><span class="v14-kicker">CREATE QUEST</span><h2>＋ สร้างภารกิจ</h2></div></div><form id="v197-quest-form" class="v197-quest-form"><input class="input" name="title" placeholder="ชื่อภารกิจ" required><input class="input" name="description" placeholder="รายละเอียด"><div class="row"><select class="input" name="language"><option value="html">HTML</option><option value="python">Python</option></select><input class="input" name="stage_no" type="number" min="1" max="50" value="1"></div><div class="row"><select class="input" name="objective_type"><option value="pass">ผ่านด่าน</option><option value="accuracy">Accuracy</option><option value="time">เวลา</option></select><input class="input" name="target_value" type="number" min="0" value="0"></div><div class="row"><input class="input" name="reward_tokens" type="number" min="0" max="500" value="5"><select class="input" name="min_tier"><option value="bronze">Bronze</option><option value="silver">Silver</option><option value="gold">Gold</option><option value="platinum">Platinum</option><option value="diamond">Diamond</option><option value="master">Master</option></select></div><button class="btn primary" type="submit">สร้าง Quest</button></form></div></section></section>`;
@@ -146,7 +171,7 @@ function bindAdmin(root,s){
 
 document.addEventListener('click',e=>{
   const b=e.target.closest?.('[data-v197-special]');if(b){e.preventDefault();e.stopPropagation();openSpecial(b.dataset.v197Special);return}
-  const back=e.target.closest?.('[data-v197-back]');if(back){e.preventDefault();navigateBack(back.dataset.v197Back)}
+  const back=e.target.closest?.('[data-v197-back]');if(back){e.preventDefault();navigateBack()}
 },true);
 window.addEventListener('pagehide',cleanupFocus);
-window.DOCNR_V197=Object.freeze({open:openSpecial,version:'V19.7-PROGRAMMING-SPECIAL-ACTIVITY'});
+window.DOCNR_V197=Object.freeze({open:openSpecial,openHub,version:'V19.8-STANDALONE-SPECIAL-ACTIVITIES'});

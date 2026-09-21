@@ -669,7 +669,6 @@ async function renderAdminSubject(sid){
     <button class="btn" data-v16-gradebook="${sid}">📊 สรุปคะแนน</button>
     <button class="btn" data-v16-paper-scan="${sid}">📄 สแกนสำเนาใบงาน</button>
     <button class="btn primary" data-v15-room-exam="${sid}">🧪 ระบบสอบ ${exams.length}</button>
-    ${s.code==="21910-2010"?`<button class="btn v197-special-entry" data-v197-special="${sid}">⌨️ กิจกรรมพิเศษ Code Typing Academy</button>`:""}
   </div>
   <section id="v15-room-roster" class="card v15-room-roster"><div class="v14-section-head compact"><div><h2>👥 นักศึกษาในห้องเรียน</h2><p>สมาชิกห้อง = นักศึกษาที่ Admin อนุมัติให้เรียนรายวิชานี้</p></div><button class="btn sm" data-v14-route="enrollments">จัดการคำขอลงทะเบียน</button></div>
     <div class="table-wrap"><table><thead><tr><th>#</th><th>รหัสนักศึกษา</th><th>ชื่อ-นามสกุล</th><th>ระดับ/ห้อง</th><th>สถานะ</th></tr></thead><tbody>${roster||`<tr><td colspan="5" class="empty">ยังไม่มีนักศึกษาที่ได้รับอนุมัติเข้าห้องนี้</td></tr>`}</tbody></table></div>
@@ -711,7 +710,7 @@ async function renderStudentCourse(sid){
   const s=sr.data,isOpen=classroomOpenMap(csr.data||[]).get(sid)!==false;
   if(!isOpen){content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button><div class="card v194-student-closed"><span>🔒</span><h1>ห้องเรียนนี้ปิดอยู่</h1><p>${esc(s.code)} ${esc(s.name)}</p><small>Admin ปิดห้องเรียนชั่วคราว คุณยังคงเป็นสมาชิกและข้อมูลเดิมไม่ถูกลบ เมื่อ Admin เปิดห้องอีกครั้งจะเข้าใช้งานได้ตามปกติ</small><button class="btn primary" data-v14-route="courses">กลับรายการห้องเรียน</button></div></section>`;return}
   content().innerHTML=`<section class="v14-page"><button class="btn ghost" data-v14-route="courses">← กลับห้องเรียนของฉัน</button>
-    <div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"17 หน่วย • สไลด์ 20 หน้า/หน่วย • ใบงานคู่แบบออนไลน์/ย้อนหลัง")}</p></div><div class="row"><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button>${s.code==="21910-2010"?`<button class="btn v197-special-entry" data-v197-special="${sid}">⌨️ กิจกรรมพิเศษ</button>`:""}</div></div>
+    <div class="v14-course-hero v15-room-hero" style="--course:${esc(s.color_hex||"#22d3ee")}"><div><span class="v14-kicker">🏫 ห้องเรียน • ${esc(s.code)}</span><h1>${esc(s.name)}</h1><p>${esc(s.description||"17 หน่วย • สไลด์ 20 หน้า/หน่วย • ใบงานคู่แบบออนไลน์/ย้อนหลัง")}</p></div><div class="row"><button class="btn primary" data-v15-room-exam="${sid}">🧪 ข้อสอบรายวิชานี้</button></div></div>
     <div class="card v176-room-rule"><b>รูปแบบห้องเรียนสำเร็จรูป</b><span>แต่ละหน่วยมีสไลด์ 20 หน้าและใบงานปุ่มเดียว • ก่อนกำหนดทำออนไลน์ • หลังหมดเวลาจึงพิมพ์ใบงานย้อนหลังรายบุคคล</span></div>
   </section>`;
   subscribeSubjectRoom(sid,"student").catch(()=>{});

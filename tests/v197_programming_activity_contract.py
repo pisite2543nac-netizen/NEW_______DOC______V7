@@ -12,18 +12,17 @@ dashfix=(ROOT/'supabase/migrations/20260920_v19_7_2_fix_programming_admin_dashbo
 cat=json.loads((ROOT/'site/data/programming-activity-v197.json').read_text('utf-8'))
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
-assert 'data-docnr-release="v19-7-programming-special-activity"' in index
-assert 'v19-programming-activity.css?v=20260920-v19-7' in index
-assert 'v19-programming-activity.js?v=20260920-v19-7' in index
+assert 'data-docnr-release="v19-8-standalone-special-activities"' in index
+assert 'v19-programming-activity.css?v=20260921-v19-8' in index
+assert 'v19-programming-activity.js?v=20260921-v19-8' in index
 assert index.index('v19-programming-activity.css') > index.index('v19-production-ui.css')
-assert 'doc-full-nr-v19-7-programming-special-activity-20260920' in sw
+assert 'doc-full-nr-v19-8-standalone-special-activities-20260921' in sw
 assert './data/programming-activity-v197.json' in sw
-assert './v19-programming-activity.js?v=20260920-v19-7' in sw
+assert './v19-programming-activity.js?v=20260921-v19-8' in sw
 
-# Entry is deliberately scoped to the programming-language subject only.
-assert platform.count('data-v197-special') >= 2
-assert platform.count('s.code==="21910-2010"') >= 2
-assert 'กิจกรรมพิเศษ Code Typing Academy' in platform
+# V19.8 keeps the V19.7 engine but removes course-room entry buttons.
+assert 'data-v197-special' not in platform
+assert 'กิจกรรมพิเศษ Code Typing Academy' not in platform
 
 stages=cat['stages']
 assert len(stages)==100
@@ -42,9 +41,9 @@ assert 'PVP wagering' in json.dumps(cat,ensure_ascii=False)
 for marker in ['my_programming_activity_home_v197','my_programming_activity_progress_v197','start_programming_stage_v197','submit_programming_stage_v197','update_programming_focus_v197','admin_programming_activity_dashboard_v197','admin_set_programming_activity_settings_v197','admin_upsert_programming_quest_v197']:
     assert marker in js
 assert 'ไม่รวมคะแนนรายวิชา 100 คะแนน' in js
-assert 'กิจกรรมพิเศษแยกจากคะแนนรายวิชา' in js
+assert 'กิจกรรมพิเศษแยกเป็นระบบอิสระ' in js
 assert '30 STAGES / 40 ACTIVITY POINTS' in js
-assert 'PROGRAMMING-SPECIAL-ACTIVITY' in js
+assert 'STANDALONE-SPECIAL-ACTIVITIES' in js
 
 # Backend reproduction: initial seed + hardened alignment.
 assert 'programming_activity_settings_v197' in base
@@ -61,8 +60,8 @@ assert 'unlocked boolean' in align
 assert 'revoke all on table public.programming_activity_sessions_v197 from public,anon,authenticated' in align
 assert 'admin_programming_activity_dashboard_v197' in dashfix and 'stt.student_code' in dashfix
 
-assert ver['version']=='19.7'
+assert ver['version']=='19.8'
 v=ver['programming_special_activity']
 assert v['subject_code']=='21910-2010' and v['total_stages']==100 and v['official_stages']==30 and v['official_activity_points']==40
 assert v['separate_from_course_grade_100'] is True and v['server_authoritative_sessions'] is True
-print('V19.7 PROGRAMMING SPECIAL ACTIVITY CONTRACT PASS')
+print('V19.7 CORE PROGRAMMING ACTIVITY CONTRACT PASS ON V19.8')

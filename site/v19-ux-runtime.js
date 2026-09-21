@@ -3,7 +3,7 @@
   const root=document.documentElement;
   const qs=(s,p=document)=>p.querySelector(s);
   const qsa=(s,p=document)=>[...p.querySelectorAll(s)];
-  const routeIcons={dashboard:'🏠',courses:'📚',students:'👨‍🎓',workadmin:'📝',workcheck:'✅',paperscan:'📄',attendancehub:'📷',exam:'🧪',academic:'⚙️',catalog:'📚',work:'📋',attendance:'📷',profile:'🪪'};
+  const routeIcons={dashboard:'🏠',courses:'📚',specialactivity:'🎮',students:'👨‍🎓',workadmin:'📝',workcheck:'✅',paperscan:'📄',attendancehub:'📷',exam:'🧪',academic:'⚙️',catalog:'📚',work:'📋',attendance:'📷',profile:'🪪'};
   let resizeTimer=0, observer=null;
   function deviceState(){
     const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight);
@@ -25,7 +25,7 @@
   function mobileRoutes(){
     const buttons=qsa('#sidebar [data-route]');if(!buttons.length)return [];
     const admin=buttons.some(b=>b.dataset.route==='students');
-    const wanted=admin?['dashboard','courses','students','workcheck']:['dashboard','courses','work','attendance'];
+    const wanted=admin?['dashboard','courses','specialactivity','students','workcheck']:['dashboard','courses','specialactivity','work','attendance'];
     return wanted.map(r=>buttons.find(b=>b.dataset.route===r)).filter(Boolean);
   }
   function buildBottomNav(){

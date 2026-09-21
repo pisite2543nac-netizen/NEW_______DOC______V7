@@ -5,6 +5,7 @@
 ./.pytest_cache/.gitignore
 ./.pytest_cache/CACHEDIR.TAG
 ./.pytest_cache/README.md
+./.pytest_cache/v/cache/lastfailed
 ./.pytest_cache/v/cache/nodeids
 ./00_FINISH_V7_NOW.bat
 ./00_PUSH_NEW_GITHUB.bat
@@ -30,6 +31,7 @@
 ./README_V19_4_TH.txt
 ./README_V19_5_TH.txt
 ./README_V19_6_TH.txt
+./README_V19_8_TH.txt
 ./SECURITY.md
 ./SubjectsPage.tsx
 ./SubmissionPage.tsx
@@ -46,6 +48,10 @@
 ./V19_2_TEST_RESULTS.txt
 ./V19_3_TEST_RESULTS.txt
 ./V19_6_TEST_RESULTS.txt
+./V19_7_PROGRAMMING_ACTIVITY_AUDIT.md
+./V19_7_TEST_RESULTS.txt
+./V19_8_SYSTEM_AUDIT.md
+./V19_8_TEST_RESULTS.txt
 ./VERSION.json
 ./WorksheetsPage.tsx
 ./app.js
@@ -83,6 +89,8 @@
 ./docs/V18_7_EXAM_SOURCE_ADAPTATION.md
 ./docs/V19_6_PRINT_PREVIEW_CONTACT_SHEET.png
 ./docs/V19_6_PRODUCTION_PRINT_SYSTEM.md
+./docs/V19_7_PROGRAMMING_SPECIAL_ACTIVITY.md
+./docs/V19_8_STANDALONE_SPECIAL_ACTIVITIES.md
 ./icon-192.png
 ./icon-512.png
 ./index.html
@@ -112,6 +120,7 @@
 ./site/data/exam-presets-v19_5/manifest.json
 ./site/data/exam-question-bank-manifest-v18.json
 ./site/data/exam-question-bank-v18.json
+./site/data/programming-activity-v197.json
 ./site/data/source-QUESTION_BANK_MANIFEST.json
 ./site/exam.html
 ./site/favicon-v1761.ico
@@ -165,6 +174,8 @@
 ./site/v18-supabase.js
 ./site/v19-print-system.css
 ./site/v19-production-ui.css
+./site/v19-programming-activity.css
+./site/v19-programming-activity.js
 ./site/v19-responsive-fit.css
 ./site/v19-ux-runtime.js
 ./site/v9-features.css
@@ -243,6 +254,10 @@
 ./supabase/migrations/20260918_v19_4_classroom_open_close.sql
 ./supabase/migrations/20260918_v19_5_exam_preset_25_25.sql
 ./supabase/migrations/20260918_v19_6_print_system_subject_colors.sql
+./supabase/migrations/20260920_v19_7_1_programming_activity_alignment.sql
+./supabase/migrations/20260920_v19_7_2_fix_programming_admin_dashboard.sql
+./supabase/migrations/20260920_v19_7_programming_special_activity.sql
+./supabase/migrations/20260921_v19_8_special_activity_standalone_hub.sql
 ./sw.js
 ./tests/README.md
 ./tests/__pycache__/static_validation.cpython-313-pytest-9.0.2.pyc
@@ -253,6 +268,7 @@
 ./tests/__pycache__/v194_classroom_back_contract.cpython-313-pytest-9.0.2.pyc
 ./tests/__pycache__/v195_exam_preset_contract.cpython-313-pytest-9.0.2.pyc
 ./tests/__pycache__/v196_print_system_contract.cpython-313-pytest-9.0.2.pyc
+./tests/__pycache__/v197_programming_activity_contract.cpython-313-pytest-9.0.2.pyc
 ./tests/branding_contract.py
 ./tests/browser_contract.py
 ./tests/button_contract.py
@@ -287,6 +303,10 @@
 ./tests/v195_exam_preset_contract.py
 ./tests/v196_print_system_browser_contract.py
 ./tests/v196_print_system_contract.py
+./tests/v197_programming_activity_browser_contract.py
+./tests/v197_programming_activity_contract.py
+./tests/v198_special_activity_hub_browser_contract.py
+./tests/v198_special_activity_hub_contract.py
 ./tests/v19_classroom_flow_contract.py
 ./tools/ONE_CLICK_UPDATE.ps1
 ./tsconfig.app.json
