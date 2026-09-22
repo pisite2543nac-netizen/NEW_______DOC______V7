@@ -16,6 +16,8 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const fmt=d=>d?new Date(d).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"}):"-";
 const uid=()=>S.session?.user?.id||null;
 const isAdmin=()=>S.profile?.role==="admin";
+const deviceClass=()=>window.DOCNR_DEVICE_RUNTIME?.classify?.()||'desktop';
+const isPhoneDevice=()=>deviceClass()==='phone';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const V177_COMPAT_GRADE_RPC="admin_grade_submission_v177";
 const requestKey=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
@@ -958,6 +960,9 @@ async function finalizeDigitalHardened(worksheetId,answers,attachments,requestKe
 }
 
 async function flushOfflineSubmissionOutbox(){
+  // V20.2 phone policy: a phone is a capture/check-in companion, not a Digital Worksheet authoring device.
+  // Keep any old local queue intact; Tablet/Desktop will sync it when the learner continues there.
+  if(isPhoneDevice())return;
   if(!S.session?.user?.id||!navigator.onLine)return;
   const items=await listOfflineFinals(S.session.user.id).catch(()=>[]);
   for(const item of items){
@@ -1010,7 +1015,8 @@ async function openWorksheet(id){
   const manualOnly=w.copy_paste_allowed===false||w.settings?.manual_typing_only===true;
   const focusRequired=w.settings?.fullscreen_required===true;
   const previewRequired=w.settings?.preview_before_submit!==false;
-  const canWork=!notOpen&&!deadlineBlocked&&!locked;
+  const phoneReadOnly=isPhoneDevice();
+  const canWork=!notOpen&&!deadlineBlocked&&!locked&&!phoneReadOnly;
   const statusText=finalStatus?`${old.status}${canResubmit?` • ส่งซ้ำได้อีก ${Math.max(0,attemptLimit-attempts)} ครั้ง`:""}`:old?.status||"ยังไม่ส่ง";
 
   modal(`<div class="modal-header worksheet-focus-head"><div><h2>${esc(w.title)}</h2><div class="muted">${esc(w.subjects?.code||"")} ${esc(w.subjects?.name||"")} • ใบงานอิเล็กทรอนิกส์ • กำหนด ${fmt(w.due_at)}</div></div><div class="row"><button class="btn sm" id="worksheet-focus-toggle">⛶ เต็มจอ</button><button class="btn sm" data-close>✕</button></div></div>
@@ -1020,6 +1026,7 @@ async function openWorksheet(id){
     ${finalStatus?`<div class="alert ${canResubmit?"warn":"success"}">สถานะล่าสุด: ${esc(statusText)} ${old.submitted_at?`• ส่ง ${fmt(old.submitted_at)}`:""}</div>`:""}
     ${manualOnly?`<div class="alert"><b>⌨️ พิมพ์คำตอบด้วยตนเอง</b> • ปิด Copy / Paste / Cut / Drop เฉพาะพื้นที่คำตอบ เป็นมาตรการช่วยลดการคัดลอกและไม่สามารถป้องกันได้ 100%</div>`:""}
     ${focusRequired?`<div class="alert"><b>Focus Mode</b> • สามารถเข้าสู่เต็มหน้าจอเพื่อโฟกัสกับงาน และออกจากเต็มหน้าจอได้ทุกเมื่อ</div>`:""}
+    ${phoneReadOnly?`<div class="alert warn docnr-phone-worksheet-policy"><b>📱 โทรศัพท์: โหมดดูใบงานเท่านั้น</b><div>เพื่อให้การทำงานเสถียรและลดความผิดพลาดในการส่งข้อมูล ระบบไม่เปิดคีย์บอร์ด บันทึกร่าง หรือส่งใบงานอิเล็กทรอนิกส์จากโทรศัพท์ กรุณาทำใบงานบน Tablet / iPad / Computer</div><small>โทรศัพท์ยังใช้เช็คชื่อด้วย QR และถ่าย/สแกนสำเนาใบงานย้อนหลังได้ตามปกติ</small></div>`:""}
     <p>${esc(w.instructions||"")}</p>
     ${files.length?`<div class="file-list"><b>ไฟล์ประกอบ</b>${files.map((f,i)=>`<div class="file-chip"><span>ไฟล์ ${i+1}</span><a class="btn sm" href="${f.url}" target="_blank" rel="noopener">เปิดไฟล์</a></div>`).join("")}</div>`:""}
     <div id="submissionpreview" hidden></div>
@@ -1030,10 +1037,17 @@ async function openWorksheet(id){
     </form>`,{wide:true,focus:focusRequired});
 
   const focusToggle=$("#worksheet-focus-toggle");
-  if(focusToggle)focusToggle.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else throw new Error("UNSUPPORTED")}catch{toast("อุปกรณ์นี้ใช้โหมดเต็มจอของเบราว์เซอร์ไม่ได้ แต่ยังทำใบงานต่อได้")}};
-  if(!canWork)return;
+  if(focusToggle)focusToggle.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else throw new Error("UNSUPPORTED")}catch{toast("อุปกรณ์นี้ใช้โหมดเต็มจอของเบราว์เซอร์ไม่ได้ แต่ยังดูใบงานต่อได้")}};
+  const form=$("#ans");
+  if(!canWork){
+    // Existing V20.1 rendered editable controls even when the server-side window was closed.
+    // Make the UI truthfully read-only for not-open/deadline/locked and the V20.2 phone policy.
+    $$('input,textarea,select',form).forEach(el=>{el.disabled=true;el.setAttribute('aria-disabled','true')});
+    form?.classList.add('docnr-worksheet-readonly');
+    return;
+  }
 
-  const form=$("#ans");initQuestionWidgets(form,w.questions||[]);
+  initQuestionWidgets(form,w.questions||[]);
   const collect=()=>collectWorksheetAnswers(form,w.questions||[],initialAnswers);
   const answerTargets=()=>$$('input[name^="q_"],textarea[name^="q_"],select[name^="q_"]',form);
   if(manualOnly){

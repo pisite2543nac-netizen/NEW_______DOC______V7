@@ -159,3 +159,29 @@ body.docnr-fullscreen .topbar{padding-top:max(8px,env(safe-area-inset-top))}
 .v178-notify-permission{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 12px;padding:12px;border:1px solid #f59e0b66;border-radius:14px;background:#fffbeb}
 .v178-notify-permission.ready{border-color:#22c55e66;background:#f0fdf4}.v178-notify-permission>div{display:grid;gap:3px}.v178-notify-permission small{color:#64748b}.v178-ready-dot{color:#16a34a;font-weight:800;white-space:nowrap}
 @media(max-width:620px){.v178-notify-permission{align-items:stretch;flex-direction:column}.v178-notify-permission .btn{width:100%}}
+
+/* DOC-FULL-NR V20.2 adaptive device UX — same green/white theme, device-specific density */
+.v202-camera-status{margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef8f2;color:#285b40;font-size:12px;line-height:1.45;border:1px solid #cfe7d8}
+.v202-file-camera{cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+html.docnr-phone .docnr-phone-worksheet-policy{position:sticky;top:0;z-index:4;box-shadow:0 5px 18px rgba(15,23,42,.08)}
+html.docnr-phone .docnr-worksheet-readonly input,
+html.docnr-phone .docnr-worksheet-readonly textarea,
+html.docnr-phone .docnr-worksheet-readonly select{background:#f3f6f4!important;color:#64748b!important;opacity:1!important}
+html.docnr-phone .v14-camera-grid,html.docnr-phone .v16-scan-grid{grid-template-columns:minmax(0,1fr)!important;gap:10px!important}
+html.docnr-phone .v14-camera-grid video,html.docnr-phone .v16-paper-frame{width:100%;min-height:260px;max-height:58dvh;border-radius:14px;background:#09140e}
+html.docnr-phone .v14-camera-grid video{object-fit:cover;aspect-ratio:3/4}
+html.docnr-phone .v16-paper-frame{aspect-ratio:3/4}
+html.docnr-phone .v16-paper-frame video{object-fit:cover}
+html.docnr-phone .v161-att-actions,html.docnr-phone .v202-camera-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+html.docnr-phone .v161-att-actions>.btn,html.docnr-phone .v161-att-actions>.v202-file-camera,html.docnr-phone .v202-camera-actions>.btn,html.docnr-phone .v202-camera-actions>.v202-file-camera{width:100%;min-height:48px;margin:0}
+html.docnr-phone #v14-start-scan,html.docnr-phone #v16-camera-start{grid-column:1/-1;font-weight:800;min-height:54px}
+html.docnr-phone .v16-camera-card{padding:10px}
+html.docnr-phone .v14-page{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+html.docnr-phone .v14-section-head h1{font-size:clamp(20px,6vw,28px)}
+html.docnr-phone .v14-form-grid,html.docnr-phone .v14-form-grid.three{grid-template-columns:1fr!important}
+html.docnr-phone .v14-session-row{align-items:flex-start;gap:8px}
+html.docnr-tablet .v14-camera-grid,html.docnr-tablet .v16-scan-grid{grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:14px}
+html.docnr-tablet .btn,html.docnr-tablet input,html.docnr-tablet select,html.docnr-tablet textarea{min-height:46px}
+html.docnr-tablet .content{padding:16px}
+html.docnr-desktop .v202-camera-status{max-width:760px}
+@media(max-width:420px){html.docnr-phone .v161-att-actions,html.docnr-phone .v202-camera-actions{grid-template-columns:1fr}html.docnr-phone #v14-start-scan,html.docnr-phone #v16-camera-start{grid-column:auto}}

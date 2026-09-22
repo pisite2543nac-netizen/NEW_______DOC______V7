@@ -48,3 +48,12 @@ html[data-theme="dark"] .v199-slide-note{background:#382d13!important;border-col
 .v20-print-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px 10px;margin-top:7px;font-size:9pt;color:#4d6257}.v20-print-meta-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v20-print-meta-grid b{color:#243b30}
 @media(max-width:760px){.v20-print-meta-grid{grid-template-columns:1fr 1fr}.v174-deck-head{position:sticky!important}.v20-present-btn{width:100%}}
 @media print{.v20-present-btn,.v20-close-teaching{display:none!important}.v20-print-meta-grid{grid-template-columns:repeat(4,1fr)!important}.v174-slide,.v199-slide-explain,.v199-slide-example,.v199-slide-note{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}
+
+/* V20.2 adaptive device overrides are repeated in the last-loaded theme layer so touch targets win legacy density rules. */
+html.docnr-phone #v14-start-scan,html.docnr-phone #v16-camera-start{min-height:54px!important;font-weight:800}
+html.docnr-phone .v161-att-actions>.btn,html.docnr-phone .v161-att-actions>.v202-file-camera,html.docnr-phone .v202-camera-actions>.btn,html.docnr-phone .v202-camera-actions>.v202-file-camera{min-height:48px!important}
+html.docnr-tablet .v161-att-actions>.btn,html.docnr-tablet .v202-camera-actions>.btn{min-height:46px!important}
+@media (orientation:landscape) and (max-height:520px){
+  html.docnr-phone .v14-camera-grid video,html.docnr-phone .v16-paper-frame{min-height:180px!important;max-height:70dvh!important}
+  html.docnr-phone .v14-page{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+}

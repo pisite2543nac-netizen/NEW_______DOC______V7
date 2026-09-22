@@ -35,10 +35,12 @@ jobs:
           python tests/v178_notification_contract.py
           python tests/v179_full_system_hardening_contract.py
           python tests/v201_content_focused_slides_contract.py
+          python tests/v202_adaptive_mobile_camera_contract.py
       - name: JavaScript syntax
         run: |
           node --check site/app.js
           node --check site/camera-registration.js
+          node --check site/device-camera-runtime.js
           node --check site/mobile.js
           node --check site/sw.js
           node --check site/v16-platform.js

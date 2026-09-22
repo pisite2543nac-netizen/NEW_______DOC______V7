@@ -1,0 +1,54 @@
+DOC-FULL-NR V20.2 TEST RESULTS
+Release: V20.2 ADAPTIVE MOBILE CAMERA • STABILITY
+Date: 2026-09-22
+
+SOURCE / SYNTAX
+- JavaScript syntax: PASS for all production site/*.js and site/data/*.js
+- GitHub Actions YAML parse: PASS
+- V20.2 adaptive mobile/camera static contract: PASS
+- Existing static/contract tests V17.x -> V20.1: PASS after compatibility markers were extended for V20.2
+
+BROWSER / RESPONSIVE REGRESSION
+PASS:
+- Core dashboard/router
+- Course CODE
+- Real-use shell/PWA runtime
+- Admin profile + Paper Scan hub
+- Room work checklist
+- Exam Admin + Student pre-exam / 50-question flow
+- Responsive fit: 1920x1080 / 1366x768 / 1024x768 / 768x1024 / 390x844 / 844x390
+- Production UX 14 common viewport/orientation layouts
+- Gradebook
+- V19.6 Print System
+- Programming Special Activity / Standalone Special Activity Hub
+- V19.9 detailed teaching slides
+- V20.0 slide contrast/presentation/fullscreen/reversible teaching close
+- V20.1 content-focused slides
+- V20.2 adaptive phone/tablet/desktop classification + camera MediaStream lifecycle + mobile no-horizontal-overflow
+
+V20.2 DEVICE / CAMERA
+- Phone Digital Worksheet read-only policy: PASS (no typing/draft/submit; queued final submissions are not auto-sent from phone)
+- Tablet/Desktop Digital Worksheet full editing path preserved: PASS by source contract/regression
+- Attendance camera uses shared managed camera runtime: PASS
+- Attendance QR fallback photo input: PASS
+- Paper Barcode/QR fallback photo input: PASS
+- Paper evidence fallback page photo + preview: PASS
+- JPEG evidence normalization before upload: PASS
+- Rear-camera constraint fallback chain: PASS
+- Camera stream cleanup on route change / hidden page / pagehide: PASS
+- Automatic browser fullscreen does not consume phone camera gesture: PASS
+- Native BarcodeDetector + jsQR on-demand fallback contract: PASS
+
+PRODUCTION BACKEND SMOKE TEST (TRANSACTION + ROLLBACK)
+- Active subjects: 11
+- Canonical worksheet templates: 374
+- Exam question bank: 550
+- scan_attendance_qr_v179(...): present
+- admin_record_paper_scan_page_v18(...): present
+- admin_finalize_paper_scan_packet_v18(uuid,uuid): present
+- No test records left in Production
+- No new V20.2 migration required
+
+LIMITATIONS OF THIS TEST ENVIRONMENT
+- A physical iPhone/Android camera cannot be attached to the headless test runner. Camera lifecycle was verified with a real browser MediaStream mock and fallback file-capture paths.
+- The legacy React/Vite source tree was not used by the production GitHub Pages workflow. A standalone TypeScript build could not be completed locally because node_modules are intentionally not bundled and dependency installation timed out. Production /site validation and browser regression are complete.

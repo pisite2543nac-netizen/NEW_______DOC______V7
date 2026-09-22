@@ -3,8 +3,26 @@
 (function(){
   'use strict';
   const V173_COMPAT_RELEASE='V17.3-PWA-FULLSCREEN-RUNTIME';
-  const RELEASE=window.DOCNR_RELEASE_META?.version||'V20.1';
+  const RELEASE=window.DOCNR_RELEASE_META?.version||'V20.2';
   const $=(s,r=document)=>r.querySelector(s);
+
+  function deviceProfile(){
+    const shared=window.DOCNR_DEVICE_RUNTIME?.classify?.();
+    if(shared){const touch=Number(navigator.maxTouchPoints||0)>0,coarse=matchMedia('(pointer:coarse)').matches;return Object.freeze({isPhone:shared==='phone',isTablet:shared==='tablet',isDesktop:shared==='desktop',touch,coarse,screenMin:Math.min(screen.width||innerWidth,screen.height||innerHeight),label:shared})}
+    const ua=navigator.userAgent||'';const touch=Number(navigator.maxTouchPoints||0)>0;
+    const ipad=/iPad/i.test(ua)||(/Macintosh/i.test(ua)&&touch&&navigator.maxTouchPoints>1);
+    const android=/Android/i.test(ua),androidMobile=android&&/Mobile/i.test(ua);
+    const iphone=/iPhone|iPod/i.test(ua);const mobileUa=/Mobile|IEMobile|Opera Mini/i.test(ua);
+    const sw=Math.min(screen.width||innerWidth,screen.height||innerHeight),coarse=matchMedia('(pointer:coarse)').matches;
+    const isTablet=ipad||(android&&!androidMobile)||(touch&&coarse&&sw>=600&&!iphone);
+    const isPhone=!isTablet&&(iphone||androidMobile||(mobileUa&&touch&&sw<600));
+    return Object.freeze({isPhone,isTablet,isDesktop:!isPhone&&!isTablet,touch,coarse,screenMin:sw,label:isPhone?'phone':isTablet?'tablet':'desktop'});
+  }
+  const DEVICE=deviceProfile();
+  document.documentElement.dataset.device=DEVICE.label;
+  document.documentElement.classList.toggle('docnr-phone',DEVICE.isPhone);
+  document.documentElement.classList.toggle('docnr-tablet',DEVICE.isTablet);
+  document.documentElement.classList.toggle('docnr-desktop',DEVICE.isDesktop);
 
   function sidebar(){return document.getElementById('sidebar')}
   function closeMenu(){const s=sidebar();if(s)s.classList.remove('open');syncMenu()}
@@ -61,9 +79,15 @@
   // A normal browser is not allowed to enter native fullscreen during page load without user activation,
   // so we attempt immediately (for engines that permit it) and then again on the first trusted pointer/key gesture.
   let autoTried=false;
+  function cameraGestureTarget(e){
+    const t=e?.target;return !!t?.closest?.('#v14-start-scan,#v14-stop-scan,#v16-camera-start,#v16-camera-stop,#v16-capture,#v202-att-photo-btn,#v202-paper-photo-btn,input[type="file"],[data-camera-start],[data-camera-capture]');
+  }
   async function tryFocusFullscreen(e){
-    if(autoTried||isFullscreen())return;
+    if(DEVICE.isPhone||autoTried||isFullscreen())return;
+    if(e?.target?.closest?.('[data-camera-start],#v14-start-scan,#v16-camera-start,input,textarea,select,button[data-device-critical]'))return;
     if(e && !e.isTrusted)return;
+    // Camera/file capture must keep the trusted gesture for permission prompts on iOS/Android.
+    if(cameraGestureTarget(e))return;
     autoTried=true;
     try{localStorage.setItem('docnr-focus-fullscreen','1')}catch{}
     const ok=await enterFullscreen();
@@ -74,6 +98,7 @@
   }
   function bootstrapFocusFullscreen(){
     document.documentElement.classList.add('docnr-focus-first');
+    if(DEVICE.isPhone){autoTried=true;paintDisplayMode();return}
     if(isFullscreen()){autoTried=true;paintDisplayMode();return}
     // Best-effort startup attempt. Browsers that enforce user activation will reject this harmlessly.
     enterFullscreen().then(ok=>{if(ok)autoTried=true}).catch(()=>{});
@@ -116,6 +141,7 @@
     if(!('serviceWorker' in navigator))return;
     navigator.serviceWorker.ready.then(reg=>{try{reg.update()}catch{}}).catch(()=>{});
   });
-  window.DOCNR_MOBILE_RUNTIME=Object.freeze({release:RELEASE,displayMode,isInstalled,isFullscreen,enterFullscreen,toggleFullscreen});
+  window.DOCNR_DEVICE=DEVICE;
+  window.DOCNR_MOBILE_RUNTIME=Object.freeze({release:RELEASE,displayMode,isInstalled,isFullscreen,enterFullscreen,toggleFullscreen,device:DEVICE,deviceClass:()=>DEVICE.label});
   console.info(`[DOC-FULL-NR] ${RELEASE} loaded`);
 })();

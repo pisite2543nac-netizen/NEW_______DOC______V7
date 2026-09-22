@@ -257,6 +257,9 @@ shellObserver.observe($("#app")||document.body,{childList:true,subtree:true});
 async function otpConfig(){return {enabled:false,mode:"disabled",phone_profile_only:true}}
 async function requirePhoneGate(){return false}
 async function navigate(route,arg=null){
+  // V20.2: release every camera/media track before route transition so mobile browsers can reopen the rear camera reliably.
+  try{window.DOCNR_CAMERA?.stopAll?.()}catch{}
+  stopScanner();
   clearPresenceChannel();clearRoomChannel();state.route=route;state.subjectId=null;heartbeat();
   const p=await getProfile(true);if(!p)return;
   if(await requirePhoneGate(route))return;
@@ -835,10 +838,10 @@ async function renderAttendance(){
     ${canScan?`<div class="card v14-scan-panel v161-scan-panel">
       <div class="v14-section-head compact"><div><h2>📷 เช็คชื่อภายใน 15 นาที</h2><p>เลือกห้องและรายวิชา จากนั้นสแกน QR นักศึกษา การสแกนคนแรกจะเริ่มนับเวลา</p></div><div class="v161-session-summary"><b id="v161-session-count">ยังไม่เริ่มรอบ</b><span id="v161-session-countdown">15:00</span></div></div>
       <div class="v14-form-grid"><label>ห้องเรียน<select class="input" id="v14-att-class"><option value="">เลือกห้อง</option>${rooms.map(r=>`<option value="${r.classroom_id||r.id}">${esc(r.classroom_name||r.name)}</option>`).join("")}</select></label><label>รายวิชา<select class="input" id="v14-att-subject"><option value="">เลือกรายวิชา</option>${subjects.map(s=>`<option value="${s.id}">${esc(s.code)} ${esc(s.name)}</option>`).join("")}</select></label></div>
-      <div class="v161-att-actions"><button class="btn primary" id="v14-start-scan">📷 เปิดกล้องสแกน</button><button class="btn" id="v14-stop-scan">หยุดกล้อง</button><button class="btn green" id="v161-summary-submit" ${state.currentAttendanceSession?"":"disabled"}>✅ สรุปยอดและส่ง Admin</button><button class="btn" id="v14-att-summary-btn">📊 สรุปย้อนหลัง</button></div>
+      <div class="v161-att-actions"><button class="btn primary" id="v14-start-scan" data-device-critical>📷 เปิดกล้องหลัง</button><button class="btn" id="v14-stop-scan">หยุดกล้อง</button><label class="btn v202-file-camera">📸 ถ่าย QR สำรอง<input id="v202-att-photo" type="file" accept="image/*" capture="environment" hidden></label><button class="btn green" id="v161-summary-submit" ${state.currentAttendanceSession?"":"disabled"}>✅ สรุปยอดและส่ง Admin</button><button class="btn" id="v14-att-summary-btn">📊 สรุปย้อนหลัง</button></div>
       <div id="v161-window-note" class="alert">⏱️ รอบเช็คชื่อปกติเปิด 15 นาทีจากการสแกนคนแรก หากสรุปก่อนเวลาได้ทันที หลังปิดรอบนักศึกษาที่มาทีหลังต้องให้ Admin สแกนและระบบจะบันทึกเป็น “มาสาย”</div>
       <div id="v14-att-summary-box"></div>
-      <div class="v14-camera-grid"><div><video id="v14-scan-video" playsinline muted></video><canvas id="v14-scan-canvas" hidden></canvas></div><div>
+      <div class="v14-camera-grid"><div><video id="v14-scan-video" autoplay playsinline muted></video><canvas id="v14-scan-canvas" hidden></canvas><div id="v202-att-camera-status" class="v202-camera-status">พร้อมเปิดกล้อง • ใช้ HTTPS/PWA และอนุญาต Camera</div></div><div>
         <form id="v14-manual-scan"><label class="field"><span>กรอก Token สำรอง</span><input class="input" name="token" placeholder="DOCNR-ATTEND:..." required></label><button class="btn">บันทึก Token</button></form>
         <div id="v14-scan-result" class="v14-scan-results"></div></div></div>
     </div>`:""}
@@ -851,6 +854,7 @@ async function renderAttendance(){
   }
   if(canScan){
     $("#v14-start-scan").onclick=startScanner;$("#v14-stop-scan").onclick=stopScanner;
+    const attPhoto=$("#v202-att-photo");if(attPhoto)attPhoto.onchange=async()=>{const file=attPhoto.files?.[0];if(!file)return;const st=$("#v202-att-camera-status");if(st)st.textContent="กำลังอ่าน QR จากภาพ...";try{const raw=await window.DOCNR_CAMERA?.scanFile?.(file,["qr_code"]);if(raw){if(st)st.textContent="อ่าน QR จากภาพแล้ว";await submitAttendanceToken(raw)}else{if(st)st.textContent="ไม่พบ QR ในภาพ กรุณาถ่ายให้ชัดและเต็มกรอบ";toast("ไม่พบ QR ในภาพ",true)}}catch(e){if(st)st.textContent=window.DOCNR_CAMERA?.errorMessage?.(e)||"อ่านภาพไม่สำเร็จ"}finally{attPhoto.value=""}};
     $("#v14-manual-scan").onsubmit=async e=>{e.preventDefault();await submitAttendanceToken(new FormData(e.target).get("token"))};
     $("#v161-summary-submit").onclick=closeAttendanceCurrent;
     $("#v14-refresh-sessions").onclick=loadAttendanceSessions;$("#v14-att-summary-btn").onclick=loadAttendanceSummary;
@@ -915,14 +919,18 @@ async function submitAttendanceToken(raw){
   await refreshAttendanceSnapshot();loadAttendanceSessions();
 }
 async function startScanner(){
-  if(state.scanner?.stream)return;const video=$("#v14-scan-video");if(!video)return;if(!navigator.mediaDevices?.getUserMedia){toast("เบราว์เซอร์นี้ไม่รองรับกล้อง กรุณาเปิดด้วย Chrome/Safari",true);return}
-  try{const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"}}});state.scanner={stream,raf:null,detector:null};video.srcObject=stream;await video.play();
-    if("BarcodeDetector" in window){try{state.scanner.detector=new BarcodeDetector({formats:["qr_code"]})}catch{}}
-    const canvas=$("#v14-scan-canvas"),ctx=canvas.getContext("2d",{willReadFrequently:true});
-    const loop=async()=>{if(!state.scanner?.stream)return;try{let raw=null;if(state.scanner.detector){const codes=await state.scanner.detector.detect(video);raw=codes?.[0]?.rawValue||null}else if(window.jsQR&&video.videoWidth){canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0);const img=ctx.getImageData(0,0,canvas.width,canvas.height);raw=window.jsQR(img.data,img.width,img.height,{inversionAttempts:"dontInvert"})?.data||null}if(raw){const token=parseAttendanceToken(raw),now=Date.now();if(token&&(token!==state.lastScanToken||now-state.lastScanAt>2500)){state.lastScanToken=token;state.lastScanAt=now;await submitAttendanceToken(token)}}}catch{}state.scanner.raf=requestAnimationFrame(loop)};loop();toast("กล้องพร้อมสแกน QR")
-  }catch(e){toast("เปิดกล้องไม่ได้ กรุณาอนุญาต Camera หรือใช้ช่อง Token สำรอง",true)}
+  if(state.scanner?.stream)return;const video=$("#v14-scan-video"),canvas=$("#v14-scan-canvas"),status=$("#v202-att-camera-status");if(!video||!canvas)return;
+  const cam=window.DOCNR_CAMERA;if(!cam?.supportsCamera?.()){const msg=cam?.errorMessage?.({name:window.isSecureContext?"NotSupportedError":"SecurityError"})||"อุปกรณ์นี้ไม่รองรับกล้อง";if(status)status.textContent=msg;toast(msg,true);return}
+  try{
+    if(status)status.textContent="กำลังขอสิทธิ์และเปิดกล้องหลัง...";
+    const started=await cam.startScanner({key:"attendance",video,canvas,formats:["qr_code"],fps:7,onReady:()=>{if(status)status.textContent="กล้องพร้อม • หัน QR ให้อยู่กลางกรอบ"},onCode:async raw=>{const token=parseAttendanceToken(raw);if(token)await submitAttendanceToken(token)},onError:e=>{if(status)status.textContent=cam.errorMessage(e)}});
+    state.scanner={stream:started.stream,managed:true};toast("กล้องพร้อมสแกน QR");
+  }catch(e){state.scanner=null;const msg=cam.errorMessage(e);if(status)status.textContent=msg;toast(msg,true)}
 }
-function stopScanner(){if(state.scanner?.raf)cancelAnimationFrame(state.scanner.raf);if(state.scanner?.stream)state.scanner.stream.getTracks().forEach(t=>t.stop());state.scanner=null;const v=$("#v14-scan-video");if(v)v.srcObject=null}
+function stopScanner(){
+  try{window.DOCNR_CAMERA?.stopScanner?.("attendance")}catch{}
+  if(state.scanner?.raf)cancelAnimationFrame(state.scanner.raf);if(state.scanner?.stream&&!state.scanner.managed)state.scanner.stream.getTracks().forEach(t=>t.stop());state.scanner=null;const v=$("#v14-scan-video");if(v)v.srcObject=null;const st=$("#v202-att-camera-status");if(st)st.textContent="หยุดกล้องแล้ว • กดเปิดกล้องเพื่อสแกนต่อ";
+}
 async function closeAttendanceCurrent(){
   if(!state.currentAttendanceSession||!ask("สรุปยอดตอนนี้และส่งให้ Admin? ผู้ที่ยังไม่ได้เช็คชื่อจะถูกบันทึกเป็นขาด และหลังจากนี้นักศึกษาที่มาทีหลังต้องเช็คกับ Admin เป็นมาสาย"))return;
   const r=await client().rpc("close_attendance_session",{p_session_id:state.currentAttendanceSession});
@@ -1221,8 +1229,8 @@ async function renderPaperScanCenter(sid){
     <button class="btn ghost" data-v14-route="paperscan">← กลับศูนย์สแกนทั้งหมด</button>
     <div class="v14-section-head"><div><span class="v14-kicker">MULTI-PAGE IMMUTABLE EVIDENCE</span><h1>📄 สแกนใบงานย้อนหลังให้ครบทุกหน้า</h1><p>${esc(subject.code)} ${esc(subject.name)} • Barcode หนึ่งใบงานจะสร้าง Packet หลักฐาน หน้า 1…N ก่อนยืนยันรับงาน</p></div><span class="v16-live-pill"><i></i> Server verified</span></div>
     <div class="v16-scan-grid">
-      <div class="card v16-camera-card"><div class="v16-paper-frame"><video id="v16-paper-video" playsinline muted></video><div class="v16-paper-guide"><span id="v181-page-guide">อ่าน Barcode ก่อนเริ่มถ่าย</span></div></div><canvas id="v16-paper-canvas" hidden></canvas>
-        <div class="row wrap"><button class="btn primary" id="v16-camera-start">เปิดกล้อง</button><button class="btn" id="v16-camera-stop">หยุดกล้อง</button><button class="btn green" id="v16-capture" disabled>📸 ถ่ายหน้าปัจจุบัน</button></div>
+      <div class="card v16-camera-card"><div class="v16-paper-frame"><video id="v16-paper-video" autoplay playsinline muted></video><div class="v16-paper-guide"><span id="v181-page-guide">อ่าน Barcode/QR ก่อนเริ่มถ่าย</span></div></div><canvas id="v16-paper-canvas" hidden></canvas>
+        <div class="row wrap v202-camera-actions"><button class="btn primary" id="v16-camera-start" data-device-critical>📷 เปิดกล้องหลัง</button><button class="btn" id="v16-camera-stop">หยุดกล้อง</button><button class="btn green" id="v16-capture" disabled>📸 ถ่ายหน้าปัจจุบัน</button><label class="btn v202-file-camera">🔎 ถ่ายรหัสสำรอง<input id="v202-paper-code-photo" type="file" accept="image/*" capture="environment" hidden></label><label class="btn v202-file-camera">📄 ถ่ายหน้าเอกสารสำรอง<input id="v202-paper-page-photo" type="file" accept="image/*" capture="environment" hidden></label></div><div id="v202-paper-camera-status" class="v202-camera-status">พร้อมเปิดกล้อง • ถ้ากล้องสดเปิดไม่ได้ ใช้ปุ่มถ่ายภาพสำรองได้</div>
         <div id="v16-capture-review" class="v173-capture-review" hidden><img id="v16-capture-image" alt="ตัวอย่างสำเนาใบงาน"><div><b>ตรวจภาพหน้านี้ก่อนบันทึก</b><span>ต้องเห็นกระดาษครบทั้ง 4 มุม ตัวอักษรอ่านได้ และเป็นหน้าที่ระบบกำลังร้องขอ</span><div class="row wrap"><button class="btn" id="v16-retake" type="button">🔄 ถ่ายใหม่</button><button class="btn primary" id="v16-confirm-capture" type="button">✅ บันทึกหน้านี้</button></div></div></div>
         <div id="v181-pages" class="v181-page-progress"><div class="v14-empty">ยังไม่ได้อ่าน Barcode</div></div>
       </div>
@@ -1233,7 +1241,7 @@ async function renderPaperScanCenter(sid){
   </section>`;
   let stream=null,current=null,lastCode="",detecting=false,pendingBlob=null,pendingPreviewUrl=null;
   const video=$("#v16-paper-video"),tokenInput=$("#v16-token"),capture=$("#v16-capture"),review=$("#v16-capture-review"),reviewImg=$("#v16-capture-image"),confirmCapture=$("#v16-confirm-capture"),finalize=$("#v181-finalize");
-  const stop=()=>{detecting=false;if(stream){stream.getTracks().forEach(x=>x.stop());stream=null}video.srcObject=null;capture.disabled=true};
+  const stop=()=>{detecting=false;try{window.DOCNR_CAMERA?.stopScanner?.("paper-scan")}catch{}if(stream){try{stream.getTracks().forEach(x=>x.stop())}catch{}stream=null}video.srcObject=null;capture.disabled=true;const st=$("#v202-paper-camera-status");if(st)st.textContent="หยุดกล้องแล้ว • ใช้ปุ่มถ่ายภาพสำรองได้"};
   const clearPreview=()=>{pendingBlob=null;if(pendingPreviewUrl){URL.revokeObjectURL(pendingPreviewUrl);pendingPreviewUrl=null}review.hidden=true;reviewImg.removeAttribute("src");capture.disabled=!stream||!current||current.revoked;capture.textContent=`📸 ถ่ายหน้า ${current?.nextPage||1}`};
   const refreshPages=async()=>{
     if(!current?.packetId){$("#v181-pages").innerHTML=`<div class="v14-empty">ยังไม่มีหน้าเอกสาร</div>`;finalize.disabled=true;return}
@@ -1256,10 +1264,12 @@ async function renderPaperScanCenter(sid){
     await refreshPages();capture.disabled=!stream||revoked;return current;
   };
   $("#v16-token-form").onsubmit=e=>{e.preventDefault();lookup(tokenInput.value)};
-  $("#v16-camera-start").onclick=async()=>{if(!navigator.mediaDevices?.getUserMedia){toast("อุปกรณ์นี้ไม่รองรับกล้องผ่าน Browser",true);return}try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}});video.srcObject=stream;await video.play();capture.disabled=!current||current.revoked||current.captured>=current.expectedPages;detecting=true;if("BarcodeDetector" in window){const detector=new BarcodeDetector({formats:["qr_code","code_128","code_39","ean_13","ean_8"]});const loop=async()=>{if(!detecting)return;try{const codes=await detector.detect(video),raw=codes?.[0]?.rawValue||"";if(raw&&raw!==lastCode){lastCode=raw;let parsed=raw;if(raw.includes("token=")){try{parsed=new URL(raw,location.href).searchParams.get("token")||raw}catch{}}tokenInput.value=parsed;await lookup(parsed)}}catch{}requestAnimationFrame(loop)};loop()}}catch{toast("เปิดกล้องไม่สำเร็จ กรุณาอนุญาตสิทธิ์กล้อง",true)}};
+  $("#v16-camera-start").onclick=async()=>{const cam=window.DOCNR_CAMERA,status=$("#v202-paper-camera-status");if(!cam?.supportsCamera?.()){const msg=cam?.errorMessage?.({name:window.isSecureContext?"NotSupportedError":"SecurityError"})||"อุปกรณ์นี้ไม่รองรับกล้อง";if(status)status.textContent=msg;toast(msg,true);return}try{if(status)status.textContent="กำลังเปิดกล้องหลัง...";const started=await cam.startScanner({key:"paper-scan",video,canvas:$("#v16-paper-canvas"),formats:["qr_code","code_128","code_39","ean_13","ean_8"],fps:6,onReady:()=>{if(status)status.textContent="กล้องพร้อม • สแกน Barcode/QR หรือถ่ายหน้าเอกสารได้"},onCode:async raw=>{if(raw===lastCode)return;lastCode=raw;let parsed=raw;if(raw.includes("token=")){try{parsed=new URL(raw,location.href).searchParams.get("token")||raw}catch{}}tokenInput.value=parsed;await lookup(parsed)},onError:e=>{if(status)status.textContent=cam.errorMessage(e)}});stream=started.stream;detecting=true;capture.disabled=!current||current.revoked||current.captured>=current.expectedPages}catch(e){stream=null;detecting=false;const msg=cam.errorMessage(e);if(status)status.textContent=msg;toast(msg,true)}};
   $("#v16-camera-stop").onclick=stop;
+  const codePhoto=$("#v202-paper-code-photo");if(codePhoto)codePhoto.onchange=async()=>{const f=codePhoto.files?.[0],st=$("#v202-paper-camera-status");if(!f)return;if(st)st.textContent="กำลังอ่าน Barcode/QR จากภาพ...";try{const raw=await window.DOCNR_CAMERA?.scanFile?.(f,["qr_code","code_128","code_39","ean_13","ean_8"]);if(!raw){if(st)st.textContent="ไม่พบรหัสในภาพ กรุณาถ่ายให้ชัด";toast("ไม่พบ Barcode/QR ในภาพ",true);return}let parsed=raw;if(raw.includes("token=")){try{parsed=new URL(raw,location.href).searchParams.get("token")||raw}catch{}}tokenInput.value=parsed;await lookup(parsed);if(st)st.textContent="อ่านรหัสจากภาพสำเร็จ"}catch(e){if(st)st.textContent=window.DOCNR_CAMERA?.errorMessage?.(e)||"อ่านภาพไม่สำเร็จ"}finally{codePhoto.value=""}};
+  const pagePhoto=$("#v202-paper-page-photo");if(pagePhoto)pagePhoto.onchange=async()=>{const f=pagePhoto.files?.[0];if(!f)return;if(!current){toast("กรุณาสแกน/กรอก Barcode ก่อนถ่ายหน้าเอกสาร",true);pagePhoto.value="";return}if(current.captured>=current.expectedPages){toast("เก็บสำเนาครบทุกหน้าแล้ว");pagePhoto.value="";return}pendingBlob=window.DOCNR_CAMERA?.normalizeImageBlob?await window.DOCNR_CAMERA.normalizeImageBlob(f,.9,2200):f;if(pendingPreviewUrl)URL.revokeObjectURL(pendingPreviewUrl);pendingPreviewUrl=URL.createObjectURL(pendingBlob);reviewImg.src=pendingPreviewUrl;review.hidden=false;review.scrollIntoView({behavior:"smooth",block:"center"});pagePhoto.value=""};
   $("#v16-retake").onclick=clearPreview;
-  capture.onclick=async()=>{if(!stream||!current||current.captured>=current.expectedPages)return;capture.disabled=true;const canvas=$("#v16-paper-canvas");canvas.width=video.videoWidth||1920;canvas.height=video.videoHeight||1080;canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height);pendingBlob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.88));if(!pendingBlob){toast("ถ่ายภาพไม่สำเร็จ",true);capture.disabled=false;return}pendingPreviewUrl=URL.createObjectURL(pendingBlob);reviewImg.src=pendingPreviewUrl;review.hidden=false;review.scrollIntoView({behavior:"smooth",block:"center"})};
+  capture.onclick=async()=>{if(!stream||!current||current.captured>=current.expectedPages)return;capture.disabled=true;try{pendingBlob=await window.DOCNR_CAMERA?.captureBlob?.(video,.9,2200);if(!pendingBlob)throw new Error("CAPTURE_FAILED");pendingPreviewUrl=URL.createObjectURL(pendingBlob);reviewImg.src=pendingPreviewUrl;review.hidden=false;review.scrollIntoView({behavior:"smooth",block:"center"})}catch(e){toast("ถ่ายภาพไม่สำเร็จ กรุณาใช้ปุ่มถ่ายหน้าเอกสารสำรอง",true);capture.disabled=false}};
   confirmCapture.onclick=async()=>{
     if(!pendingBlob||!current)return;if(current.expired&&!current.acceptExpired){if(!ask("รหัสหมดอายุ ต้องการรับเป็นงานย้อนหลังที่หมดอายุหรือไม่?"))return;current.acceptExpired=true}
     confirmCapture.disabled=true;const pageNo=current.nextPage,blob=pendingBlob,sha=await v18Sha256Blob(blob),path=`${current.token.user_id}/paper-scans/${current.worksheet.id}/${current.token.id}/page-${String(pageNo).padStart(2,"0")}-${v179RequestKey()}.jpg`;
@@ -1377,7 +1387,7 @@ function printStudentGradeV196(userId){
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v20-1-content-focused-slides";document.documentElement.dataset.docnrCompatRoomChecklist="v18-6-room-work-checklist";
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v20-2-adaptive-mobile-camera-stability";document.documentElement.dataset.docnrCompatRoomChecklist="v18-6-room-work-checklist";
   syncServerTime().catch(()=>{});startHeartbeat();
   scheduleEnsureNav();
   setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},700);

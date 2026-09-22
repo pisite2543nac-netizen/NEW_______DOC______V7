@@ -12,7 +12,6 @@ AppLayout.tsx
 CONTRIBUTING.md
 ClassroomsPage.tsx
 FILE_LIST.txt
-FILE_LIST.txt.tmp
 GradingPage.tsx
 README.md
 README_FIRST_TH.txt
@@ -31,6 +30,7 @@ README_V19_8_TH.txt
 README_V19_9_TH.txt
 README_V20_0_TH.txt
 README_V20_1_TH.txt
+README_V20_2_TH.txt
 SECURITY.md
 SubjectsPage.tsx
 SubmissionPage.tsx
@@ -55,6 +55,7 @@ V19_9_TEST_RESULTS.txt
 V20_0_INSTALLER_HOTFIX_R1_TEST_RESULTS.txt
 V20_0_TEST_RESULTS.txt
 V20_1_TEST_RESULTS.txt
+V20_2_TEST_RESULTS.txt
 VERSION.json
 WorksheetsPage.tsx
 app.js
@@ -128,6 +129,7 @@ site/data/exam-question-bank-v18.json
 site/data/programming-activity-v197.json
 site/data/source-QUESTION_BANK_MANIFEST.json
 site/data/teaching-knowledge-v20.js
+site/device-camera-runtime.js
 site/exam.html
 site/favicon-v1761.ico
 site/favicon.ico
@@ -315,6 +317,8 @@ tests/v200_teaching_presentation_unified_browser_contract.py
 tests/v200_teaching_presentation_unified_contract.py
 tests/v201_content_focused_slides_browser_contract.py
 tests/v201_content_focused_slides_contract.py
+tests/v202_adaptive_mobile_camera_browser_contract.py
+tests/v202_adaptive_mobile_camera_contract.py
 tsconfig.app.json
 tsconfig.app.tsbuildinfo
 tsconfig.json

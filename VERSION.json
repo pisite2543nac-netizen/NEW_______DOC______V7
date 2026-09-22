@@ -1,5 +1,5 @@
 {
-  "release": "V20.1 CONTENT-FOCUSED TEACHING SLIDES • ANALYTICAL QUESTIONS",
+  "release": "V20.2 ADAPTIVE MOBILE CAMERA • STABILITY",
   "date": "2026-09-22",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -16,14 +16,14 @@
   "ready_templates": 374,
   "paper_templates": 187,
   "digital_templates": 187,
-  "release_marker": "V20.1",
+  "release_marker": "V20.2",
   "compatibility_release_marker": "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "20.1",
-  "notes": "V20.1 refocuses all built-in 20-page teaching decks on the actual content of each subject/unit. Pages 1–17 explain the unit only; pages 18–19 ask analytical, comparative and distinction questions; page 20 summarizes the unit. Dedicated Worksheet, Exam Alignment and Teacher Note pages are no longer rendered, while metadata alignment remains internal and all V20.0 platform features are preserved.",
+  "version": "20.2",
+  "notes": "V20.2 preserves the complete V20.1 system and adds adaptive device UX, production-hardened camera scanning for attendance and late-paper evidence, phone-first camera workflows, and phone read-only Digital Worksheet policy while tablets and computers retain full worksheet editing.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
@@ -35,8 +35,8 @@
   "backend_health_rpc": "admin_system_health_v17",
   "router_contract": "single owner app.js; direct data-app-route bridge; no V16.9 overlay/rescue and no hidden-menu click navigation in production",
   "master_flow": "auth -> role dashboard -> direct functional hub -> backend/RPC -> deterministic render/error; course CODE -> enrollment -> 17 sequential units -> 20-slide learning content -> logical Digital/Paper work pair -> attendance/exam/grade/report/promotion",
-  "focus": "Production real-use: 11 subjects × 17 units × 20 content-focused teaching slides; analytical questions near the end; unified compact UX; preserved V19.6 Print Center; reversible teaching close; PWA/browser focus fullscreen; full regression compatibility.",
-  "pwa": "installable phone/tablet/desktop; manifest fullscreen preferred; normal browsers request Fullscreen API on first trusted user gesture and retain an explicit fullscreen button; offline shell/draft compatibility preserved.",
+  "focus": "Stable real-device use: phone optimized for attendance QR scanning and late-paper evidence capture; Digital Worksheet view-only on phones; tablet/desktop full editing; adaptive green-white UX; preserved teaching, exam, gradebook, print, PWA and special activities.",
+  "pwa": "installable phone/tablet/desktop; adaptive device classes; phone camera flows do not consume the first camera gesture for browser fullscreen; explicit fullscreen remains available; offline shell/draft compatibility preserved.",
   "copy_protection": "system-wide UI deterrence for selection/copy/cut/context menu/drag; input fields and Admin CODE copy are allowed; sensitive data remains protected server-side",
   "relationship_hardening": "subject_enrollments.user_id and exam_attempts.user_id are explicit profile embed paths; actor fields use auth.users to avoid PostgREST ambiguity",
   "canonical_templates": 374,
@@ -53,7 +53,7 @@
   "exam_question_bank": 550,
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
   "exam_bank_source": "V19.5 curated from the original 550-question ALL_Test-adapted bank: 25 course-reference + 25 analytical per subject; hard-option giveaway wording removed; current SHA256 623e28853ce20354b9e8f3f80f3d08a0bbb0a606091426795123987089205aef",
-  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub + V20.0 teaching/presentation/unified UX/print/fullscreen/close-teaching",
+  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub + V20.0 teaching/presentation/unified UX/print/fullscreen/close-teaching + V20.1 content-focused slides + V20.2 adaptive mobile/camera stability",
   "base_release": "V19.0 STABILIZED CLASSROOM FLOW",
   "v19_features": {
     "admin_class_leader_from_student_list": true,
@@ -90,7 +90,9 @@
     "reduced_motion": true,
     "high_contrast": true,
     "common_viewports_tested": 14,
-    "business_logic_changed": false
+    "business_logic_changed": false,
+    "adaptive_device_layout": true,
+    "phone_camera_priority": true
   },
   "v19_3_gradebook": {
     "official_work_units": 17,
@@ -216,7 +218,7 @@
   },
   "unified_ux_ui": {
     "visible_release_source": "site/release-meta.js",
-    "release_version": "V20.0",
+    "release_version": "V20.2",
     "compact_professional": true,
     "special_activity_top_level_admin": true,
     "special_activity_top_level_user": true,
@@ -233,5 +235,27 @@
     "reopen_compatible": true,
     "rpc": "admin_lock_subject_unit_v20"
   },
-  "production_database_release": "V20.0 teaching metadata RPC + reversible teaching close RPC"
+  "production_database_release": "V20.0 teaching metadata RPC + reversible teaching close RPC",
+  "device_usage_policy": {
+    "phone": "attendance QR scan + late-paper barcode/evidence capture + view learning content; Digital Worksheet read-only/no draft/no submit",
+    "tablet": "full learning + Digital Worksheet editing/submission + camera workflows",
+    "desktop": "full learning/admin/exam/gradebook/print workflows",
+    "server_authority_preserved": true,
+    "device_detection": "UA hints + touch + physical short screen classification; not CSS width alone"
+  },
+  "camera_runtime": {
+    "release": "V20.2",
+    "rear_camera_preferred": true,
+    "constraint_fallback_chain": true,
+    "secure_context_required": true,
+    "native_barcode_detector": true,
+    "jsqr_online_fallback": true,
+    "photo_capture_fallback": true,
+    "attendance_scan": true,
+    "late_paper_barcode_scan": true,
+    "multi_page_evidence_capture": true,
+    "camera_lifecycle_cleanup": true,
+    "permission_error_guidance": true,
+    "jpeg_evidence_normalization": true
+  }
 }
