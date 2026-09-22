@@ -64,6 +64,7 @@ jobs:
           python tests/v200_teaching_presentation_unified_contract.py
           python tests/v201_content_focused_slides_contract.py
           python tests/v202_adaptive_mobile_camera_contract.py
+          python tests/v203_mobile_interaction_camera_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/device-camera-runtime.js
@@ -93,6 +94,7 @@ jobs:
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v200_teaching_presentation_unified_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v201_content_focused_slides_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v202_adaptive_mobile_camera_browser_contract.py
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v203_mobile_interaction_camera_browser_contract.py
       - name: Decode PWA app icons
         shell: bash
         run: |

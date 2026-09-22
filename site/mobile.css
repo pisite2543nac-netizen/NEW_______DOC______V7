@@ -160,7 +160,7 @@ body.docnr-fullscreen .topbar{padding-top:max(8px,env(safe-area-inset-top))}
 .v178-notify-permission.ready{border-color:#22c55e66;background:#f0fdf4}.v178-notify-permission>div{display:grid;gap:3px}.v178-notify-permission small{color:#64748b}.v178-ready-dot{color:#16a34a;font-weight:800;white-space:nowrap}
 @media(max-width:620px){.v178-notify-permission{align-items:stretch;flex-direction:column}.v178-notify-permission .btn{width:100%}}
 
-/* DOC-FULL-NR V20.2 adaptive device UX — same green/white theme, device-specific density */
+/* DOC-FULL-NR V20.3 adaptive device UX — same green/white theme, device-specific density */
 .v202-camera-status{margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef8f2;color:#285b40;font-size:12px;line-height:1.45;border:1px solid #cfe7d8}
 .v202-file-camera{cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 html.docnr-phone .docnr-phone-worksheet-policy{position:sticky;top:0;z-index:4;box-shadow:0 5px 18px rgba(15,23,42,.08)}

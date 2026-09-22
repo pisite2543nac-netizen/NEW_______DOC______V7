@@ -13,13 +13,13 @@ meta=(site/'release-meta.js').read_text('utf-8')
 version=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 manifest=json.loads((site/'manifest.webmanifest').read_text('utf-8'))
 
-assert 'data-docnr-release="v20-2-adaptive-mobile-camera-stability"' in index
+assert 'data-docnr-release="v20-3-device-adaptive-interaction-camera-stability"' in index
 assert index.index('device-camera-runtime.js') < index.index('app.js') < index.index('v16-platform.js')
-assert 'doc-full-nr-v20-2-adaptive-mobile-camera-stability' in sw
-assert './device-camera-runtime.js?v=20260922-v20-2' in sw
-assert 'RELEASE_VERSION="V20.2"' in meta and '20260922-v20-2' in meta
-assert version['version']=='20.2' and version['release_marker']=='V20.2'
-assert version['device_usage_policy']['phone'].startswith('attendance QR scan')
+assert 'doc-full-nr-v20-3-device-adaptive-interaction-camera-stability' in sw
+assert './device-camera-runtime.js?v=20260922-v20-3' in sw
+assert 'RELEASE_VERSION="V20.3"' in meta and '20260922-v20-3' in meta
+assert version['version']=='20.3' and version['release_marker']=='V20.3'
+assert any(version['device_usage_policy']['phone'].startswith(x) for x in ['attendance QR scan','camera-first attendance QR scan'])
 assert version['camera_runtime']['attendance_scan'] is True
 assert manifest['theme_color'].lower()=='#1f7a4f'
 
@@ -34,11 +34,11 @@ for marker in ["facingMode:{exact:'environment'}","facingMode:{ideal:'environmen
 assert 'BarcodeDetector' in cam and 'window.jsQR' in cam
 
 # Attendance and paper evidence must both use managed camera runtime and photo fallback.
-for marker in ['id="v202-att-photo"','DOCNR_CAMERA?.scanFile','DOCNR_CAMERA?.stopScanner?.("attendance")']:
+for marker in ['id="v202-att-photo"','DOCNR_CAMERA?.scanFile','DOCNR_CAMERA?.stopScanner?.("attendance"']:
     assert marker in platform, marker
 for marker in ['id="v202-paper-code-photo"','id="v202-paper-page-photo"','key:"paper-scan"','normalizeImageBlob']:
     assert marker in platform, marker
-assert 'window.DOCNR_CAMERA?.stopAll?.()' in platform
+assert 'window.DOCNR_CAMERA?.stopAll?.(' in platform
 
 # Phone: Digital Worksheet is view-only and final/draft outbox does not submit in the background.
 assert 'const phoneReadOnly=isPhoneDevice();' in app
@@ -48,7 +48,7 @@ assert 'if(isPhoneDevice())return;' in app
 assert "form?.classList.add('docnr-worksheet-readonly')" in app
 
 # Fullscreen must not steal camera/file input gestures on phones.
-assert 'cameraGestureTarget' in mobile and "if(DEVICE.isPhone||autoTried||isFullscreen())return" in mobile and "if(cameraGestureTarget(e))return" in mobile
+assert 'isInteractiveTarget' in mobile and '!DEVICE.isDesktop' in mobile and 'requestFullscreen' in mobile
 assert 'html.docnr-phone .v14-camera-grid' in css
 assert 'html.docnr-tablet .v14-camera-grid' in css
 

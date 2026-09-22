@@ -1,5 +1,5 @@
 // Compatibility markers: v19-responsive-fit.css?v=20260917-v19-2 | doc-full-nr-v19-2-production-ux-20260917
-// DOC-FULL-NR V20.2 adaptive mobile camera / stability cache marker
+// DOC-FULL-NR V20.3 device-adaptive mobile interaction / camera stability cache marker
 // V20.1 content-focused teaching slides compatibility marker
 // compatibility cache marker: doc-full-nr-v20-0-teaching-presentation-unified-20260922
 // compatibility asset marker: ./v19-programming-activity.js?v=20260922-v20-0
@@ -25,14 +25,14 @@
 // compatibility marker: doc-full-nr-v17-2-college-branding-20260915
 // DOC-FULL-NR V17.3 FULL SYSTEM cache
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v20-2-adaptive-mobile-camera-stability-20260922";
+const CACHE="doc-full-nr-v20-3-device-adaptive-interaction-camera-stability-20260922";
 const SHELL=[
   "./","./index.html","./exam.html",
-  "./styles.css?v=20260922-v20-2","./mobile.css?v=20260922-v20-2","./v18-core-ui.css?v=20260922-v20-2","./v16-minimal.css?v=20260922-v20-2",
-  "./v16-7-hardening.css?v=20260922-v20-2","./v16-8-course-flow.css?v=20260922-v20-2","./v19-responsive-fit.css?v=20260922-v20-2","./v19-production-ui.css?v=20260922-v20-2","./v19-print-system.css?v=20260922-v20-2","./v19-programming-activity.css?v=20260922-v20-2","./v20-unified-ui.css?v=20260922-v20-2","./v18-7-exam-adapted.css?v=20260922-v20-2",
-  "./device-camera-runtime.js?v=20260922-v20-2","./camera-registration.js?v=20260922-v20-2","./app.js?v=20260922-v20-2","./mobile.js?v=20260922-v20-2","./v16-platform.js?v=20260922-v20-2",
-  "./v16-7-hardening.js?v=20260922-v20-2","./v16-8-course-flow.js?v=20260922-v20-2","./v16-exam.js?v=20260922-v20-2","./v19-programming-activity.js?v=20260922-v20-2","./v19-ux-runtime.js?v=20260922-v20-2",
-  "./manifest.webmanifest?v=20260922-v20-2","./release-meta.js","./data/teaching-knowledge-v20.js","./data/programming-activity-v197.json","./data/exam-question-bank-v18.json","./data/exam-question-bank-manifest-v18.json",
+  "./styles.css?v=20260922-v20-3","./mobile.css?v=20260922-v20-3","./v18-core-ui.css?v=20260922-v20-3","./v16-minimal.css?v=20260922-v20-3",
+  "./v16-7-hardening.css?v=20260922-v20-3","./v16-8-course-flow.css?v=20260922-v20-3","./v19-responsive-fit.css?v=20260922-v20-3","./v19-production-ui.css?v=20260922-v20-3","./v19-print-system.css?v=20260922-v20-3","./v19-programming-activity.css?v=20260922-v20-3","./v20-unified-ui.css?v=20260922-v20-3","./v18-7-exam-adapted.css?v=20260922-v20-3",
+  "./device-camera-runtime.js?v=20260922-v20-3","./camera-registration.js?v=20260922-v20-3","./app.js?v=20260922-v20-3","./mobile.js?v=20260922-v20-3","./v16-platform.js?v=20260922-v20-3",
+  "./v16-7-hardening.js?v=20260922-v20-3","./v16-8-course-flow.js?v=20260922-v20-3","./v16-exam.js?v=20260922-v20-3","./v19-programming-activity.js?v=20260922-v20-3","./v19-ux-runtime.js?v=20260922-v20-3",
+  "./manifest.webmanifest?v=20260922-v20-3","./release-meta.js","./data/teaching-knowledge-v20.js","./data/programming-activity-v197.json","./data/exam-question-bank-v18.json","./data/exam-question-bank-manifest-v18.json",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png",
   "./favicon-v1761.ico","./favicon.ico","./icons/nangrong-favicon-16-v1761.png","./icons/nangrong-favicon-32-v1761.png","./icons/nangrong-favicon-48-v1761.png","./icons/nangrong-app-180-v1761.png","./icons/nangrong-app-192-v1761.png","./icons/nangrong-app-512-v1761.png","./icons/nangrong-maskable-512-v1761.png"
 ];

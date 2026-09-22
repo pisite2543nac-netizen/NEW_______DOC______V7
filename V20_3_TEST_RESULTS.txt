@@ -1,0 +1,61 @@
+DOC-FULL-NR V20.3 TEST RESULTS
+Release: V20.3 DEVICE ADAPTIVE UX • MOBILE INTERACTION & CAMERA STABILITY
+Date: 2026-09-22
+
+SOURCE / STATIC
+- All production site/*.js syntax: PASS
+- GitHub Actions YAML parse: PASS
+- All 49 Python static/contract files: PASS (browser contracts skipped in static pass as designed)
+- V20.3 mobile interaction/camera static contract: PASS
+- V20.2/V20.1/V20.0 and legacy compatibility contracts: PASS
+
+BROWSER / RESPONSIVE
+PASS:
+- Base dashboard/router and direct-route controls
+- Course CODE
+- Real-use PWA/mobile runtime
+- Admin profile + Paper Scan hub
+- Room work checklist
+- Exam Admin and Student pre-exam / 50-question flow
+- Responsive: 1920x1080 / 1366x768 / 1024x768 / 768x1024 / 390x844 / 844x390
+- Production UX: 14 viewport/orientation layouts
+- Gradebook
+- V19.6 Print System
+- Programming / Standalone Special Activities
+- V19.9 detailed slides
+- V20.0 contrast/presentation/fullscreen/reversible teaching close
+- V20.1 content-focused slides
+- V20.2 adaptive device/camera contract
+- V20.3 phone interaction + single drawer/backdrop + camera race browser contract
+
+V20.3 MOBILE INTERACTION
+- Closed backdrop cannot intercept normal actions: PASS
+- Drawer backdrop is below sidebar and route buttons remain tappable: PASS
+- Drawer closes after route selection without leaving pointer-blocking layer: PASS
+- Phone bottom nav contains camera-first routes: PASS
+- No horizontal overflow in phone layout: PASS
+- Fullscreen does not consume Phone/Tablet touch gestures: PASS
+
+V20.3 CAMERA
+- Concurrent start on same camera key requests hardware once: PASS
+- Explicit stop ends track and emits camera-stopped event: PASS
+- Permission-sheet hidden transition does not tear down pending getUserMedia: PASS
+- Route/page lifecycle cleanup contract: PASS
+- Native camera/file picker pre-stop contract: PASS
+- Attendance live/fallback/manual flow contract: PASS
+- Paper Barcode/QR + evidence capture/preview/JPEG contract: PASS
+
+PRODUCTION BACKEND SMOKE (BEGIN + ROLLBACK)
+- Active subjects: 11
+- Canonical templates: 374
+- Exam question bank: 550
+- scan_attendance_qr_v179(...): present
+- admin_record_paper_scan_page_v18(...): present
+- admin_finalize_paper_scan_packet_v18(uuid,uuid): present
+- Existing submission rows observed: 1
+- Existing paper_scan_pages rows observed: 0
+- No test records inserted / Production unchanged
+- No new V20.3 database migration required
+
+KNOWN VALIDATION LIMIT
+- Headless browser can test MediaStream ownership/lifecycle and camera-picker fallback but cannot physically attach an Android/iPhone camera. Real-device camera permission/optics should still be smoke-tested on at least one Android and one iPhone before mass classroom rollout.

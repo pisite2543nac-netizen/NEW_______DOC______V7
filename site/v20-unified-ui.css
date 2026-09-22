@@ -49,7 +49,7 @@ html[data-theme="dark"] .v199-slide-note{background:#382d13!important;border-col
 @media(max-width:760px){.v20-print-meta-grid{grid-template-columns:1fr 1fr}.v174-deck-head{position:sticky!important}.v20-present-btn{width:100%}}
 @media print{.v20-present-btn,.v20-close-teaching{display:none!important}.v20-print-meta-grid{grid-template-columns:repeat(4,1fr)!important}.v174-slide,.v199-slide-explain,.v199-slide-example,.v199-slide-note{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}
 
-/* V20.2 adaptive device overrides are repeated in the last-loaded theme layer so touch targets win legacy density rules. */
+/* V20.3 adaptive device overrides are repeated in the last-loaded theme layer so touch targets win legacy density rules. */
 html.docnr-phone #v14-start-scan,html.docnr-phone #v16-camera-start{min-height:54px!important;font-weight:800}
 html.docnr-phone .v161-att-actions>.btn,html.docnr-phone .v161-att-actions>.v202-file-camera,html.docnr-phone .v202-camera-actions>.btn,html.docnr-phone .v202-camera-actions>.v202-file-camera{min-height:48px!important}
 html.docnr-tablet .v161-att-actions>.btn,html.docnr-tablet .v202-camera-actions>.btn{min-height:46px!important}
@@ -57,3 +57,66 @@ html.docnr-tablet .v161-att-actions>.btn,html.docnr-tablet .v202-camera-actions>
   html.docnr-phone .v14-camera-grid video,html.docnr-phone .v16-paper-frame{min-height:180px!important;max-height:70dvh!important}
   html.docnr-phone .v14-page{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
 }
+
+/* DOC-FULL-NR V20.3 — device-adaptive interaction shell / mobile tap safety */
+:root{--v203-touch:48px;--v203-drawer-z:70;--v203-backdrop-z:60;--v203-bottom-z:55}
+button,a,label,input,select,textarea,[role="button"]{-webkit-tap-highlight-color:rgba(31,122,79,.12)}
+button,a,label,[role="button"]{touch-action:manipulation}
+#mobile-nav-backdrop{display:none!important;pointer-events:none!important}
+.docnr-sidebar-backdrop{z-index:var(--v203-backdrop-z)!important}
+.sidebar{z-index:var(--v203-drawer-z)!important}
+.docnr-sidebar-backdrop:not(.open){opacity:0!important;pointer-events:none!important;visibility:hidden!important}
+.docnr-sidebar-backdrop.open{opacity:1!important;pointer-events:auto!important;visibility:visible!important}
+
+html.docnr-phone body{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+html.docnr-phone .topbar,#topbar{isolation:isolate}
+html.docnr-phone .docnr-mobile-bottom-nav{z-index:var(--v203-bottom-z)!important;min-height:64px;height:auto!important}
+html.docnr-phone .docnr-mobile-bottom-nav button{min-width:0;min-height:54px!important;padding:5px 3px!important;touch-action:manipulation}
+html.docnr-phone .docnr-mobile-bottom-nav .t{font-size:10px!important;line-height:1.15!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+html.docnr-phone .docnr-mobile-bottom-nav .i{font-size:20px!important}
+html.docnr-phone .content,html.docnr-phone #content{padding-bottom:calc(92px + env(safe-area-inset-bottom))!important}
+html.docnr-phone .btn,html.docnr-phone button,html.docnr-phone label.btn{min-height:var(--v203-touch)!important}
+html.docnr-phone input,html.docnr-phone select,html.docnr-phone textarea{font-size:16px!important;min-height:46px}
+html.docnr-phone .v1610-dashboard-hero{grid-template-columns:1fr!important;gap:10px!important;padding:14px!important}
+html.docnr-phone .v1610-dashboard-hero .v172-dashboard-seal{width:54px!important;height:54px!important}
+html.docnr-phone .v1610-dashboard-hero h1{font-size:1.35rem!important}
+html.docnr-phone .v1610-flow-grid{grid-template-columns:1fr!important;gap:9px!important}
+html.docnr-phone .v1610-flow-card{min-height:72px!important;padding:12px!important;border-radius:16px!important}
+html.docnr-phone .v1610-flow-icon{width:46px!important;height:46px!important;font-size:1.35rem!important}
+html.docnr-phone .v1610-flow-card small{font-size:.78rem!important;line-height:1.35!important}
+html.docnr-phone .v1610-system-note{padding:12px!important}
+html.docnr-phone .v14-camera-grid,html.docnr-phone .v16-scan-grid{display:grid!important;grid-template-columns:1fr!important}
+html.docnr-phone .v14-camera-grid>*,html.docnr-phone .v16-scan-grid>*{min-width:0!important;width:100%!important}
+html.docnr-phone .v14-camera-grid video,html.docnr-phone .v16-paper-frame{min-height:220px!important;max-height:52dvh!important}
+html.docnr-phone .v202-camera-status{position:relative;z-index:1;font-size:13px!important;padding:10px 12px!important}
+html.docnr-phone .v202-camera-actions,html.docnr-phone .v161-att-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
+html.docnr-phone .v202-camera-actions>* ,html.docnr-phone .v161-att-actions>*{width:100%!important;min-width:0!important;margin:0!important}
+html.docnr-phone .v202-file-camera{min-height:50px!important;cursor:pointer!important;pointer-events:auto!important}
+html.docnr-phone .v14-scan-panel,html.docnr-phone .v16-camera-card{overflow:visible!important}
+html.docnr-phone .table-wrap{border-radius:12px;overscroll-behavior-x:contain}
+html.docnr-phone .modal-bg,html.docnr-phone .v14-overlay{z-index:200!important}
+html.docnr-phone .v14-overlay[hidden],html.docnr-phone .modal-bg[hidden]{display:none!important;pointer-events:none!important}
+
+html.docnr-tablet .content,html.docnr-tablet #content{padding:18px!important}
+html.docnr-tablet .v1610-flow-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+html.docnr-tablet .v1610-flow-card{min-height:90px!important}
+html.docnr-tablet .btn,html.docnr-tablet button,html.docnr-tablet label.btn{min-height:46px!important}
+html.docnr-tablet .v14-camera-grid,html.docnr-tablet .v16-scan-grid{grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr)!important}
+
+html.docnr-desktop .docnr-mobile-bottom-nav,html.docnr-tablet .docnr-mobile-bottom-nav{display:none!important}
+html.docnr-desktop body{padding-bottom:0!important}
+
+@media(orientation:landscape) and (max-height:520px){
+  html.docnr-phone body{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+  html.docnr-phone .content,html.docnr-phone #content{padding-bottom:calc(76px + env(safe-area-inset-bottom))!important}
+  html.docnr-phone .v14-camera-grid video,html.docnr-phone .v16-paper-frame{min-height:160px!important;max-height:62dvh!important}
+}
+.v203-phone-hub,.v203-phone-student-note{display:grid;gap:10px;border:1px solid #b7dcc7!important;background:linear-gradient(145deg,#f4fbf7,#edf8f2)!important}
+.v203-phone-hub h2{margin:2px 0 0;color:#123b28}.v203-phone-hub p,.v203-phone-student-note span{margin:0;color:#51685d;line-height:1.5}
+.v203-phone-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.v203-phone-actions .v1610-flow-card{min-height:82px!important}
+html[data-theme="dark"] .v203-phone-hub,html[data-theme="dark"] .v203-phone-student-note{background:#10271b!important;border-color:#315743!important;color:#effaf3!important}
+html[data-theme="dark"] .v203-phone-hub h2,html[data-theme="dark"] .v203-phone-hub p,html[data-theme="dark"] .v203-phone-student-note span{color:#d5e9dc!important}
+@media(max-width:420px){.v203-phone-actions{grid-template-columns:1fr}}
+
+/* V20.3 drawer interaction safety: bottom navigation stays under the modal backdrop while drawer is open. */
+html.docnr-phone body.nav-open .docnr-mobile-bottom-nav{pointer-events:none!important}

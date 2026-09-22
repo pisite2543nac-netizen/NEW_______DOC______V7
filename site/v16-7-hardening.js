@@ -156,7 +156,7 @@ function injectPaperPrintButtons(){
 let qrLoopToken = 0;
 function stopPaperFallbackScanner(){ qrLoopToken++; }
 function startPaperFallbackScanner(){
-  if(window.DOCNR_CAMERA?.release==="V20.2") return;
+  if(window.DOCNR_CAMERA?.startScanner) return;
   if("BarcodeDetector" in window || !window.jsQR) return;
   const my = ++qrLoopToken;
   const canvas=document.createElement("canvas");
