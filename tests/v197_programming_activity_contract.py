@@ -12,13 +12,13 @@ dashfix=(ROOT/'supabase/migrations/20260920_v19_7_2_fix_programming_admin_dashbo
 cat=json.loads((ROOT/'site/data/programming-activity-v197.json').read_text('utf-8'))
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
-assert 'data-docnr-release="v19-8-standalone-special-activities"' in index
-assert 'v19-programming-activity.css?v=20260921-v19-8' in index
-assert 'v19-programming-activity.js?v=20260921-v19-8' in index
+assert any(x in index for x in ['data-docnr-release="v19-8-standalone-special-activities"','data-docnr-release="v19-9-detailed-teaching-slides"'])
+assert any(x in index for x in ['v19-programming-activity.css?v=20260921-v19-8','v19-programming-activity.css?v=20260922-v19-9'])
+assert any(x in index for x in ['v19-programming-activity.js?v=20260921-v19-8','v19-programming-activity.js?v=20260922-v19-9'])
 assert index.index('v19-programming-activity.css') > index.index('v19-production-ui.css')
-assert 'doc-full-nr-v19-8-standalone-special-activities-20260921' in sw
+assert any(x in sw for x in ['doc-full-nr-v19-8-standalone-special-activities-20260921','doc-full-nr-v19-9-detailed-teaching-slides-20260922'])
 assert './data/programming-activity-v197.json' in sw
-assert './v19-programming-activity.js?v=20260921-v19-8' in sw
+assert any(x in sw for x in ['./v19-programming-activity.js?v=20260921-v19-8','./v19-programming-activity.js?v=20260922-v19-9'])
 
 # V19.8 keeps the V19.7 engine but removes course-room entry buttons.
 assert 'data-v197-special' not in platform
@@ -60,8 +60,8 @@ assert 'unlocked boolean' in align
 assert 'revoke all on table public.programming_activity_sessions_v197 from public,anon,authenticated' in align
 assert 'admin_programming_activity_dashboard_v197' in dashfix and 'stt.student_code' in dashfix
 
-assert ver['version']=='19.8'
+assert float(ver['version'])>=19.8
 v=ver['programming_special_activity']
 assert v['subject_code']=='21910-2010' and v['total_stages']==100 and v['official_stages']==30 and v['official_activity_points']==40
 assert v['separate_from_course_grade_100'] is True and v['server_authoritative_sessions'] is True
-print('V19.7 CORE PROGRAMMING ACTIVITY CONTRACT PASS ON V19.8')
+print('V19.7 CORE PROGRAMMING ACTIVITY CONTRACT PASS ON V19.9')

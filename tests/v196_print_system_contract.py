@@ -13,7 +13,7 @@ sw=(ROOT/'site/sw.js').read_text('utf-8')
 mig=(ROOT/'supabase/migrations/20260918_v19_6_print_system_subject_colors.sql').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
-assert any(x in index for x in ['data-docnr-release="v19-6-production-print-system"','data-docnr-release="v19-7-programming-special-activity"','data-docnr-release="v19-8-standalone-special-activities"'])
+assert any(x in index for x in ['data-docnr-release="v19-6-production-print-system"','data-docnr-release="v19-7-programming-special-activity"','data-docnr-release="v19-8-standalone-special-activities"','data-docnr-release="v19-9-detailed-teaching-slides"'])
 assert 'v19-print-system.css?' in index
 assert index.index('v19-print-system.css?') > index.index('v19-production-ui.css?')
 assert 'printcenter' in app and 'ศูนย์พิมพ์และสรุปผล' in app and 'พิมพ์เอกสารของฉัน' in app
@@ -33,7 +33,7 @@ assert 'body.v196-printing[data-v196-orientation="portrait"] @page' not in css
 assert '@page v196Portrait' in css and '@page v196Landscape' in css
 assert '.v196-report.landscape{page:v196Landscape}' in css
 assert '.v196-workbook-cover' in css and '.v196-worksheet-sheet' in css
-assert any(x in sw for x in ['doc-full-nr-v19-6-production-print-system-20260918','doc-full-nr-v19-7-programming-special-activity-20260920','doc-full-nr-v19-8-standalone-special-activities-20260921'])
+assert any(x in sw for x in ['doc-full-nr-v19-6-production-print-system-20260918','doc-full-nr-v19-7-programming-special-activity-20260920','doc-full-nr-v19-8-standalone-special-activities-20260921','doc-full-nr-v19-9-detailed-teaching-slides-20260922'])
 colors={
 '20001-1001':'#2E7D32','20001-1004':'#9A6700','21900-1005':'#1565C0','21901-2008':'#7B1FA2',
 '21901-2017':'#00838F','21901-2020':'#455A64','21910-2010':'#EF6C00','31901-2001':'#512DA8',

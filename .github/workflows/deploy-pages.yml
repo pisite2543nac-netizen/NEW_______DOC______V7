@@ -60,6 +60,7 @@ jobs:
           python tests/v196_print_system_contract.py
           python tests/v197_programming_activity_contract.py
           python tests/v198_special_activity_hub_contract.py
+          python tests/v199_detailed_teaching_slides_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/mobile.js
@@ -84,6 +85,7 @@ jobs:
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v196_print_system_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v197_programming_activity_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v198_special_activity_hub_browser_contract.py
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v199_detailed_teaching_slides_browser_contract.py
       - name: Decode PWA app icons
         shell: bash
         run: |

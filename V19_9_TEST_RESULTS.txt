@@ -1,0 +1,38 @@
+DOC-FULL-NR V19.9 DETAILED TEACHING SLIDES — TEST RESULTS
+Date: 2026-09-22
+
+CHANGE
+- Built-in teaching slides remain 20 pages per unit.
+- Added detailed explanation blocks instead of heading-only slides.
+- Added subject-domain explanations for law, safety, network, UI/UX, front-end, mobile, programming, data import, computer service and general topics.
+- Added examples / connections to real work.
+- Added systematic analysis guidance.
+- Added common mistakes and prevention points.
+- Added learning notes / teacher guidance.
+- Preserved Digital/Paper work pairs, Gradebook, Exam, Print Center, Attendance, Classroom controls and Special Activities.
+
+COVERAGE
+- 11 active subjects
+- 17 official units per subject
+- 187 built-in teaching decks
+- 20 logical slides per deck
+- 3,740 logical teaching slide pages
+
+STATIC / REGRESSION
+- All non-browser contract tests PASS, including V17/V18/V19 legacy contracts.
+- V19.9 detailed slide contract PASS.
+- JavaScript syntax checks PASS.
+
+BROWSER
+- Existing browser regression suite PASS.
+- Responsive 14 viewport/orientation layouts PASS.
+- V19.6 print browser PASS.
+- V19.7 programming activity browser PASS.
+- V19.8 standalone special activity browser PASS.
+- V19.9 detailed teaching slides browser PASS on 1366x768 and 390x844.
+- Generated deck verified at exactly 20 slides with detailed explanation/example blocks.
+
+DEPLOYMENT
+- This package updates frontend/source only for V19.9 teaching-slide enrichment.
+- No destructive Supabase migration is required for the slide content upgrade.
+- Frontend is not considered live until the one-click installer completes and GitHub Actions succeeds.
