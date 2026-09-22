@@ -4,7 +4,7 @@
   "description": "ระบบใบงานอัจฉริยะ วิทยาลัยเทคนิคนางรอง",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "any",
   "background_color": "#F8FAFC",
   "theme_color": "#2563EB",
@@ -22,5 +22,10 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "display_override": [
+    "fullscreen",
+    "standalone",
+    "minimal-ui"
   ]
 }

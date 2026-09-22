@@ -6,7 +6,7 @@ errors=[]
 def ok(c,m):
     if not c: errors.append(m)
 ok('v17-3-full-system-production' in idx,'release marker missing')
-ok(manifest.get('display')=='standalone','manifest fallback display must remain standalone')
+ok(manifest.get('display') in {'fullscreen','standalone'},'manifest display must be fullscreen/standalone compatible')
 ok('fullscreen' in manifest.get('display_override',[]),'fullscreen display_override missing')
 ok('beforeinstallprompt' in app and 'installationSteps' in app,'device install guide missing')
 ok('auth-install' in app,'install/help control missing on login screen')

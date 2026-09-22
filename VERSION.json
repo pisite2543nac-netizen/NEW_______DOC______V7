@@ -1,5 +1,5 @@
 {
-  "release": "V19.9 DETAILED TEACHING SLIDES • COMPLETE SYSTEM",
+  "release": "V20.0 TEACHING PRESENTATION • UNIFIED UX • PRINT DESIGN",
   "date": "2026-09-22",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -16,13 +16,14 @@
   "ready_templates": 374,
   "paper_templates": 187,
   "digital_templates": 187,
-  "release_marker": "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW",
+  "release_marker": "V20.0",
+  "compatibility_release_marker": "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "19.9",
-  "notes": "V19.9 enriches all built-in 20-page teaching slide decks with detailed explanations, examples, analysis prompts, common mistakes, practice guidance and learning notes while preserving every V19.8 and earlier feature.",
+  "version": "20.0",
+  "notes": "V20.0 expands all 187 built-in 20-page teaching decks with substantive unit-aware teaching content aligned to Learning Goal, worksheet metadata and exam-bank concepts; unifies visible UX versioning; preserves the V19.6 Print System under one print design; adds high-contrast/fullscreen slide presentation, focus fullscreen PWA/browser flow, and reversible latest-unit teaching close without deleting academic records.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
@@ -34,8 +35,8 @@
   "backend_health_rpc": "admin_system_health_v17",
   "router_contract": "single owner app.js; direct data-app-route bridge; no V16.9 overlay/rescue and no hidden-menu click navigation in production",
   "master_flow": "auth -> role dashboard -> direct functional hub -> backend/RPC -> deterministic render/error; course CODE -> enrollment -> 17 sequential units -> 20-slide learning content -> logical Digital/Paper work pair -> attendance/exam/grade/report/promotion",
-  "focus": "Production real-use: 11 subjects × 17 units, 20-slide learning content, logical on-time Digital / late Paper work pairs, PWA/fullscreen, attendance, exam, gradebook, profile and reporting stability",
-  "pwa": "installable phone/tablet/desktop; display_override fullscreen with standalone fallback; runtime Fullscreen API button",
+  "focus": "Production real-use: 11 subjects × 17 units × 20 substantive teaching slides, unified compact UX, preserved Print Center, reversible teaching close, PWA/browser focus fullscreen, and full regression compatibility.",
+  "pwa": "installable phone/tablet/desktop; manifest fullscreen preferred; normal browsers request Fullscreen API on first trusted user gesture and retain an explicit fullscreen button; offline shell/draft compatibility preserved.",
   "copy_protection": "system-wide UI deterrence for selection/copy/cut/context menu/drag; input fields and Admin CODE copy are allowed; sensitive data remains protected server-side",
   "relationship_hardening": "subject_enrollments.user_id and exam_attempts.user_id are explicit profile embed paths; actor fields use auth.users to avoid PostgREST ambiguity",
   "canonical_templates": 374,
@@ -52,7 +53,7 @@
   "exam_question_bank": 550,
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
   "exam_bank_source": "V19.5 curated from the original 550-question ALL_Test-adapted bank: 25 course-reference + 25 analytical per subject; hard-option giveaway wording removed; current SHA256 623e28853ce20354b9e8f3f80f3d08a0bbb0a606091426795123987089205aef",
-  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub",
+  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub + V20.0 teaching/presentation/unified UX/print/fullscreen/close-teaching",
   "base_release": "V19.0 STABILIZED CLASSROOM FLOW",
   "v19_features": {
     "admin_class_leader_from_student_list": true,
@@ -138,7 +139,11 @@
     "print_color_adjust": true,
     "student_answer_key_hidden": true,
     "full_blank_17_unit_pack": true,
-    "subject_color_frontend_fallback": true
+    "subject_color_frontend_fallback": true,
+    "visible_design_release": "V20.0",
+    "legacy_engine_retained": "V19.6",
+    "unified_print_design": true,
+    "print_metadata_grid": true
   },
   "programming_special_activity": {
     "subject_code": "21910-2010",
@@ -178,6 +183,43 @@
     "common_mistakes": true,
     "teacher_learning_notes": true,
     "print_pdf": true,
-    "coverage": "11 subjects × 17 units = 187 built-in decks / 3740 logical slide pages"
-  }
+    "coverage": "11 subjects × 17 units = 187 built-in decks / 3740 logical slide pages",
+    "subject_count": 11,
+    "unit_count": 187,
+    "logical_slide_pages": 3740,
+    "definition_explanation_principle_process": true,
+    "correct_incorrect_examples": true,
+    "case_study": true,
+    "common_mistake_troubleshooting": true,
+    "safety_precaution": true,
+    "teacher_note": true,
+    "key_takeaway": true,
+    "review_question": true,
+    "learning_goal_alignment": true,
+    "worksheet_alignment": true,
+    "exam_bank_concept_alignment": true,
+    "exam_answer_key_exposed": false,
+    "high_contrast_light_dark": true,
+    "presentation_fullscreen": true
+  },
+  "unified_ux_ui": {
+    "visible_release_source": "site/release-meta.js",
+    "release_version": "V20.0",
+    "compact_professional": true,
+    "special_activity_top_level_admin": true,
+    "special_activity_top_level_user": true,
+    "dark_mode": true
+  },
+  "teaching_unit_close": {
+    "admin_only": true,
+    "backend_enforced": true,
+    "latest_open_unit_first": true,
+    "preserve_assignments": true,
+    "preserve_submissions": true,
+    "preserve_grades": true,
+    "preserve_history": true,
+    "reopen_compatible": true,
+    "rpc": "admin_lock_subject_unit_v20"
+  },
+  "production_database_release": "V20.0 teaching metadata RPC + reversible teaching close RPC"
 }

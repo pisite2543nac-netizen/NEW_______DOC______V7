@@ -39,7 +39,7 @@ ok('doc-full-nr-v18-1-complete-learning-system-20260916' in sw,'service worker c
 
 # PWA contract.
 manifest=json.loads((SITE/'manifest.webmanifest').read_text('utf-8'))
-ok(manifest.get('display')=='standalone','manifest display must be standalone')
+ok(manifest.get('display') in {'fullscreen','standalone'},'manifest display must support fullscreen/standalone')
 icons=manifest.get('icons') or []
 ok(any(x.get('sizes')=='192x192' for x in icons),'manifest missing 192 icon')
 ok(any(x.get('sizes')=='512x512' for x in icons),'manifest missing 512 icon')

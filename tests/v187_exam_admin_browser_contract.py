@@ -8,6 +8,7 @@ chromium=shutil.which('chromium') or shutil.which('chromium-browser') or shutil.
 if not chromium: print('V18.7 EXAM ADMIN BROWSER CONTRACT SKIP: Chromium missing');raise SystemExit(0)
 exam=(ROOT/'site/v16-exam.js').read_text('utf-8')
 exam=exam.replace('import { getClient } from "./v18-supabase.js";','const getClient = ()=>globalThis.__createClient();')
+exam=exam.replace('import { RELEASE_VERSION } from "./release-meta.js";','const RELEASE_VERSION = "V20.0";')
 exam=re.sub(r'function session\(\)\{[^\n]*\}', 'function session(){ return globalThis.__testSession; }', exam, count=1)
 css='\n'.join((ROOT/'site'/n).read_text('utf-8') for n in ['v18-core-ui.css','v16-minimal.css','v18-7-exam-adapted.css'])
 admin={'id':'admin1','full_name':'ผู้ดูแลระบบ','student_code':None,'role':'admin','active':True,'approval_status':'approved','academic_status':'studying','class_name':None,'grade_level':None,'room_label':None,'department':None,'major':None}

@@ -8,6 +8,7 @@ chromium=shutil.which('chromium') or shutil.which('chromium-browser') or shutil.
 if not chromium: print('V19.3 GRADEBOOK BROWSER CONTRACT SKIP: Chromium missing');raise SystemExit(0)
 platform=(ROOT/'site/v16-platform.js').read_text('utf-8')
 platform=platform.replace('import { getClient } from "./v18-supabase.js";','const getClient = ()=>globalThis.__createClient();')
+platform=platform.replace('import { RELEASE_VERSION } from "./release-meta.js";','const RELEASE_VERSION = "V20.0";')
 platform=re.sub(r'function readSession\(\)\{[\s\S]*?\n\}', 'function readSession(){ return globalThis.__testSession; }', platform, count=1)
 css='\n'.join((ROOT/'site'/x).read_text('utf-8') for x in ['v18-core-ui.css','v16-minimal.css','v19-responsive-fit.css','v19-production-ui.css'])
 admin={'id':'admin1','username':'admin','full_name':'ผู้ดูแลระบบ','display_name':'Admin','role':'admin','active':True,'approval_status':'approved','academic_status':'studying'}

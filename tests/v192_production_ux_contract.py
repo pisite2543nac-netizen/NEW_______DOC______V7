@@ -18,7 +18,7 @@ checks={
  'compact laptop':'max-height:820px' in css,
  'table accessibility':'enhanceTables' in js,
  'responsive state':'dataset.device' in js and 'dataset.orientation' in js,
- 'version label':'V19.2' in app,
+ 'version label':'RELEASE_VERSION' in app,
 }
 for k,v in checks.items(): print(f'{k}:', 'PASS' if v else 'FAIL')
 assert all(checks.values())

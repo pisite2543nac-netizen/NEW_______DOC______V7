@@ -1,7 +1,10 @@
 import { getClient } from "./v18-supabase.js";
+import { TEACHING_KNOWLEDGE } from "./data/teaching-knowledge-v20.js";
+import { RELEASE_VERSION } from "./release-meta.js";
 const V179_UNLOCK_COMPAT="admin_unlock_subject_unit_v179"; // compatibility contract; V19 wraps the hardened V17.9 unlock RPC
 
-const RELEASE = "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW";
+const V191_COMPAT_RELEASE = "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW";
+const RELEASE = RELEASE_VERSION;
 const V176_COMPAT_RELEASE="V17.6-FULL-11SUBJECTS";
 const v179Key=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const V173_COMPAT_ADMIN_SLIDE_LABEL="สไลด์สรุปพร้อมใช้";
@@ -63,7 +66,9 @@ function errText(err){
     WORK_PAIR_REQUIRED:"ไม่พบคู่ใบงานของหน่วยนี้",
     DIGITAL_PAIR_NOT_FOUND:"ไม่พบใบงานอิเล็กทรอนิกส์คู่กัน",
     ATTENDANCE_CHECKIN_REQUIRED:"ต้องผ่านการเช็คชื่อจากหัวหน้าห้องของวันนี้ก่อน จึงจะทำหรือส่งใบงานอิเล็กทรอนิกส์ได้",
-    UNIT_DIGITAL_WORKSHEET_NOT_FOUND:"ไม่พบใบงานอิเล็กทรอนิกส์ของหน่วยนี้"
+    UNIT_DIGITAL_WORKSHEET_NOT_FOUND:"ไม่พบใบงานอิเล็กทรอนิกส์ของหน่วยนี้",
+    CLOSE_LATEST_UNIT_FIRST:"กรุณาปิดหน่วยล่าสุดก่อน เพื่อรักษาลำดับการสอน",
+    UNIT_ALREADY_CLOSED:"หน่วยนี้ปิดการสอนอยู่แล้ว"
   };
   for(const [k,v] of Object.entries(map))if(raw.includes(k))return v;
   return raw;
@@ -230,6 +235,67 @@ function commonMistakes(domain,topic){
   };
   return x[domain]||x.general;
 }
+function learningTerms(...values){
+  const stop=/การ|ความ|ระบบ|หลักการ|หลัก|และ|ของ|ใน|สำหรับ|แบบ|ขั้นสูง|ขั้น|งาน|เทคโนโลยี|ปฏิบัติ|โครงงาน|พร้อม|ด้วย|จาก|เข้าสู่|คอมพิวเตอร์|ซอฟต์แวร์/gi;
+  return uniq(values.flatMap(v=>String(v||"").toLowerCase().replace(stop," ").split(/[^0-9a-zA-Zก-๙+#.-]+/).filter(x=>x.length>=3))).slice(0,24);
+}
+function teachingKnowledge(subject,unit,concepts=[]){
+  const facts=TEACHING_KNOWLEDGE[String(subject?.code||"")]||[];
+  if(!facts.length)return [];
+  const topic=unitTopic(unit),terms=learningTerms(topic,...concepts);
+  const scored=facts.map((fact,i)=>({fact,i,score:terms.reduce((n,t)=>n+(String(fact).toLowerCase().includes(t)?(t.length>5?3:2):0),0)}))
+    .sort((a,b)=>b.score-a.score||a.i-b.i);
+  const matched=scored.filter(x=>x.score>0).map(x=>x.fact);
+  if(matched.length>=5)return matched.slice(0,5);
+  const offset=Math.max(0,(Number(unit?.unit_no||1)-1)*3)%facts.length;
+  const fallback=[...facts.slice(offset),...facts.slice(0,offset)];
+  return uniq([...matched,...fallback]).slice(0,5);
+}
+function topicPrinciples(domain,topic){
+  const x={
+    law:["แยกข้อเท็จจริงออกจากข้อกล่าวอ้างหรือความคิดเห็น","ตรวจผู้เกี่ยวข้อง สิทธิ หน้าที่ เงื่อนไข และหลักฐานก่อนสรุป","ใช้กฎหมาย/ประกาศฉบับปัจจุบันและตรวจข้อยกเว้นที่เกี่ยวข้อง","บันทึกเหตุผลและแหล่งข้อมูลเพื่อให้ตรวจสอบย้อนหลังได้"],
+    safety:["กำจัดอันตรายที่ต้นเหตุก่อนพึ่ง PPE เมื่อทำได้","ประเมินโอกาสเกิดและความรุนแรงก่อนเลือกมาตรการ","หยุดงานเมื่อเงื่อนไขไม่ปลอดภัยหรือข้อมูลไม่พอ","ติดตามผลหลังควบคุมเพื่อยืนยันว่าความเสี่ยงลดลงจริง"],
+    network:["ตรวจจากชั้นกายภาพไปยังการตั้งค่าและบริการทีละชั้น","เปลี่ยนค่าทีละจุดและเก็บค่าก่อนแก้ทุกครั้ง","ใช้คำสั่ง/Log ยืนยันสมมติฐาน ไม่แก้จากการเดา","ทดสอบปลายทางหลายจุดหลังแก้เพื่อป้องกันผลกระทบแฝง"],
+    ui:["เริ่มจากงานและข้อจำกัดของผู้ใช้ก่อนเลือกภาพลักษณ์","จัดลำดับข้อมูลให้เห็นสิ่งสำคัญก่อนและลดภาระความจำ","ทุก Action ต้องมี Feedback และ Error recovery ที่เข้าใจได้","ทดสอบกับผู้ใช้จริงและปรับจากหลักฐาน ไม่ใช่รสนิยมส่วนตัว"],
+    frontend:["ใช้ Semantic structure ก่อนตกแต่งภาพ","แยก Structure / Style / Behavior เพื่อลดผลกระทบข้ามส่วน","รองรับ Loading / Empty / Error / Offline และ Keyboard","ทดสอบ Responsive, Accessibility, Performance และ Security ก่อนปล่อย"],
+    mobile:["ออกแบบ Touch target และ Flow ให้เหมาะกับหน้าจอเล็ก","ขอ Permission เมื่อจำเป็นและอธิบายเหตุผล","รองรับ Lifecycle, Offline, Retry และข้อมูลที่ยังไม่ Sync","ปกป้อง Token/ข้อมูลสำคัญและทดสอบบนอุปกรณ์จริง"],
+    programming:["นิยาม Input / Process / Output และข้อจำกัดก่อนเขียนโค้ด","แบ่งปัญหาเป็นหน่วยย่อยที่ทดสอบได้","ตรวจกรณีปกติ กรณีขอบเขต และข้อมูลผิดรูปแบบ","Debug จากหลักฐาน เช่น ค่า Variable, Trace และ Test case ไม่แก้แบบสุ่ม"],
+    data:["Validate ก่อน Transform และก่อนบันทึก","เก็บ Source/Log เพื่อย้อนกลับได้เมื่อข้อมูลผิด","กำหนดกฎ Mapping, Deduplicate และ Error handling ชัดเจน","ตรวจคุณภาพข้อมูลหลังนำเข้า ไม่ถือว่าสำเร็จเพียงเพราะคำสั่งไม่ Error"],
+    service:["รับอาการและผลกระทบให้ชัดก่อนเริ่มแก้","บันทึกสิ่งที่ตรวจและสิ่งที่เปลี่ยนทุกขั้น","จัดลำดับตามผลกระทบและความเร่งด่วน","ทดสอบกับผู้ใช้และทำ Preventive action ก่อนปิด Ticket"],
+    general:["กำหนดเป้าหมายและเกณฑ์สำเร็จก่อนลงมือ","ทำตามลำดับที่ตรวจสอบย้อนกลับได้","ใช้ข้อมูลจริงประกอบการตัดสินใจ","ตรวจผลและปรับปรุงจากข้อผิดพลาดที่พบ"]
+  };
+  return (x[domain]||x.general).map(x=>`${x} — ใช้กับ “${topic}” โดยยึดหลักฐานจากงานจริง`);
+}
+function correctIncorrect(domain,topic){
+  const good={law:"รวบรวมสัญญา เวลา เอกสาร และข้อเท็จจริงก่อนเทียบหลักเกณฑ์",safety:"หยุดประเมินอันตรายและเลือกมาตรการที่ต้นเหตุก่อนเริ่มงาน",network:"ตรวจ Link → IP → Gateway → DNS → Service ทีละชั้นและบันทึกผล",ui:"ทดสอบ User Flow กับผู้ใช้เป้าหมายและปรับจากจุดติดขัด",frontend:"ทดสอบหน้าเดียวกันหลาย viewport พร้อม Keyboard และ Error state",mobile:"จำลอง Offline/Permission denied/Lifecycle แล้วตรวจการกู้คืน",programming:"สร้าง Test case ปกติ/ขอบเขต/ผิดรูปแบบแล้วไล่ค่าทีละขั้น",data:"Validate schema และข้อมูลซ้ำก่อน Import พร้อมเก็บ rejection log",service:"บันทึก Ticket อาการ การเปลี่ยนแปลง ผลทดสอบ และให้ผู้ใช้ยืนยันก่อนปิด",general:"กำหนดโจทย์ ขั้นตอน และเกณฑ์ตรวจผลก่อนลงมือ"};
+  const bad={law:"สรุปสิทธิหรือความผิดจากความจำโดยไม่ตรวจเอกสารและกฎที่ใช้บังคับ",safety:"เห็นอันตรายแต่ใส่ PPE อย่างเดียวโดยไม่ลดความเสี่ยงที่ต้นเหตุ",network:"เปลี่ยน Router, DNS และ Firewall พร้อมกันจนไม่รู้ว่าสาเหตุจริงคืออะไร",ui:"เริ่มออกแบบสีและตกแต่งก่อนรู้ว่าผู้ใช้ต้องทำงานอะไร",frontend:"แก้ CSS ให้พอดีเฉพาะหน้าจอตนเองและไม่ทดสอบผลกระทบ",mobile:"สมมติว่าอินเทอร์เน็ตและ Permission พร้อมตลอด",programming:"แก้ตัวเลขหรือเงื่อนไขจนตัวอย่างหนึ่งผ่านโดยไม่หา Root cause",data:"Import ทันทีโดยไม่มี Validation/Backup/Log",service:"รีบติดตั้งใหม่ก่อนเก็บอาการและปิด Ticket โดยผู้ใช้ยังไม่ได้ยืนยัน",general:"เริ่มทำทันทีโดยไม่กำหนดข้อมูลที่ต้องใช้และเกณฑ์สำเร็จ"};
+  return {good:`ถูก: ${good[domain]||good.general} ในหัวข้อ “${topic}”`,bad:`ไม่ถูก: ${bad[domain]||bad.general} ซึ่งทำให้ตรวจสอบสาเหตุและผลลัพธ์ได้ยาก`};
+}
+function troubleshootingGuide(domain,topic){
+  const common=commonMistakes(domain,topic);
+  return [
+    `1. ระบุอาการ/ปัญหาให้เป็นประโยคที่วัดได้ในเรื่อง “${topic}”`,
+    "2. ตรวจเงื่อนไขก่อนหน้าและข้อมูลที่เปลี่ยนล่าสุด",
+    `3. หยิบข้อผิดพลาดที่พบบ่อยมาเทียบ: ${common[0]||"ข้ามขั้นตอนตรวจสอบ"}`,
+    "4. แก้ทีละสาเหตุและทดสอบซ้ำด้วยเกณฑ์เดิม",
+    "5. บันทึก Root cause วิธีแก้ และจุดป้องกันไม่ให้เกิดซ้ำ"
+  ];
+}
+function topicPrecautions(domain,topic){
+  const x={
+    law:["ตรวจฉบับกฎหมาย/ประกาศที่มีผลใช้บังคับจริงก่อนนำไปใช้","อย่าเปิดเผยข้อมูลส่วนบุคคลหรือเอกสารพนักงานเกินความจำเป็น","กรณีมีข้อพิพาทจริงให้ส่งต่อผู้มีอำนาจ/ผู้เชี่ยวชาญตามขั้นตอน"],
+    safety:["หยุดงานทันทีเมื่อมีอันตรายร้ายแรงหรือควบคุมไม่ได้","ใช้ PPE ให้ตรงชนิดอันตรายและตรวจสภาพก่อนใช้","ไม่ทดลองกับไฟฟ้า สารเคมี เครื่องจักร หรือเหตุฉุกเฉินโดยไม่มีผู้ควบคุม"],
+    network:["สำรอง Configuration ก่อนแก้ Router/Switch/Firewall","หลีกเลี่ยงการทดสอบที่รบกวนระบบ Production โดยไม่วางแผน","ปกป้อง Password, Key, IP plan และ Log ที่มีข้อมูลสำคัญ"],
+    ui:["ตรวจ Contrast, ขนาดตัวอักษร, Keyboard และ Touch target","อย่าใช้สีเพียงอย่างเดียวเป็นตัวสื่อสถานะ","หลีกเลี่ยง Dark pattern และเก็บข้อมูลผู้ใช้เท่าที่จำเป็น"],
+    frontend:["Escape/validate ข้อมูลจากผู้ใช้และไม่ฝัง Secret ใน Client","ทดสอบ Browser/Viewport หลักก่อน Deploy","เตรียม Rollback เมื่อแก้โค้ดที่กระทบเส้นทางใช้งานหลัก"],
+    mobile:["ขอ Permission เท่าที่จำเป็นและมี fallback เมื่อถูกปฏิเสธ","เก็บ Token/ข้อมูลสำคัญในพื้นที่ปลอดภัยของแพลตฟอร์ม","ทดสอบการพักแอป กลับมาใช้งาน และเครือข่ายหลุด"],
+    programming:["Validate input ก่อนคำนวณหรือเขียนข้อมูล","หลีกเลี่ยงการรันโค้ดไม่รู้แหล่งที่มาหรือคำสั่งทำลายข้อมูล","ใช้ Version control และ Test ก่อนรวมโค้ด"],
+    data:["สำรองข้อมูล/ใช้ Transaction เมื่อต้องแก้ข้อมูลจำนวนมาก","จำกัดสิทธิ์และไม่ Log ข้อมูลลับเกินจำเป็น","ใช้ Idempotency/Deduplicate ป้องกันนำเข้าซ้ำ"],
+    service:["สำรองข้อมูลผู้ใช้ก่อนงานที่เสี่ยงต่อการสูญหาย","ขออนุญาตก่อน Remote/เปลี่ยนค่าที่กระทบผู้ใช้","ไม่บันทึกรหัสผ่านหรือข้อมูลส่วนบุคคลลง Ticket แบบเปิดเผย"],
+    general:["ตรวจความพร้อมของเครื่องมือและข้อมูลก่อนเริ่ม","หยุดเมื่อพบเงื่อนไขที่ไม่แน่ใจหรือเสี่ยง","เก็บหลักฐานและผลตรวจเพื่อย้อนกลับได้"]
+  };
+  return (x[domain]||x.general).map(x=>`${x} • ${topic}`);
+}
 function deckSlides(subject,unit,{admin=false}={}){
   const works=unit?.worksheets||[],topic=unitTopic(unit);
   const meta=works.find(w=>w.mode==="digital")||works[0]||{};
@@ -239,41 +305,37 @@ function deckSlides(subject,unit,{admin=false}={}){
   const controls=uniq(Array.isArray(meta.control_points)?meta.control_points:[]);
   const exits=uniq(Array.isArray(meta.exit_questions)?meta.exit_questions:[]);
   const fallback=teachingHints(subject?.name,topic),domain=teachingDomain(subject?.name,topic);
-  const c=[...concepts,...fallback].slice(0,5);
-  while(c.length<5)c.push(`หลักการสำคัญของ “${topic}”`);
+  const c=[...concepts,...fallback].slice(0,5);while(c.length<5)c.push(`แนวคิดสำคัญของ “${topic}”`);
   const p=practice.length?practice:["สำรวจข้อมูล/สถานการณ์","วิเคราะห์ปัญหา","เลือกวิธีดำเนินการ","ลงมือปฏิบัติ","ตรวจสอบและสรุปผล"];
+  const k=teachingKnowledge(subject,unit,c),principles=topicPrinciples(domain,topic),mistakes=commonMistakes(domain,topic),compare=correctIncorrect(domain,topic);
   const caseStudy=String(meta.case_study||topicScenario(domain,topic));
   const digital=works.find(w=>w.mode==="digital"),paper=works.find(w=>w.mode==="paper");
   const stateText=unit?.unlocked?`เปิด ${fmt(unit.open_at)} • กำหนดส่ง ${fmt(unit.due_at)}`:"ยังไม่เปิดให้นักศึกษา";
-  const deep=topicExplanation(domain,topic),mistakes=commonMistakes(domain,topic);
-  const conceptSlide=(i)=>({
-    kicker:`CONCEPT ${i+1}`,title:c[i],
-    explain:conceptExplanation(domain,c[i],topic),
-    body:[`ประเด็นที่ต้องเข้าใจ: ${c[i]}`,`เชื่อมโยงกับหัวข้อหลัก “${topic}” และแนวคิดก่อนหน้า`,`อธิบายด้วยเหตุผล ไม่ใช่เพียงท่องจำคำศัพท์`,`หลังเรียนควรยกตัวอย่างและบอกวิธีตรวจสอบการนำไปใช้ได้`],
-    example:conceptExample(domain,c[i],topic,i)
-  });
+  const deep=topicExplanation(domain,topic);
+  const conceptSlide=(i)=>({kicker:`CONCEPT ${i+1}`,title:c[i],explain:`${conceptExplanation(domain,c[i],topic)}${k[i]?` สาระเชื่อมโยงจากคลังความรู้รายวิชา: ${k[i]}`:""}`,body:[`นิยาม/บทบาท: อธิบาย “${c[i]}” ด้วยภาษาของตนเองและบอกว่ามีหน้าที่ใด`,`ความสัมพันธ์: เชื่อม “${c[i]}” กับ “${topic}” และแนวคิดอื่นในหน่วย`,`การตัดสินใจ: ระบุว่าเมื่อใดควรใช้/ไม่ควรใช้แนวคิดนี้`,`การตรวจผล: บอกหลักฐานหรือผลทดสอบที่ยืนยันว่าใช้ได้ถูกต้อง`],example:conceptExample(domain,c[i],topic,i)});
   const slides=[
-    {kicker:`${subject?.code||""} • UNIT ${unit?.unit_no||""}`,title:topic,lead:subject?.name||"",explain:deep,body:["หน่วยนี้ใช้สไลด์ ใบงานออนไลน์ และใบงานย้อนหลังในหัวข้อเดียวกัน","ให้ผู้เรียนอ่านคำอธิบาย ทำความเข้าใจตัวอย่าง แล้วจึงลงมือทำกิจกรรม","เป้าหมายคือสามารถอธิบายเหตุผลและประยุกต์ใช้ได้ ไม่ใช่เพียงจำคำสำคัญ"],note:"ครูสามารถหยุดถามผู้เรียนได้ทุก 3–4 หน้า เพื่อให้ผู้เรียนสรุปด้วยภาษาของตนเอง"},
-    {kicker:"LEARNING OUTCOME",title:"ผลลัพธ์การเรียนรู้",explain:`เมื่อจบหน่วย ผู้เรียนควรเปลี่ยนจากการ “รู้หัวข้อ” ไปสู่การ “อธิบาย วิเคราะห์ และลงมือทำ” เรื่อง ${topic} ได้อย่างเป็นขั้นตอน พร้อมตรวจสอบผลของตนเองได้`,body:goals.length?goals:[`อธิบายความหมายและองค์ประกอบของ “${topic}” ได้`,`วิเคราะห์สถานการณ์ที่เกี่ยวข้องและเลือกแนวทางปฏิบัติได้`,`ประยุกต์ใช้กับงานหรือปัญหาจริงและตรวจสอบผลได้`],example:`หลักฐานการเรียนรู้ที่ดีคือผู้เรียนสามารถอธิบายว่า “ทำอะไร เพราะอะไร และรู้ได้อย่างไรว่าผลถูกต้อง”`},
-    {kicker:"WHY IT MATTERS",title:"ทำไมเรื่องนี้จึงสำคัญ",explain:deep,body:[`ช่วยให้ผู้เรียนเชื่อมทฤษฎีกับการทำงานจริงของ “${topic}”`,`ลดการตัดสินใจแบบเดาสุ่ม เพราะมีหลักการและเกณฑ์ตรวจสอบ`,`ช่วยมองเห็นผลกระทบทั้งก่อนทำ ระหว่างทำ และหลังทำ`,`เป็นพื้นฐานต่อยอดไปยังหน่วยที่ซับซ้อนกว่า`],example:topicScenario(domain,topic)},
-    {kicker:"KEY WORDS",title:"คำสำคัญประจำหน่วย",explain:"คำสำคัญไม่ใช่รายการสำหรับท่องจำ แต่เป็นแผนที่ของหน่วยเรียน ให้ผู้เรียนอธิบายความสัมพันธ์ของคำแต่ละคำกับหัวข้อหลัก และลองยกตัวอย่างจากสถานการณ์จริง",body:c.map((x,i)=>`${i+1}. ${x}`),note:"เทคนิค: ให้ผู้เรียนเลือก 2 คำแล้วอธิบายความสัมพันธ์ระหว่างกันก่อนเริ่มเนื้อหาเชิงลึก"},
-    conceptSlide(0),conceptSlide(1),conceptSlide(2),conceptSlide(3),conceptSlide(4),
-    {kicker:"PROCESS",title:"ขั้นตอนการปฏิบัติ",explain:`การทำงานเรื่อง “${topic}” ควรมีลำดับที่ชัด เพื่อให้ตรวจสอบย้อนกลับได้และลดการข้ามขั้นตอนสำคัญ`,body:p.map((x,i)=>`${i+1}. ${x} — ระบุสิ่งที่ต้องทำ ข้อมูลที่ต้องใช้ และผลที่คาดหวังจากขั้นตอนนี้`),example:`หลังแต่ละขั้นตอนควรถามว่า “มีหลักฐานอะไรยืนยันว่าพร้อมไปขั้นถัดไป” ถ้ายังตอบไม่ได้ควรตรวจซ้ำก่อน`},
-    {kicker:"CONTROL POINTS",title:"จุดตรวจสอบสำคัญ",explain:"จุดควบคุมคือจังหวะที่ต้องหยุดตรวจคุณภาพหรือความปลอดภัยก่อนเดินหน้าต่อ การมี Checklist ช่วยให้ผู้เรียนไม่พึ่งความจำและทำงานได้สม่ำเสมอ",body:controls.length?controls:["ตรวจโจทย์/เป้าหมายให้ชัดก่อนเริ่ม","ตรวจความพร้อมของข้อมูล เครื่องมือ และเงื่อนไข","ตรวจผลระหว่างทำ ไม่รอให้จบทั้งหมด","บันทึกข้อผิดพลาดและสิ่งที่เปลี่ยนแปลง","ตรวจผลสุดท้ายเทียบกับเกณฑ์ที่กำหนด"],example:"หากพบความผิดปกติ ให้หยุดที่จุดตรวจล่าสุด ย้อนดูข้อมูลก่อนหน้า แล้วแก้เฉพาะสาเหตุที่ยืนยันได้"},
-    {kicker:"CASE STUDY",title:"กรณีศึกษา",explain:caseStudy,body:["1. ระบุข้อเท็จจริงที่ทราบแน่นอน","2. ระบุข้อมูลที่ยังขาดและสิ่งที่ต้องตรวจเพิ่ม","3. แยกอาการออกจากสาเหตุที่เป็นไปได้","4. เลือกหลักการจากหน่วยนี้มาใช้วิเคราะห์","5. เสนอแนวทางแก้พร้อมเกณฑ์ตรวจผล"],example:"อย่ารีบตอบว่าใครผิดหรือวิธีใดดีที่สุด จนกว่าจะระบุข้อมูลและเกณฑ์ที่ใช้ตัดสินได้ชัดเจน"},
-    {kicker:"ANALYZE",title:"วิธีวิเคราะห์อย่างเป็นระบบ",explain:"การวิเคราะห์ที่ดีต้องทำให้ผู้อื่นตามเหตุผลของเราได้ จึงควรเขียนเป็นลำดับจากข้อมูล → สาเหตุ → ทางเลือก → ผลกระทบ → การตัดสินใจ → การตรวจผล",body:[`ปัญหาหลักในกรณี “${topic}” คืออะไร`,`มีสาเหตุหรือปัจจัยใดที่ต้องพิสูจน์เพิ่ม`,`แนวทางแต่ละทางมีข้อดี ข้อจำกัด และความเสี่ยงอย่างไร`,`จะใช้ข้อมูลหรือผลทดสอบอะไรเลือกทางที่เหมาะสม`,`หลังดำเนินการจะวัดอย่างไรว่าปัญหาดีขึ้นจริง`],example:"หากมีสองทางเลือกที่ดูถูกทั้งคู่ ให้เปรียบเทียบด้วยเกณฑ์เดียวกัน เช่น ความถูกต้อง ความปลอดภัย เวลา ผลกระทบ และความสามารถในการตรวจสอบย้อนกลับ"},
-    {kicker:"GOOD PRACTICE",title:"แนวทางปฏิบัติที่ถูกต้อง",explain:"Good Practice คือวิธีทำงานที่ลดความผิดพลาด ทำซ้ำได้ และอธิบายเหตุผลได้ ควรมีทั้งการเตรียมงาน การลงมือ การตรวจผล และการบันทึก",body:p.map((x,i)=>`${i+1}. ${x} — ทำตามลำดับและบันทึกสิ่งที่พบ`),example:`ก่อนจบงานเรื่อง “${topic}” ให้ผู้เรียนอธิบาย Checklist ของตนเอง 3–5 ข้อ เพื่อใช้ซ้ำในครั้งต่อไป`},
-    {kicker:"COMMON MISTAKES",title:"ข้อผิดพลาดที่พบบ่อย",explain:"ข้อผิดพลาดจำนวนมากไม่ได้เกิดจากไม่รู้เนื้อหา แต่เกิดจากรีบทำ ข้ามการตรวจสอบ หรือไม่มีหลักฐานรองรับการตัดสินใจ การรู้จุดพลาดล่วงหน้าช่วยให้ป้องกันได้ตั้งแต่ต้น",body:mistakes.map((x,i)=>`${i+1}. ${x}`),example:"เมื่อเกิดข้อผิดพลาด ให้จดว่าเกิดที่ขั้นตอนไหน สาเหตุคืออะไร และจะเพิ่มจุดตรวจใดเพื่อไม่ให้เกิดซ้ำ"},
-    {kicker:"APPLY",title:"ประยุกต์ใช้กับงานจริง",explain:`การประยุกต์ใช้ “${topic}” ต้องเลือกหลักการให้เหมาะกับบริบท ไม่จำเป็นต้องทำเหมือนตัวอย่างทุกขั้น แต่ต้องอธิบายได้ว่าปรับอะไรและเพราะเหตุใด`,body:["เลือกงานจริงหรือปัญหาใกล้ตัว 1 กรณี","ระบุข้อมูลที่ต้องรวบรวมก่อนตัดสินใจ","เลือกหลักการจากหน่วยนี้อย่างน้อย 2 ข้อ","วางขั้นตอนปฏิบัติพร้อมจุดตรวจ","กำหนดหลักฐานที่จะใช้ยืนยันผล"],example:conceptExample(domain,c[0],topic,0)},
-    {kicker:"ON-TIME WORK",title:"ใบงานอิเล็กทรอนิกส์ • ส่งตรงเวลา",explain:"ใบงานออนไลน์ใช้วัดว่าผู้เรียนสามารถอธิบายเนื้อหา วิเคราะห์สถานการณ์ และประยุกต์ใช้ด้วยภาษาของตนเองได้หรือไม่ ควรอ่านคำถามให้ครบ วางคำตอบก่อนพิมพ์ และตรวจทานก่อนยืนยันส่ง",body:[digital?`${digital.reference_code||""} • ${cleanTopic(digital.title)}`:"ใบงานออนไลน์ประจำหน่วย",`สถานะ: ${stateText}`,"บันทึกร่างได้ระหว่างทำ และตรวจคำตอบก่อนยืนยันส่ง","ตอบโดยอธิบายเหตุผล/ขั้นตอน ไม่ตอบเพียงคำสั้น ๆ ถ้าคำถามต้องการการวิเคราะห์"],note:"ผลงานออนไลน์ที่ส่งตรงเวลาจะเข้าสู่กระบวนการตรวจและคะแนนตามระบบรายวิชา"},
-    {kicker:"LATE WORK",title:"ใบงานพิมพ์ • สำหรับส่งย้อนหลัง",explain:"ใบงานย้อนหลังใช้เนื้อหาเดียวกับใบงานออนไลน์ แต่เปลี่ยนรูปแบบการส่งเป็นเอกสารรายบุคคล เพื่อให้ติดตามตัวผู้เรียนและเก็บหลักฐานได้ครบ ผู้เรียนยังต้องตอบเนื้อหาและเหตุผลให้ครบเหมือนเดิม",body:[paper?`${paper.reference_code||""} • ${cleanTopic(paper.title)}`:"ใบงานพิมพ์ย้อนหลังประจำหน่วย","พิมพ์ฉบับรายบุคคลพร้อม Barcode จากระบบ","เขียนคำตอบให้ครบทุกข้อและส่งฉบับจริง","Admin สแกนเก็บสำเนาเพื่อเชื่อมกลับกับประวัติงานของผู้เรียน"],note:"งานย้อนหลังมีนโยบายเครดิตคะแนนตามที่ระบบกำหนด จึงควรส่งออนไลน์ภายในกำหนดเมื่อทำได้"},
-    {kicker:admin?"TEACHER CHECK":"CHECK UNDERSTANDING",title:admin?"เช็กลิสต์ครูก่อนจบหน่วย":"ตรวจความเข้าใจก่อนส่งงาน",explain:admin?"ก่อนจบหน่วยให้ตรวจทั้งความเข้าใจ เนื้อหา กิจกรรม และความพร้อมของระบบ เพื่อให้ผู้เรียนมีข้อมูลเพียงพอก่อนทำใบงาน":"ตอบคำถามด้วยภาษาของตนเองโดยไม่ย้อนอ่านข้อความเดิม ถ้าอธิบายไม่ได้ให้กลับไปดู Concept และ Case Study ที่เกี่ยวข้อง",body:admin?["ทบทวนคำอธิบายและตัวอย่างครบทั้ง 20 หน้า","ถามผู้เรียนอย่างน้อย 2 คำถามที่ต้องอธิบายเหตุผล","ตรวจว่าสไลด์และคำถามใบงานสัมพันธ์กับหัวข้อเดียวกัน","ตรวจเวลาเปิด/กำหนดส่ง และแจ้งรูปแบบงานย้อนหลัง","สรุป Key takeaway ก่อนปล่อยทำใบงาน"]:exits.length?exits:[`อธิบายสาระสำคัญของ “${topic}” ด้วยภาษาของตนเอง`,`ยกตัวอย่างการประยุกต์ใช้ 1 กรณี`,`อธิบายข้อผิดพลาดที่พบบ่อย 1 ข้อและวิธีป้องกัน`,`ถ้าพบปัญหา คุณจะเริ่มตรวจจากจุดใดและเพราะเหตุใด`],example:admin?"ให้ผู้เรียน Pair-share สรุปหัวข้อภายใน 60 วินาที แล้วสุ่ม 2–3 คนอธิบายต่อหน้าชั้น":"ถ้าตอบได้ครบทั้ง What / Why / How / Check แสดงว่าพร้อมทำใบงานมากขึ้น"},
-    {kicker:"WRAP UP",title:"สรุปหน่วยและสิ่งที่ควรจำ",explain:`สาระของหน่วย “${topic}” ไม่ได้อยู่ที่จำคำศัพท์ทั้งหมด แต่อยู่ที่การเห็นความสัมพันธ์ของแนวคิด เลือกใช้ให้เหมาะกับสถานการณ์ และตรวจสอบผลด้วยหลักฐาน`,body:[`หัวข้อหลัก: ${topic}`,goals[0]||`อธิบายและประยุกต์ใช้ “${topic}” ได้`,`แนวคิดสำคัญ: ${c.slice(0,3).join(" • ")}`,"กระบวนการสำคัญ: วิเคราะห์ → ลงมือ → ตรวจผล → ปรับปรุง","ส่งตรงเวลา = ใบงานอิเล็กทรอนิกส์ • ส่งย้อนหลัง = ใบงานพิมพ์รายบุคคล"],example:"Key takeaway: ก่อนตัดสินใจหรือทำงานทุกครั้ง ให้ตอบ 3 คำถาม — เรากำลังแก้ปัญหาอะไร? ใช้หลักการใด? และมีหลักฐานอะไรยืนยันว่าผลถูกต้อง?"}
+    {kicker:`${subject?.code||""} • UNIT ${unit?.unit_no||""}`,title:topic,lead:subject?.name||"",explain:deep,body:["หน่วยนี้เชื่อม Built-in Slides → Learning Goal → Digital/Paper Worksheet → Exam Question Bank","เรียนเพื่ออธิบายเหตุผล วิเคราะห์สถานการณ์ ลงมือทำ และตรวจผลได้จริง","ทุกตัวอย่างควรเชื่อมกับงานจริงของรายวิชา ไม่ใช่จำหัวข้ออย่างเดียว"],note:"TEACHER NOTE: ใช้คำถามสั้นทุก 3–4 หน้า ให้ผู้เรียนสรุปด้วยภาษาของตนเองก่อนเดินหน้าต่อ"},
+    {kicker:"LEARNING GOAL",title:"เป้าหมายการเรียนรู้และหลักฐานความสำเร็จ",explain:`เมื่อจบหน่วย ผู้เรียนต้องสามารถอธิบาย วิเคราะห์ และประยุกต์ “${topic}” ได้ตาม Learning Goal ของใบงาน พร้อมแสดงหลักฐานว่าผลลัพธ์ถูกต้อง`,body:goals.length?goals:[`อธิบายความหมายและองค์ประกอบของ “${topic}” ได้`,`เลือกวิธีปฏิบัติและตรวจผลได้`,`เชื่อมเนื้อหากับใบงานและโจทย์วิเคราะห์ได้`],example:"หลักฐานที่ดีต้องตอบได้ครบ What / Why / How / Check ไม่ใช่เพียงบอกชื่อคำศัพท์"},
+    {kicker:"DEFINITION",title:"ความหมาย ขอบเขต และความสำคัญ",explain:deep,body:k.length?k.slice(0,4):[`นิยาม “${topic}” ให้ชัดว่าครอบคลุมอะไร`,`ระบุสิ่งที่อยู่ในขอบเขตและสิ่งที่ไม่ใช่หัวข้อนี้`,`อธิบายผลกระทบถ้าปฏิบัติผิดหรือข้ามขั้นตอน`,`เชื่อมกับงานจริงของ ${subject?.name||"รายวิชา"}`],example:topicScenario(domain,topic)},
+    {kicker:"KEY CONCEPTS",title:"แนวคิดหลักและคำศัพท์ที่ต้องใช้",explain:"คำศัพท์ทำหน้าที่เป็นเครื่องมือคิด ผู้เรียนควรอธิบายความสัมพันธ์ระหว่างคำ ไม่ใช่ท่องจำเป็นรายการ",body:c.map((x,i)=>`${i+1}. ${x}${k[i]?` — ${k[i]}`:""}`),note:"ให้ผู้เรียนเลือก 2 แนวคิดแล้ววาดลูกศรอธิบายความสัมพันธ์ก่อนเริ่ม Concept เชิงลึก"},
+    conceptSlide(0),conceptSlide(1),conceptSlide(2),conceptSlide(3),
+    {kicker:"PRINCIPLE",title:`หลักการทำงานของ ${c[4]}`,explain:`หัวข้อนี้เป็นสะพานจาก “รู้คำ” ไปสู่ “เลือกใช้ได้” โดยยึดหลักของ ${c[4]} และบริบท “${topic}”`,body:principles,example:k[4]||conceptExample(domain,c[4],topic,4)},
+    {kicker:"PROCESS",title:"กระบวนการทำงานทีละขั้น",explain:`การทำ “${topic}” ต้องเป็นลำดับที่ตรวจสอบย้อนกลับได้ เพื่อให้รู้ว่าความผิดพลาดเกิดก่อน ระหว่าง หรือหลังขั้นตอนไหน`,body:p.map((x,i)=>`${i+1}. ${x} — ระบุ Input, สิ่งที่ต้องทำ, Output และจุดตรวจของขั้นนี้`),example:`จุดควบคุมที่มีในใบงาน: ${(controls.length?controls.slice(0,3):["ตรวจเงื่อนไขก่อนเริ่ม","ตรวจผลระหว่างทำ","ตรวจผลเทียบเกณฑ์"]).join(" • ")}`},
+    {kicker:"CORRECT / INCORRECT",title:"ตัวอย่างที่ถูกและตัวอย่างที่ผิด",explain:"การเปรียบเทียบสองแบบช่วยให้เห็นเหตุผลของหลักการชัดกว่าการจำคำตอบ ควรชี้ให้ได้ว่าจุดใดทำให้ผลต่างกัน",body:[compare.good,compare.bad,`Common mistake: ${mistakes[0]||"ข้ามจุดตรวจสำคัญ"}`,`วิธีป้องกัน: เพิ่ม Checklist ก่อนผ่านไปขั้นถัดไป`],example:"ให้ผู้เรียนอธิบายว่าตัวอย่างที่ผิดควรแก้ตรงไหนก่อนเป็นอันดับแรก และใช้หลักฐานใดตรวจว่าดีขึ้นแล้ว"},
+    {kicker:"CASE STUDY",title:"กรณีศึกษาและการตัดสินใจ",explain:caseStudy,body:["แยกข้อเท็จจริงที่ทราบแน่นอน","ระบุข้อมูลที่ยังขาดและวิธีเก็บข้อมูลเพิ่ม","เลือกหลักการจากหน่วยนี้อย่างน้อย 2 ข้อ","เปรียบเทียบทางเลือกด้วยเกณฑ์เดียวกัน","กำหนดวิธีตรวจผลหลังดำเนินการ"],example:"อย่ารีบสรุปจากอาการแรก ให้หา Root cause หรือเงื่อนไขที่ยืนยันได้ก่อน"},
+    {kicker:"ANALYZE",title:"วิเคราะห์ปัญหาอย่างเป็นระบบ",explain:"ลำดับการคิดที่ตรวจสอบได้คือ ข้อมูล → สมมติฐาน → หลักฐาน → ทางเลือก → การตัดสินใจ → การตรวจผล",body:[`ปัญหาหลักใน “${topic}” คืออะไรและวัดได้อย่างไร`,`ข้อมูลใดสนับสนุนหรือหักล้างสาเหตุที่สงสัย`,`ทางเลือกใดมีผลกระทบ/ความเสี่ยงต่ำกว่า`,`จะทดสอบทีละสาเหตุอย่างไรโดยไม่สร้างปัญหาใหม่`,`เกณฑ์ใดบอกว่าการแก้ปัญหาสำเร็จ`],example:"ถ้ามีหลายสาเหตุ ให้เริ่มจากสาเหตุที่ตรวจได้เร็ว ปลอดภัย และมีหลักฐานชัด แล้วค่อยขยายการตรวจ"},
+    {kicker:"COMMON MISTAKE + TROUBLESHOOTING",title:"ข้อผิดพลาดที่พบบ่อยและวิธีแก้",explain:"Troubleshooting ที่ดีไม่ใช่ลองทุกอย่าง แต่เป็นการลดพื้นที่ของสาเหตุทีละขั้นและเก็บหลักฐานทุกครั้ง",body:[...mistakes.slice(0,3).map((x,i)=>`พลาด ${i+1}: ${x}`),...troubleshootingGuide(domain,topic)],example:"หลังแก้ให้ทำ Regression/ทดสอบซ้ำจุดเดิมและจุดที่อาจได้รับผลกระทบ เพื่อยืนยันว่าไม่ได้แก้หนึ่งอย่างแล้วทำอีกอย่างพัง"},
+    {kicker:"SAFETY / PRECAUTION",title:"ข้อควรระวัง คุณภาพ และความปลอดภัย",explain:`แม้หัวข้อ “${topic}” จะไม่ใช่งานอันตรายทางกายภาพทุกครั้ง แต่ทุกงานมีความเสี่ยงด้านข้อมูล ระบบ บุคคล หรือคุณภาพ จึงต้องกำหนดข้อควรระวังก่อนลงมือ`,body:topicPrecautions(domain,topic),example:"ก่อนทำงานจริงให้ตอบว่า: อะไรเสียหายได้? ใครได้รับผลกระทบ? ย้อนกลับอย่างไร? และใครต้องอนุมัติก่อน?"},
+    {kicker:"WORKSHEET • DIGITAL • ON-TIME WORK",title:"เชื่อมไปใบงานอิเล็กทรอนิกส์",explain:"ใบงาน Digital ตรวจว่าผู้เรียนสามารถใช้แนวคิดของหน่วยเพื่ออธิบาย วิเคราะห์ และปฏิบัติได้จริง คำตอบต้องมีเหตุผลและขั้นตอนเมื่อโจทย์ต้องการ ไม่ใช่ตอบคำสั้น ๆ",body:[digital?`${digital.reference_code||""} • ${cleanTopic(digital.title)}`:"ใบงานออนไลน์ประจำหน่วย",`สถานะ: ${stateText}`,`Learning Goal: ${goals[0]||`ประยุกต์ใช้ ${topic} ได้`}`,"ตรวจคำตอบให้ครบและบันทึกร่างก่อนยืนยันส่ง"],note:"Digital/Paper หน่วยเดียวกันเป็น Logical Work Pair เดียว งานตรงเวลาถูกประมวลผลตามนโยบายคะแนนเดิม"},
+    {kicker:"WORKSHEET • PAPER • LATE WORK",title:"ใบงานพิมพ์สำหรับส่งย้อนหลัง",explain:"Paper ใช้เนื้อหาและ Learning Goal เดียวกับ Digital แต่เปลี่ยนช่องทางส่งเป็นเอกสารรายบุคคลพร้อม Barcode/QR เพื่อให้ตรวจสอบย้อนกลับได้",body:[paper?`${paper.reference_code||""} • ${cleanTopic(paper.title)}`:"ใบงานพิมพ์ย้อนหลังประจำหน่วย","พิมพ์ฉบับรายบุคคลจากระบบเมื่อ Backend อนุญาต","ตอบครบทุกข้อและส่งฉบับจริง","Admin สแกนเก็บหลักฐานโดยไม่เปลี่ยนงานเดิม"],note:"งานย้อนหลังมี Credit factor ตามนโยบายระบบเดิมและไม่นับซ้ำกับ Digital ของหน่วยเดียวกัน"},
+    {kicker:"EXAM ALIGNMENT",title:"สาระที่เชื่อมกับคลังข้อสอบ",explain:"คลังข้อสอบของรายวิชาวัดทั้งความเข้าใจสาระหลักและการวิเคราะห์ สไลด์จึงทบทวน Concept และเหตุผลที่ต้องใช้จริง โดยไม่เปิดเผยข้อสอบ ตัวเลือก หรือ Answer Key",body:(k.length?k:[...c]).slice(0,5).map((x,i)=>`${i+1}. ${x}`),example:`ฝึกตอบโจทย์แบบใหม่ด้วยหลัก “นิยาม → เหตุผล → ขั้นตอน → ตรวจผล” ในบริบท “${topic}” แทนการจำคำตอบเฉพาะข้อ`},
+    {kicker:admin?"TEACHER NOTE + REVIEW":"REVIEW QUESTIONS",title:admin?"แนวสอนของครูและคำถามทบทวน":"คำถามทบทวนก่อนจบหน่วย",explain:admin?"ใช้คำถามที่ต้องอธิบายเหตุผลและให้ผู้เรียนเชื่อมไปยังใบงาน ไม่เฉลยข้อสอบจริงจากคลัง":"ตอบด้วยภาษาของตนเองโดยไม่ย้อนอ่านข้อความ ถ้าตอบไม่ได้ให้กลับไป Concept / Case Study / Troubleshooting ที่เกี่ยวข้อง",body:exits.length?exits:[`อธิบาย “${topic}” ให้เพื่อนฟังภายใน 60 วินาที`,`ยกตัวอย่างที่ถูกและผิดอย่างละ 1 กรณี`,`บอก Common mistake 1 ข้อและวิธี Troubleshoot`,`ระบุข้อควรระวังที่สำคัญที่สุดของหน่วยนี้`,`อธิบายว่าใบงานจะใช้หลักการใดจากสไลด์`],note:admin?"TEACHER NOTE: ใช้ Think–Pair–Share 2–3 นาที แล้วสุ่มผู้เรียนอธิบาย What / Why / How / Check ต่อหน้าชั้น":"ถ้าตอบได้ครบ What / Why / How / Check แสดงว่าพร้อมทำใบงานและเตรียมสอบมากขึ้น"},
+    {kicker:"KEY TAKEAWAY",title:"สรุปสิ่งที่ต้องจำและนำไปใช้",explain:`แก่นของ “${topic}” คือการเข้าใจหลักการ เลือกวิธีให้เหมาะกับบริบท ลงมืออย่างเป็นขั้นตอน และยืนยันผลด้วยหลักฐาน`,body:[`Learning Goal: ${goals[0]||`อธิบายและประยุกต์ ${topic} ได้`}`,`Key Concepts: ${c.slice(0,3).join(" • ")}`,`Process: ${p.slice(0,4).join(" → ")}`,`Control: ${(controls[0]||"ตรวจเงื่อนไขก่อนเริ่ม")} → ${(controls[1]||"ตรวจระหว่างทำ")} → ${(controls[2]||"ตรวจผลสุดท้าย")}`,"Slides → Worksheet → Review → Exam ใช้เป้าหมายการเรียนรู้เดียวกัน"],example:"Key takeaway: ก่อนตัดสินใจให้ตอบ 4 คำถาม — กำลังแก้เรื่องอะไร? ใช้หลักการใด? ทำอย่างไร? และมีหลักฐานอะไรยืนยันว่าถูกต้อง?"}
   ];
   return slides.slice(0,20);
 }
 function renderDeck(slides){
-  return `<div class="v174-deck" data-v174-deck>${slides.map((s,i)=>`<section class="v174-slide ${i===0?"active":""}" data-v174-slide="${i}"><div class="v174-slide-kicker">${esc(s.kicker||"")}</div><h3>${esc(s.title||"")}</h3>${s.lead?`<div class="v174-slide-lead">${esc(s.lead)}</div>`:""}${s.explain?`<div class="v199-slide-explain"><b>คำอธิบาย</b><p>${esc(s.explain)}</p></div>`:""}${s.html||`<div class="v174-slide-body">${(s.body||[]).map(x=>`<p>• ${esc(x)}</p>`).join("")}</div>`}${s.example?`<div class="v199-slide-example"><b>ตัวอย่าง / การเชื่อมโยง</b><p>${esc(s.example)}</p></div>`:""}${s.note?`<div class="v199-slide-note"><b>หมายเหตุการเรียนรู้</b><p>${esc(s.note)}</p></div>`:""}<div class="v174-slide-page">${i+1} / ${slides.length}</div></section>`).join("")}</div>`;
+  return `<div class="v174-deck" data-v174-deck>${slides.map((s,i)=>`<section class="v174-slide ${i===0?"active":""}" data-v174-slide="${i}"><div class="v174-slide-kicker">${esc(s.kicker||"")}</div><h3>${esc(s.title||"")}</h3>${s.lead?`<div class="v174-slide-lead">${esc(s.lead)}</div>`:""}${s.explain?`<div class="v199-slide-explain"><b>คำอธิบาย</b><p>${esc(s.explain)}</p></div>`:""}${s.html||`<div class="v174-slide-body">${(s.body||[]).map(x=>`<p>• ${esc(x)}</p>`).join("")}</div>`}${s.example?`<div class="v199-slide-example"><b>ตัวอย่าง / การเชื่อมโยง</b><p>${esc(s.example)}</p></div>`:""}${s.note?`<div class="v199-slide-note"><b>Teacher Note / Learning Note</b><p>${esc(s.note)}</p></div>`:""}<div class="v174-slide-page">${i+1} / ${slides.length}</div></section>`).join("")}</div>`;
 }
 function bindDeck(o,slides){
   let index=0;
@@ -281,17 +343,24 @@ function bindDeck(o,slides){
   const show=i=>{index=Math.max(0,Math.min(cards.length-1,i));cards.forEach((c,n)=>c.classList.toggle("active",n===index));if(counter)counter.textContent=`${index+1} / ${cards.length}`;if(prev)prev.disabled=index===0;if(next)next.disabled=index===cards.length-1};
   if(prev)prev.onclick=()=>show(index-1);if(next)next.onclick=()=>show(index+1);
   o.tabIndex=-1;o.focus();
-  o.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"){e.preventDefault();show(index-1)}if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();show(index+1)}});
+  o.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"){e.preventDefault();show(index-1)}if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();show(index+1)}if(e.key==="Home"){e.preventDefault();show(0)}if(e.key==="End"){e.preventDefault();show(cards.length-1)}});
   const print=$("[data-v174-print]",o);if(print)print.onclick=()=>{document.body.classList.add("v174-print-slides");window.print();setTimeout(()=>document.body.classList.remove("v174-print-slides"),350)};
   show(0);
 }
+async function toggleSlidePresentation(o,button){
+  const active=o.dataset.v20Present==="1";
+  if(active){o.dataset.v20Present="0";o.classList.remove("v20-slide-present");if(document.fullscreenElement===o)try{await document.exitFullscreen()}catch{};button.textContent="🖥️ นำเสนอเต็มจอ";return}
+  o.dataset.v20Present="1";o.classList.add("v20-slide-present");button.textContent="↙ ออกจากโหมดนำเสนอ";
+  try{if(!document.fullscreenElement&&o.requestFullscreen)await o.requestFullscreen({navigationUI:"hide"})}catch{}
+}
 function slideOverlay(subject,unit,{admin=false}={}){
   const slides=deckSlides(subject,unit,{admin});
-  const o=overlay(`<div class="v168-modal-head v174-deck-head"><div><span class="v14-kicker">${admin?"TEACHING SLIDES • ADMIN":"BUILT-IN TEACHING SLIDES"}</span><h2>${esc(subject?.code||"")} • หน่วย ${Number(unit?.unit_no||0)} • ${esc(unitTopic(unit))}</h2><p>${admin?"สไลด์พร้อมใช้สำหรับเตรียมสอน และเปิดดูได้ก่อนปลดล็อกหน่วย":"สไลด์ประกอบการเรียนของหน่วยที่ครูเปิดแล้ว"}</p></div><div class="row"><button class="btn sm" data-v174-print>🖨️ พิมพ์ / PDF</button><button class="btn sm" data-v168-slide-fullscreen>⛶ เต็มจอ</button><button class="btn sm" data-v168-close>✕</button></div></div>${renderDeck(slides)}<div class="v174-deck-nav"><button class="btn" data-v174-prev>← ก่อนหน้า</button><b data-v174-counter>1 / ${slides.length}</b><button class="btn primary" data-v174-next>ถัดไป →</button></div>`,true);
-  const fs=$("[data-v168-slide-fullscreen]",o);if(fs)fs.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
+  const o=overlay(`<div class="v168-modal-head v174-deck-head"><div><span class="v14-kicker">${admin?"TEACHING SLIDES • ADMIN":"BUILT-IN TEACHING SLIDES"}</span><h2>${esc(subject?.code||"")} • หน่วย ${Number(unit?.unit_no||0)} • ${esc(unitTopic(unit))}</h2><p>${admin?"สไลด์สอนจริง 20 หน้า • เชื่อม Learning Goal / Worksheet / Exam Bank":"สไลด์ประกอบการเรียนของหน่วยที่ครูเปิดแล้ว"}</p></div><div class="row"><button class="btn sm" data-v174-print>🖨️ พิมพ์ / PDF</button><button class="btn sm v20-present-btn" data-v168-slide-fullscreen>🖥️ นำเสนอเต็มจอ</button><button class="btn sm" data-v168-close>✕</button></div></div>${renderDeck(slides)}<div class="v174-deck-nav"><button class="btn" data-v174-prev>← ก่อนหน้า</button><b data-v174-counter>1 / ${slides.length}</b><button class="btn primary" data-v174-next>ถัดไป →</button></div>`,true);
+  const fs=$("[data-v168-slide-fullscreen]",o);if(fs)fs.onclick=()=>toggleSlidePresentation(o,fs);
+  const syncFs=()=>{if(o.dataset.v20Present==="1"&&!document.fullscreenElement){o.dataset.v20Present="0";o.classList.remove("v20-slide-present");if(fs)fs.textContent="🖥️ นำเสนอเต็มจอ"}};
+  document.addEventListener("fullscreenchange",syncFs,{once:true});
   bindDeck(o,slides);return o;
 }
-
 
 function unitWorkPair(unit,path){
   const works=unit?.worksheets||[];
@@ -381,14 +450,16 @@ async function injectStudentPath(){
   }finally{state.loadingStudent.delete(sid)}
 }
 
-function adminUnitCard(unit,sid,nextUnit){
+function adminUnitCard(unit,sid,nextUnit,lastUnlocked){
   const works=unit.worksheets||[];
   const resources=unit.resources||[];
   const resourceCount=resources.length||works.reduce((n,w)=>n+Number(w.resource_count||0),0);
   const first=works[0]||null;
   const digital=works.find(w=>w.mode==="digital")||null,paper=works.find(w=>w.mode==="paper")||null;
   const action=unit.unlocked
-    ? `<button class="v19-status-btn open" disabled><span class="v19-btn-icon">✅</span><span>เปิดสอนแล้ว</span></button>`
+    ? Number(unit.unit_no)===Number(lastUnlocked)
+      ? `<button class="v19-status-btn v20-close-teaching" data-v20-lock="${sid}:${unit.unit_no}"><span class="v19-btn-icon">⏸</span><span>ปิดการสอน</span></button>`
+      : `<button class="v19-status-btn open" disabled><span class="v19-btn-icon">✅</span><span>เปิดสอนแล้ว</span></button>`
     : Number(unit.unit_no)===Number(nextUnit)
       ? `<button class="v19-status-btn primary" data-v168-unlock="${sid}:${unit.unit_no}"><span class="v19-btn-icon">▶</span><span>เริ่มสอน / ปลดล็อก</span></button>`
       : `<button class="v19-status-btn locked" disabled><span class="v19-btn-icon">🔒</span><span>รอหน่วยก่อนหน้า</span></button>`;
@@ -424,6 +495,7 @@ async function injectAdminPlan(force=false){
     const units=data?.units||[];
     state.adminPath.set(sid,data);
     const next=units.find(x=>!x.unlocked)?.unit_no??null;
+    const lastUnlocked=Math.max(0,...units.filter(x=>x.unlocked).map(x=>Number(x.unit_no)||0));
     page.dataset.v168AdminPlan=sid;
     page.classList.add("v168-sequential-mode");
     $(".v168-admin-plan",page)?.remove();
@@ -434,8 +506,8 @@ async function injectAdminPlan(force=false){
       <div><span class="v14-kicker">SEQUENTIAL TEACHING</span><h2>🎯 ปลดล็อกการสอนทีละหน่วย</h2><p>เมื่อกดเริ่มสอน ระบบจะเปิดทั้งใบงานอิเล็กทรอนิกส์ + ใบงานปริ้นของเลขหน่วยเดียวกัน และมอบหมายให้นักศึกษาที่เข้าเรียนด้วย CODE โดยอัตโนมัติ</p></div>
       <div class="v168-next-actions"><div class="v168-next-unit">${next?`หน่วยถัดไป <b>${next}</b>`:"<b>เปิดครบแล้ว</b>"}</div></div>
     </div>
-    <div class="v168-admin-unit-grid">${units.map(u=>adminUnitCard(u,sid,next)).join("")}</div>
-    <div class="v168-sequence-rule">🔒 Server บังคับลำดับจริง: เปิดหน่วยถัดไปไม่ได้จนกว่าหน่วยก่อนหน้าจะถูกเปิดครบ</div>`;
+    <div class="v168-admin-unit-grid">${units.map(u=>adminUnitCard(u,sid,next,lastUnlocked)).join("")}</div>
+    <div class="v168-sequence-rule">🔒 Server บังคับลำดับจริง: เปิดหน่วยถัดไปไม่ได้จนกว่าหน่วยก่อนหน้าจะถูกเปิดครบ • หากเปิดเกิน/เปิดผิด ให้ปิดจากหน่วยล่าสุดย้อนกลับ โดยข้อมูล งาน คะแนน และ Assignment เดิมไม่ถูกลบ</div>`;
     anchor.insertAdjacentElement("afterend",section);
     const release=page.querySelector(".v14-releasebar");
     if(release){
@@ -474,7 +546,7 @@ function v19ScheduleFields({open,due,gate=true,resubmit=false,maxAttempts=1}={})
 }
 function openUnlockDialog(sid,unitNo){
   const now=new Date(),due=new Date(now.getTime()+2*3600000);
-  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">START TEACHING • V19</span><h2>เริ่มสอนหน่วย ${unitNo}</h2><p>เปิดหน่วยพร้อมกำหนดเวลาส่ง Digital และเงื่อนไขเช็คชื่อ</p></div><button class="btn sm" data-v168-close>✕</button></div>
+  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">START TEACHING • ${RELEASE_VERSION}</span><h2>เริ่มสอนหน่วย ${unitNo}</h2><p>เปิดหน่วยพร้อมกำหนดเวลาส่ง Digital และเงื่อนไขเช็คชื่อ</p></div><button class="btn sm" data-v168-close>✕</button></div>
     <form id="v168-unlock-form">${v19ScheduleFields({open:now,due,gate:true,resubmit:false,maxAttempts:1})}
       <div class="v168-unlock-warning">เมื่อยืนยัน ระบบจะเปิดทั้ง Digital/Paper ของหน่วยนี้ แต่นักศึกษาจะทำ Digital ได้ต่อเมื่อผ่านเงื่อนไขเช็คชื่อที่กำหนด</div>
       <div class="row end"><button type="button" class="btn" data-v168-close>ยกเลิก</button><button class="btn primary">▶ ยืนยันเริ่มสอน</button></div>
@@ -495,13 +567,28 @@ function openUnlockDialog(sid,unitNo){
     const page=$(".v14-page");if(page)delete page.dataset.v168AdminPlan;setTimeout(()=>injectAdminPlan(true),350);
   };
 }
+
+function openLockUnitDialog(sid,unitNo){
+  const plan=state.adminPath.get(sid),unit=(plan?.units||[]).find(x=>Number(x.unit_no)===Number(unitNo));
+  if(!unit){flash("ไม่พบข้อมูลหน่วยเรียน",true);return}
+  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">CLOSE TEACHING • ${RELEASE_VERSION}</span><h2>⏸ ปิดการสอนหน่วย ${unitNo}</h2><p>${esc(unitTopic(unit))}</p></div><button class="btn sm" data-v168-close>✕</button></div>
+    <div class="v20-close-warning"><b>ปิดการสอนแบบไม่ลบข้อมูล</b><p>นักศึกษาจะเปิดสไลด์/ใบงานของหน่วยนี้ไม่ได้จนกว่าจะเปิดใหม่ แต่สมาชิก Assignment Submission คะแนน ประวัติ และเวลาที่เคยกำหนดยังคงอยู่ครบ</p><p>เพื่อรักษาลำดับระบบ จะปิดได้จากหน่วยล่าสุดที่เปิดอยู่ก่อนเท่านั้น</p></div>
+    <div class="row end"><button class="btn" data-v168-close>ยกเลิก</button><button class="btn v20-danger-btn" data-v20-confirm-lock>⏸ ยืนยันปิดการสอน</button></div>`);
+  const btn=$("[data-v20-confirm-lock]",o);btn.onclick=async()=>{
+    btn.disabled=true;btn.textContent="กำลังปิดการสอน...";
+    const {data,error}=await client().rpc("admin_lock_subject_unit_v20",{p_subject_id:sid,p_unit_no:Number(unitNo),p_request_key:v179Key()});
+    if(error){btn.disabled=false;btn.textContent="⏸ ยืนยันปิดการสอน";flash(errText(error),true);return}
+    o.remove();flash(`ปิดการสอนหน่วย ${data?.unit_no||unitNo} แล้ว • ข้อมูลเดิมยังอยู่ครบ`);
+    const page=$(".v14-page");if(page)delete page.dataset.v168AdminPlan;setTimeout(()=>injectAdminPlan(true),250);
+  };
+}
 async function openUnitScheduleDialog(sid,unitNo){
   const plan=state.adminPath.get(sid),unit=(plan?.units||[]).find(x=>Number(x.unit_no)===Number(unitNo));
   const digital=(unit?.worksheets||[]).find(w=>w.mode==="digital");
   if(!digital){flash("ไม่พบใบงานอิเล็กทรอนิกส์ของหน่วยนี้",true);return}
   const {data:w,error}=await client().from("worksheets").select("id,open_at,due_at,allow_resubmit,max_attempts,status,settings").eq("id",digital.id).single();
   if(error){flash(errText(error),true);return}
-  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">DIGITAL DEADLINE • V19</span><h2>⏱️ กำหนดเวลาส่ง • หน่วย ${unitNo}</h2><p>${esc(unitTopic(unit))} • Admin แก้เวลาได้ตลอด</p></div><button class="btn sm" data-v168-close>✕</button></div>
+  const o=overlay(`<div class="v168-modal-head"><div><span class="v14-kicker">DIGITAL DEADLINE • ${RELEASE_VERSION}</span><h2>⏱️ กำหนดเวลาส่ง • หน่วย ${unitNo}</h2><p>${esc(unitTopic(unit))} • Admin แก้เวลาได้ตลอด</p></div><button class="btn sm" data-v168-close>✕</button></div>
     <form id="v19-schedule-form">${v19ScheduleFields({open:w.open_at||new Date(),due:w.due_at||new Date(Date.now()+2*3600000),gate:w.settings?.attendance_gate_required!==false,resubmit:w.allow_resubmit,maxAttempts:w.max_attempts})}
       <div class="v19-schedule-note">การเปลี่ยนเวลาจะมีผลทันทีที่ Server • หลังจากนั้นใช้ Paper ย้อนหลัง โดยปุ่มของผู้เรียนจะเปลี่ยนเป็น “พิมพ์ใบงานส่งย้อนหลัง” ตามระบบเดิม</div>
       <div class="row end"><button type="button" class="btn" data-v168-close>ยกเลิก</button><button class="btn primary">💾 บันทึกเวลา</button></div>
@@ -584,6 +671,8 @@ document.addEventListener("click",e=>{
   if(adminPair){e.preventDefault();e.stopPropagation();const [sid,u]=adminPair.dataset.v175AdminPair.split(":");openAdminWorkPair(sid,Number(u));return}
   const schedule=e.target.closest?.("[data-v19-unit-schedule]");
   if(schedule){e.preventDefault();e.stopPropagation();const [sid,u]=schedule.dataset.v19UnitSchedule.split(":");openUnitScheduleDialog(sid,Number(u));return}
+  const lock=e.target.closest?.("[data-v20-lock]");
+  if(lock){e.preventDefault();e.stopPropagation();const [sid,u]=lock.dataset.v20Lock.split(":");openLockUnitDialog(sid,Number(u));return}
   const unlock=e.target.closest?.("[data-v168-unlock]");
   if(unlock){e.preventDefault();e.stopPropagation();const [sid,u]=unlock.dataset.v168Unlock.split(":");openUnlockDialog(sid,Number(u));return}
   const adminSlide=e.target.closest?.("[data-v168-admin-slide]");

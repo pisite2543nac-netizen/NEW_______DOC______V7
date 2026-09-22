@@ -1,10 +1,11 @@
 import { getClient } from "./v18-supabase.js";
+import { RELEASE_VERSION } from "./release-meta.js";
 
 const SUPABASE_URL="https://thjscmfqunlaqxlievna.supabase.co";
 const SUPABASE_KEY="sb_publishable_ZBMlwjpRKAL1egtnj-cqsQ_Etrjh_L_";
 const PROJECT_REF="thjscmfqunlaqxlievna";
 const STORAGE_KEY=`sb-${PROJECT_REF}-auth-token`;
-const V15_VERSION="V18.6-ROOM-WORK-CHECKLIST-AUDITED";
+const V186_COMPAT_VERSION="V18.6-ROOM-WORK-CHECKLIST-AUDITED";
 const V194_CLASSROOM_COMPAT="V19.4-CLASSROOM-OPEN-CLOSE-GLOBAL-BACK";
 
 const $=(s,r=document)=>r.querySelector(s);
@@ -244,7 +245,7 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const p=await getProfile();if(!p)return;
   const brand=$("#sidebar .brand .smalltext");
-  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • V19.6`;
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • ${RELEASE_VERSION}`;
   // V17: app.js is the single owner of Sidebar and route buttons.
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
@@ -442,8 +443,8 @@ function hubCard(route,icon,title,desc,tone="blue"){
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • V18.6</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>หนึ่งปุ่ม = หนึ่ง Router = หนึ่ง Backend Contract • ทุกงานหลักเริ่มจาก Dashboard นี้</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การสอนและรายวิชา","CODE • 17 หน่วย • สไลด์ 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งาน คะแนน และรายงาน","ตรวจงาน • ส่งเพิ่ม • Gradebook • Export","violet")}${dashboardRouteCard("workcheck","✅","ตารางเช็กรวมรายห้อง","ระดับ • ห้อง • แผนก • สาขา • 17 หน่วย","cyan")}${dashboardRouteCard("printcenter","🖨️","ศูนย์พิมพ์และสรุปผล","คะแนน • เช็กงาน • Attendance • ใบงาน • PDF","green")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • ${RELEASE_VERSION}</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>จัดการการเรียนการสอน กิจกรรม งาน คะแนน เช็คชื่อ สอบ พิมพ์ และระบบจากหน้าเดียว</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การเรียนการสอน","CODE • 17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Official Challenge","orange")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งานและคะแนน","ตรวจงาน • Gradebook • รายงาน • Export","violet")}${dashboardRouteCard("workcheck","✅","ตารางเช็กรวมรายห้อง","ระดับ • ห้อง • แผนก • สาขา • 17 หน่วย","cyan")}${dashboardRouteCard("printcenter","🖨️","ศูนย์พิมพ์และสรุปผล","คะแนน • เช็กงาน • Attendance • ใบงาน • PDF","green")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
   <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
   Promise.race([client().rpc("admin_system_health_v18"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
     const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
@@ -452,8 +453,8 @@ async function renderAdminDashboard(){
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile();
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • V18.6</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
-  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","วิชาที่เรียนอยู่","17 หน่วย • สไลด์ 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("printcenter","🖨️","พิมพ์เอกสารของฉัน","ใบงานย้อนหลัง • สรุปงาน • PDF","green")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
+  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • ${RELEASE_VERSION}</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","การเรียนการสอน","17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Challenge","orange")}${dashboardRouteCard("work","📋","งานและคะแนนของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("printcenter","🖨️","พิมพ์เอกสารของฉัน","ใบงานย้อนหลัง • สรุปงาน • PDF","green")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
   <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
 }
 async function renderStudentsHub(){
@@ -514,7 +515,7 @@ async function renderRoomWorkChecklist(presetSubjectId=null){
       <div class="v186-hero-icon">✅</div>
       <div class="v186-hero-copy">
         <div class="v186-breadcrumb">หน้าหลัก <span>›</span> ตารางเช็กรวมการเก็บงานรายห้อง</div>
-        <span class="v14-kicker">ROOM WORK CHECKLIST • V19.1.3</span>
+        <span class="v14-kicker">ROOM WORK CHECKLIST • ${RELEASE_VERSION}</span>
         <h1>ตารางเช็กรวมการเก็บงานรายห้อง</h1>
         <p>ดูสถานะการส่งงานของนักศึกษาแต่ละห้องแบบตารางเดียว โดยนับ Digital/Paper ของหน่วยเดียวกันเป็น 1 งาน เพื่อให้ตรวจสอบได้ง่ายและพิมพ์ใช้งานได้ทันที</p>
       </div>
@@ -1116,7 +1117,7 @@ async function renderSubjectGradebook(sid){
     <div class="v16-no-print"><button class="btn ghost" data-v14-admin-course="${sid}">← กลับห้องเรียน</button></div>
     <div class="v16-print-head v16-no-print"><img src="./icons/icon-192.png" alt=""><div><span>วิทยาลัยเทคนิคนางรอง</span><h1>สรุปผลคะแนนรายวิชา</h1><p>${esc(subject.code)} ${esc(subject.name)} • ปีการศึกษา ${esc(subject.academic_year||"-")} ภาคเรียน ${esc(subject.semester||"-")}</p></div></div>
     <div class="v16-summary-kpis v16-no-print"><div><span>นักศึกษา</span><b>${rows.length}</b></div><div><span>ส่งงานครบ</span><b>${fullWork}</b></div><div><span>คะแนนเฉลี่ย</span><b>${avg.toFixed(2)}</b></div><div><span>คะแนนเต็ม</span><b>100</b></div></div>
-    <div class="v16-grade-rules v16-no-print"><b>เกณฑ์คะแนน V19.3</b><span>ใบงาน 17 งาน = 40 • จิตพิสัย = 20 • กลางภาค = 20 • ปลายภาค = 20 • รวม 100</span><small>คะแนนใบงานคิดค่าเฉลี่ยจากทั้ง 17 หน่วยแล้วแปลงเป็น 40 คะแนน โดยใช้คะแนนที่ครูตรวจจริง • Digital/Paper หน่วยเดียวกันนับ 1 งาน • งานย้อนหลังมีเครดิตสูงสุด 50% • เกรด: 80=4, 75=3.5, 70=3, 65=2.5, 60=2, 55=1.5, 50=1, ต่ำกว่า 50=0</small></div>
+    <div class="v16-grade-rules v16-no-print"><b>เกณฑ์คะแนนปัจจุบัน</b><span>ใบงาน 17 งาน = 40 • จิตพิสัย = 20 • กลางภาค = 20 • ปลายภาค = 20 • รวม 100</span><small>คะแนนใบงานคิดค่าเฉลี่ยจากทั้ง 17 หน่วยแล้วแปลงเป็น 40 คะแนน โดยใช้คะแนนที่ครูตรวจจริง • Digital/Paper หน่วยเดียวกันนับ 1 งาน • งานย้อนหลังมีเครดิตสูงสุด 50% • เกรด: 80=4, 75=3.5, 70=3, 65=2.5, 60=2, 55=1.5, 50=1, ต่ำกว่า 50=0</small></div>
     <div class="v16-grade-actions v16-no-print">
       <button class="btn" id="v16-grade-settings">⚙️ เลือกชุดสอบกลาง/ปลายภาค</button>
       <button class="btn" id="v162-grade-excel">⬇️ ดาวน์โหลด Excel</button>
@@ -1338,11 +1339,12 @@ function openV196Print(title,html,orientation="portrait"){
   $("#v196-print-close",wrap).onclick=closeV196Print;$("#v196-print-now",wrap).onclick=()=>{document.body.dataset.v196Orientation=orientation;document.body.classList.add("v196-printing");window.print();setTimeout(()=>{document.body.classList.remove("v196-printing");document.body.removeAttribute("data-v196-orientation")},500)};
 }
 function v196ReportHead(subject,title,subtitle=""){
-  const color=v196SubjectColor(subject);return `<div class="v196-report-top"></div><header class="v196-report-head"><img src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><h1>${esc(title)}</h1><p>วิทยาลัยเทคนิคนางรอง${subject?` • ${esc(subject.code||"")} ${esc(subject.name||"")}`:""}${subtitle?` • ${esc(subtitle)}`:""}</p></div><div class="v196-report-meta">DOC-FULL-NR V19.6<br>พิมพ์ ${esc(v196PrintStamp())}</div></header>`}
+  const printedBy=state.profile?.full_name||state.profile?.display_name||"ผู้ใช้งานระบบ";
+  return `<div class="v196-report-top"></div><header class="v196-report-head"><img src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><h1>${esc(title)}</h1><p>วิทยาลัยเทคนิคนางรอง${subject?` • ${esc(subject.code||"")} ${esc(subject.name||"")}`:""}</p><div class="v20-print-meta-grid"><span>รหัสวิชา <b>${esc(subject?.code||"-")}</b></span><span>ปีการศึกษา <b>${esc(subject?.academic_year||"-")}</b></span><span>ภาคเรียน <b>${esc(subject?.semester||"-")}</b></span><span>ห้อง/กลุ่ม <b>${esc(subtitle||"-")}</b></span><span>วันที่พิมพ์ <b>${esc(v196PrintStamp())}</b></span><span>ผู้พิมพ์ <b>${esc(printedBy)}</b></span><span>ระบบ <b>${RELEASE_VERSION}</b></span><span class="v20-print-page">หน้า <b>1</b></span></div></div><div class="v196-report-meta">DOC-FULL-NR<br>${RELEASE_VERSION}</div></header>`}
 async function renderPrintCenterV196(){
   setTitle("ศูนย์พิมพ์และสรุปผล");busy("กำลังเตรียมรายการเอกสาร...");const p=await getProfile(true),subjects=p?.role==="admin"?await allSubjects():await approvedCourses();
   const tools=p?.role==="admin"?`${hubCard("workcheck","✅","ตารางเช็กงาน 17 หน่วย","A4 แนวนอน • สถานะงานทั้งห้อง","cyan")}${hubCard("attendance","📷","สรุปการเข้าเรียน","มา • สาย • ขาด • ลา • เปอร์เซ็นต์","orange")}${hubCard("exam","🧪","สรุปผลการสอบ","สถานะสอบและผลรายห้อง","red")}${hubCard("reports","📊","รายงาน / Export","ข้อมูลสำรองและไฟล์รายงาน","green")}`:`${hubCard("work","📋","สรุปงานของฉัน","ตรวจสถานะงานก่อนพิมพ์","violet")}${hubCard("attendance","📷","ประวัติการเข้าเรียน","ตรวจข้อมูล Attendance","orange")}${hubCard("history","🗓️","ประวัติการศึกษา","ข้อมูลปีการศึกษาแบบอ่านอย่างเดียว","slate")}`;
-  content().innerHTML=`<section class="v14-page v196-print-center"><div class="v196-print-hero"><img src="./icons/icon-192.png" alt=""><div><span class="v14-kicker">PRODUCTION PRINT CENTER • V19.6</span><h1>🖨️ ${p?.role==="admin"?"ศูนย์พิมพ์และสรุปผล":"พิมพ์เอกสารของฉัน"}</h1><p>เอกสารมาตรฐานเดียวกันทั้งระบบ • สีประจำวิชา • A4 • Save PDF • ใช้ข้อมูลจากระบบจริง</p></div><span class="v196-print-badge">${subjects.length} รายวิชา</span></div><div class="v196-print-tools">${tools}</div><div class="v196-print-subjects">${subjects.map(s=>`<article class="v196-print-subject" style="--subject-color:${esc(v196SubjectColor(s))}"><div class="v196-print-subject-main"><div class="v196-print-subject-head"><div><span class="v196-print-code">${esc(s.code||"")}</span><h3>${esc(s.name||"")}</h3></div><span style="width:20px;height:20px;border-radius:50%;background:${esc(v196SubjectColor(s))};border:2px solid #fff;box-shadow:0 0 0 1px #d0d5dd"></span></div><div class="v196-print-actions"><button class="btn primary" data-app-route="printcenter" data-app-arg="${s.id}">เอกสารและใบงาน</button>${p?.role==="admin"?`<button class="btn" data-v196-gradebook="${s.id}">สรุปคะแนน</button><button class="btn" data-app-route="workcheck" data-app-arg="${s.id}">เช็กงาน 17 หน่วย</button>`:`<button class="btn" data-v196-print-mywork="${s.id}">สรุปงานของฉัน</button>`}</div></div></article>`).join("")||`<div class="v14-empty">ยังไม่มีรายวิชาที่พร้อมพิมพ์</div>`}</div></section>`;
+  content().innerHTML=`<section class="v14-page v196-print-center"><div class="v196-print-hero"><img src="./icons/icon-192.png" alt=""><div><span class="v14-kicker">PRINT & REPORT CENTER • ${RELEASE_VERSION}</span><h1>🖨️ ${p?.role==="admin"?"ศูนย์พิมพ์และสรุปผล":"พิมพ์เอกสารของฉัน"}</h1><p>เอกสารมาตรฐานเดียวกันทั้งระบบ • สีประจำวิชา • A4 • Save PDF • ใช้ข้อมูลจากระบบจริง</p></div><span class="v196-print-badge">${subjects.length} รายวิชา</span></div><div class="v196-print-tools">${tools}</div><div class="v196-print-subjects">${subjects.map(s=>`<article class="v196-print-subject" style="--subject-color:${esc(v196SubjectColor(s))}"><div class="v196-print-subject-main"><div class="v196-print-subject-head"><div><span class="v196-print-code">${esc(s.code||"")}</span><h3>${esc(s.name||"")}</h3></div><span style="width:20px;height:20px;border-radius:50%;background:${esc(v196SubjectColor(s))};border:2px solid #fff;box-shadow:0 0 0 1px #d0d5dd"></span></div><div class="v196-print-actions"><button class="btn primary" data-app-route="printcenter" data-app-arg="${s.id}">เอกสารและใบงาน</button>${p?.role==="admin"?`<button class="btn" data-v196-gradebook="${s.id}">สรุปคะแนน</button><button class="btn" data-app-route="workcheck" data-app-arg="${s.id}">เช็กงาน 17 หน่วย</button>`:`<button class="btn" data-v196-print-mywork="${s.id}">สรุปงานของฉัน</button>`}</div></div></article>`).join("")||`<div class="v14-empty">ยังไม่มีรายวิชาที่พร้อมพิมพ์</div>`}</div></section>`;
 }
 async function renderPrintSubjectV196(sid){
   setTitle("เอกสารและใบงาน");busy("กำลังโหลดชุดพิมพ์รายวิชา...");const p=await getProfile(true),c=client();
@@ -1375,7 +1377,7 @@ function printStudentGradeV196(userId){
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v18-6-room-work-checklist";
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v20-0-teaching-presentation-unified";document.documentElement.dataset.docnrCompatRoomChecklist="v18-6-room-work-checklist";
   syncServerTime().catch(()=>{});startHeartbeat();
   scheduleEnsureNav();
   setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},700);
@@ -1389,7 +1391,7 @@ function cleanup(){
 
 // compatibility marker: V17-MASTER-FLOW
 // window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V17-MASTER-FLOW"})
-window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V18.6-ROOM-WORK-CHECKLIST-AUDITED",classroomVersion:V194_CLASSROOM_COMPAT});
+window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:RELEASE_VERSION,classroomVersion:V194_CLASSROOM_COMPAT});
 window.addEventListener("pagehide",cleanup);
 boot().catch(e=>console.error("DOC-FULL-NR V16.6 boot",e));
 

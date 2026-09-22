@@ -8,6 +8,7 @@ chromium=shutil.which('chromium') or shutil.which('chromium-browser') or shutil.
 if not chromium: print('V18.1 CORE BROWSER CONTRACT SKIP: Chromium missing');raise SystemExit(0)
 platform=(ROOT/'site/v16-platform.js').read_text('utf-8')
 platform=platform.replace('import { getClient } from "./v18-supabase.js";','const getClient = ()=>globalThis.__createClient();')
+platform=platform.replace('import { RELEASE_VERSION } from "./release-meta.js";','const RELEASE_VERSION = "V20.0";')
 platform=re.sub(r'function readSession\(\)\{[\s\S]*?\n\}', 'function readSession(){ return globalThis.__testSession; }', platform, count=1)
 css=(ROOT/'site/v18-core-ui.css').read_text('utf-8')+'\n'+(ROOT/'site/v16-minimal.css').read_text('utf-8')
 profile={'id':'student1','username':'66001','full_name':'สมชาย ทดสอบ','display_name':'ชาย','student_code':'66001','birth_date':'2008-01-01','avatar_path':None,'phone':'+66810000000','grade_level':'ปวช.1','room_label':'/1','class_name':'ปวช.1/1','department':'คอมพิวเตอร์','major':'เทคโนโลยีสารสนเทศ (ทส.)','seat_number':1,'approval_status':'approved','academic_status':'studying','active':True,'last_seen_at':None,'created_at':'2026-09-01T00:00:00Z','approved_at':'2026-09-01T00:00:00Z','contact_email':None}

@@ -2,7 +2,8 @@
    UI runtime only. Business authorization remains server-side. */
 (function(){
   'use strict';
-  const RELEASE='V17.3-PWA-FULLSCREEN-RUNTIME';
+  const V173_COMPAT_RELEASE='V17.3-PWA-FULLSCREEN-RUNTIME';
+  const RELEASE=window.DOCNR_RELEASE_META?.version||'V20.0';
   const $=(s,r=document)=>r.querySelector(s);
 
   function sidebar(){return document.getElementById('sidebar')}
@@ -56,12 +57,26 @@
     paintDisplayMode();
   }
 
-  // Installed apps attempt true fullscreen on the first deliberate user gesture when the OS/browser
-  // launched in standalone rather than manifest-fullscreen. This satisfies browser user-activation rules.
+  // V20 Focus Fullscreen: installed PWA launches fullscreen from the manifest.
+  // A normal browser is not allowed to enter native fullscreen during page load without user activation,
+  // so we attempt immediately (for engines that permit it) and then again on the first trusted pointer/key gesture.
   let autoTried=false;
-  async function tryInstalledFullscreen(e){
-    if(autoTried||!e.isTrusted||!isInstalled()||isFullscreen())return;
-    autoTried=true;await enterFullscreen();
+  async function tryFocusFullscreen(e){
+    if(autoTried||isFullscreen())return;
+    if(e && !e.isTrusted)return;
+    autoTried=true;
+    try{localStorage.setItem('docnr-focus-fullscreen','1')}catch{}
+    const ok=await enterFullscreen();
+    if(!ok && e){
+      // Do not keep retrying on every click; the explicit top-bar button remains available.
+      window.dispatchEvent(new CustomEvent('docnr:fullscreen-unsupported'));
+    }
+  }
+  function bootstrapFocusFullscreen(){
+    document.documentElement.classList.add('docnr-focus-first');
+    if(isFullscreen()){autoTried=true;paintDisplayMode();return}
+    // Best-effort startup attempt. Browsers that enforce user activation will reject this harmlessly.
+    enterFullscreen().then(ok=>{if(ok)autoTried=true}).catch(()=>{});
   }
 
   function allowSelection(target){return !!target?.closest?.('input,textarea,select,[contenteditable="true"],.allow-copy,.v165-room-code-value,[data-v165-copy-code]')}
@@ -79,12 +94,14 @@
     },true);
   }
 
+  document.addEventListener('pointerdown',tryFocusFullscreen,true);
+  document.addEventListener('touchstart',tryFocusFullscreen,{capture:true,passive:true});
   document.addEventListener('click',e=>{
     if(e.target.closest('#menubtn'))setTimeout(syncMenu,0);
     if(e.target.closest('[data-route],[data-app-route]'))setTimeout(closeMenu,0);
-    tryInstalledFullscreen(e);
+    tryFocusFullscreen(e);
   },true);
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();else if(e.key==='Enter'||e.key===' ')tryFocusFullscreen(e)},true);
   window.addEventListener('resize',()=>{if(!matchMedia('(max-width: 780px)').matches)closeMenu();else syncMenu();paintDisplayMode()});
   document.addEventListener('fullscreenchange',paintDisplayMode);
   window.addEventListener('appinstalled',paintDisplayMode);
@@ -92,8 +109,9 @@
 
   const observer=new MutationObserver(()=>{syncMenu();ensureFullscreenButton()});
   observer.observe(document.documentElement,{subtree:true,childList:true});
-  syncMenu();ensureFullscreenButton();installCopyProtection();paintDisplayMode();
+  syncMenu();ensureFullscreenButton();installCopyProtection();paintDisplayMode();bootstrapFocusFullscreen();
 
+  window.addEventListener('pageshow',()=>{paintDisplayMode();if(!isFullscreen()&&!autoTried)bootstrapFocusFullscreen()});
   window.addEventListener('load',()=>{
     if(!('serviceWorker' in navigator))return;
     navigator.serviceWorker.ready.then(reg=>{try{reg.update()}catch{}}).catch(()=>{});

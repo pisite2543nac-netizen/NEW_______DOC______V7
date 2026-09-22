@@ -12,6 +12,7 @@ if not chromium:
     print('BROWSER CONTRACT SKIP: Chromium not installed');sys.exit(0)
 platform=(ROOT/'site/v16-platform.js').read_text('utf-8')
 platform=platform.replace('import { getClient } from "./v18-supabase.js";','const getClient = ()=>globalThis.__createClient();')
+platform=platform.replace('import { RELEASE_VERSION } from "./release-meta.js";','const RELEASE_VERSION = "V20.0";')
 platform=platform.replace('import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";','const createClient = globalThis.__createClient;')
 platform=re.sub(r'function readSession\(\)\{[\s\S]*?\n\}', 'function readSession(){ return globalThis.__testSession; }', platform, count=1)
 profile={'id':'admin-test','username':'admin','full_name':'Admin Test','display_name':'Admin','role':'admin','active':True,'approval_status':'approved','academic_status':'studying'}

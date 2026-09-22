@@ -1,4 +1,5 @@
 import { getClient } from "./v18-supabase.js";
+import { RELEASE_VERSION } from "./release-meta.js";
 import { putDraft as putOfflineDraft, getDraft as getOfflineDraft, deleteDraft as deleteOfflineDraft, queueFinal as queueOfflineFinal, listFinals as listOfflineFinals, deleteFinal as deleteOfflineFinal, cleanup as cleanupOfflineStore } from "./v18-offline.js";
 
 const sb=getClient();
@@ -410,7 +411,7 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • V19.9</div></div></div>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • ${RELEASE_VERSION}</div></div></div>
       <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",specialactivity:"🎮",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
@@ -977,7 +978,7 @@ window.addEventListener("online",()=>flushOfflineSubmissionOutbox().catch(consol
 async function openWorksheet(id){
   await syncServerClock();
   const [wr,sr,orr]=await Promise.all([
-    sb.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single(),
+    sb.from("worksheets").select("*,subjects(code,name,color_hex,academic_year,semester)").eq("id",id).single(),
     sb.from("submissions").select("*").eq("worksheet_id",id).eq("user_id",uid()).maybeSingle(),
     sb.rpc("my_submission_override_v15",{p_worksheet_id:id})
   ]);
@@ -1298,7 +1299,7 @@ function v196WorksheetSheetHtml(w,page,pageNo,pageCount,opts={}){
   return `<div class="formal-sheet v176-formal-page v196-worksheet-sheet" style="--subject-color:${color}">
     <div class="formal-topline"></div><div class="formal-header"><div class="formal-school"><img class="formal-logo" src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><div class="formal-school-name">วิทยาลัยเทคนิคนางรอง</div><div class="formal-dept">แผนกวิชาคอมพิวเตอร์และเทคโนโลยีสารสนเทศ</div><div class="formal-title">ใบงานปฏิบัติการ <span>(Laboratory Worksheet)</span></div></div></div>
     <div class="formal-docbox"><div><span>รหัสเอกสาร</span> <b>FM-AC-01</b></div><div><span>ฉบับที่</span> <b>01</b> <span class="formal-page">หน้า ${pageNo}/${pageCount}</span></div><div class="formal-expire"><b>วันหมดอายุใบงาน:</b> ${esc(dueText)}</div>${pageNo===1?`<svg id="${barcodeId}"></svg><div class="formal-ref">${esc(docRef)}</div>`:`<div class="formal-ref">${esc(docRef)} • ต่อ</div>`}</div></div>
-    <div class="formal-subject-band"><div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(subject.name||"")}</div><div class="smalltext"><b>หน่วยที่ ${v196WorksheetUnit(w)||"-"}</b> • ${esc(w.title||"")}</div></div>${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}</div>
+    <div class="formal-subject-band"><div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(subject.name||"")}</div><div class="smalltext"><b>หน่วยที่ ${v196WorksheetUnit(w)||"-"}</b> • ${esc(w.title||"")}</div><div class="smalltext">ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")} • พิมพ์ ${esc(new Date().toLocaleDateString("th-TH"))}</div></div>${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}</div>
     <div class="formal-student-grid"><div>ชื่อ-นามสกุล <span class="formal-line"></span></div><div>รหัสประจำตัว <span class="formal-line short"></span></div><div>ระดับชั้น <span class="formal-line short"></span></div><div>วันที่ <span class="formal-line short"></span></div></div>
     ${pageNo===1?`<div class="formal-instruction"><b>คำชี้แจง</b> ${esc(w.instructions||"ให้นักศึกษาศึกษาเนื้อหาในหน่วยการเรียนรู้ และตอบคำถามให้ครบถ้วน")}</div>`:""}
     <div class="formal-questions">${page.map((q,j)=>`<div class="formal-question"><div class="formal-qnum">${start+j+1}</div><div class="formal-qbody"><div>${esc(q.text||q.prompt||"")}</div><div class="formal-answer-space"></div></div></div>`).join("")||`<div class="formal-question"><div class="formal-qnum">•</div><div class="formal-qbody"><div>พื้นที่บันทึกเพิ่มเติม</div><div class="formal-answer-space"></div></div></div>`}</div>
@@ -1319,7 +1320,7 @@ async function printSubjectWorksheetPack(subjectId){
   const rows=(works||[]).filter(w=>{const n=v196WorksheetUnit(w);return n>=1&&n<=17&&!w.settings?.legacy_seed_archived}).sort((a,b)=>v196WorksheetUnit(a)-v196WorksheetUnit(b));
   if(!rows.length)return toast("ยังไม่มีใบงานกระดาษสำหรับรายวิชานี้","error");
   const color=v196SubjectColorFallback(subject.code,subject.color_hex),codes=[];
-  const cover=`<div class="formal-sheet v176-formal-page v196-workbook-cover" style="--subject-color:${color}"><div class="formal-topline"></div><div class="v196-workbook-cover-inner"><img src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง"><span>ชุดใบงานประจำรายวิชา</span><h1>${esc(subject.code)}<br>${esc(subject.name)}</h1><div class="v196-workbook-meta">ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")}</div><div class="v196-workbook-unit-grid">${rows.map(w=>`<div><b>หน่วย ${String(v196WorksheetUnit(w)).padStart(2,"0")}</b><span>${esc(w.title||"")}</span></div>`).join("")}</div><div class="v196-workbook-student"><div>ชื่อ-นามสกุล ______________________________________</div><div>รหัสนักศึกษา ____________________ ห้อง __________ เลขที่ ______</div></div></div><div class="formal-footer">วิทยาลัยเทคนิคนางรอง • DOC-FULL-NR V19.6 • ชุดใบงาน ${rows.length} หน่วย</div></div>`;
+  const cover=`<div class="formal-sheet v176-formal-page v196-workbook-cover" style="--subject-color:${color}"><div class="formal-topline"></div><div class="v196-workbook-cover-inner"><img src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง"><span>ชุดใบงานประจำรายวิชา</span><h1>${esc(subject.code)}<br>${esc(subject.name)}</h1><div class="v196-workbook-meta">ปีการศึกษา ${esc(subject.academic_year||"-")} • ภาคเรียน ${esc(subject.semester||"-")}</div><div class="v196-workbook-unit-grid">${rows.map(w=>`<div><b>หน่วย ${String(v196WorksheetUnit(w)).padStart(2,"0")}</b><span>${esc(w.title||"")}</span></div>`).join("")}</div><div class="v196-workbook-student"><div>ชื่อ-นามสกุล ______________________________________</div><div>รหัสนักศึกษา ____________________ ห้อง __________ เลขที่ ______</div></div></div><div class="formal-footer">วิทยาลัยเทคนิคนางรอง • DOC-FULL-NR ${RELEASE_VERSION} • ชุดใบงาน ${rows.length} หน่วย</div></div>`;
   let sheets="";
   for(const w0 of rows){
     const w={...w0,subjects:subject},qs=w.questions||[],pageCount=Math.max(2,Number(w.settings?.page_count||2)),per=Math.max(1,Math.ceil(qs.length/pageCount));
@@ -1334,7 +1335,7 @@ async function printSubjectWorksheetPack(subjectId){
   $("#printpacknow").onclick=()=>{document.body.classList.add("printing");window.print();setTimeout(()=>document.body.classList.remove("printing"),500)};
 }
 async function printWorksheet(id){
-  const {data:w,error}=await sb.from("worksheets").select("*,subjects(code,name,color_hex)").eq("id",id).single();if(error)return toast(friendlyError(error),"error");
+  const {data:w,error}=await sb.from("worksheets").select("*,subjects(code,name,color_hex,academic_year,semester)").eq("id",id).single();if(error)return toast(friendlyError(error),"error");
   const color=v196SubjectColorFallback(w.subjects?.code,w.subjects?.color_hex),subjectCode=w.subjects?.code||"",docRef=w.reference_code||`FMAC01-${subjectCode.replace(/[^0-9A-Za-z]/g,"")}-U${String(v196WorksheetUnit(w)||1).padStart(2,"0")}`;
   const dueText=w.due_at?new Date(w.due_at).toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}):"____________";
   const maxScore=(w.questions||[]).reduce((n,q)=>n+Number(q.points||0),0)||10,showScore=isAdmin(),link=`${location.origin}${location.pathname}?worksheet=${encodeURIComponent(w.id)}`;
@@ -1343,7 +1344,7 @@ async function printWorksheet(id){
   const sheet=(page,pageNo)=>`<div class="formal-sheet v176-formal-page" style="--subject-color:${color}">
     <div class="formal-topline"></div><div class="formal-header"><div class="formal-school"><img class="formal-logo" src="${NRTECH_LOGO_DATA}" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><div class="formal-school-name">วิทยาลัยเทคนิคนางรอง</div><div class="formal-dept">แผนกวิชาคอมพิวเตอร์และเทคโนโลยีสารสนเทศ</div><div class="formal-title">ใบงานปฏิบัติการ <span>(Laboratory Worksheet)</span></div></div></div>
     <div class="formal-docbox"><div><span>รหัสเอกสาร</span> <b>FM-AC-01</b></div><div><span>ฉบับที่</span> <b>01</b> <span class="formal-page">หน้า ${pageNo}/${pageCount}</span></div><div class="formal-expire"><b>วันหมดอายุใบงาน:</b> ${esc(dueText)}</div>${pageNo===1?`<svg id="barcode"></svg><div class="formal-ref">${esc(docRef)}</div>`:`<div class="formal-ref">${esc(docRef)} • ต่อ</div>`}</div></div>
-    <div class="formal-subject-band"><div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(w.subjects?.name||"")}</div><div class="smalltext">${esc(w.title||"")}</div></div>${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}</div>
+    <div class="formal-subject-band"><div class="formal-subject-info"><div><b>วิชา ${esc(subjectCode)}</b> &nbsp; ${esc(w.subjects?.name||"")}</div><div class="smalltext">${esc(w.title||"")}</div><div class="smalltext">ปีการศึกษา ${esc(w.subjects?.academic_year||"-")} • ภาคเรียน ${esc(w.subjects?.semester||"-")} • พิมพ์ ${esc(new Date().toLocaleDateString("th-TH"))}</div></div>${showScore?`<div class="formal-score"><b>ผลการประเมิน (Admin)</b><div>คะแนนเต็ม ${maxScore} คะแนน</div><div>คะแนนที่ได้ ______</div><div>ผู้ประเมิน ______</div></div>`:`<div class="formal-score"><b>สถานะงาน</b><div>สำหรับผู้เรียน</div><div>ไม่แสดงคะแนน</div></div>`}</div>
     <div class="formal-student-grid"><div>ชื่อ-นามสกุล <span class="formal-line"></span></div><div>รหัสประจำตัว <span class="formal-line short"></span></div><div>ระดับชั้น <span class="formal-line short"></span></div><div>วันที่ <span class="formal-line short"></span></div></div>
     ${pageNo===1?`<div class="formal-instruction"><b>คำชี้แจง</b> ${esc(w.instructions||"ให้นักศึกษาศึกษาเนื้อหาในหน่วยการเรียนรู้ และตอบคำถามให้ครบถ้วน")}</div>`:""}
     <div class="formal-questions">${page.map((q,j)=>`<div class="formal-question"><div class="formal-qnum">${(pageNo-1)*per+j+1}</div><div class="formal-qbody"><div>${esc(q.text)}</div><div class="formal-answer-space"></div></div></div>`).join("")||`<div class="formal-question"><div class="formal-qnum">•</div><div class="formal-qbody"><div>พื้นที่บันทึกเพิ่มเติม</div><div class="formal-answer-space"></div></div></div>`}</div>

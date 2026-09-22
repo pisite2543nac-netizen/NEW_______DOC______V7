@@ -8,7 +8,7 @@ css=(ROOT/'site/v19-programming-activity.css').read_text('utf-8')
 mig=(ROOT/'supabase/migrations/20260921_v19_8_special_activity_standalone_hub.sql').read_text('utf-8')
 idx=(ROOT/'site/index.html').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
-assert any(x in idx for x in ['data-docnr-release="v19-8-standalone-special-activities"','data-docnr-release="v19-9-detailed-teaching-slides"'])
+assert any(x in idx for x in ['data-docnr-release="v19-8-standalone-special-activities"','data-docnr-release="v19-9-detailed-teaching-slides"','data-docnr-release="v20-0-teaching-presentation-unified"'])
 assert app.count('["specialactivity","กิจกรรมพิเศษ"]')==2
 assert 'specialactivity:"กิจกรรมพิเศษ"' in app
 assert 'specialactivity:"🎮"' in app

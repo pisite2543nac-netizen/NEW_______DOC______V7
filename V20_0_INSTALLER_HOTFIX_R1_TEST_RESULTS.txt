@@ -1,0 +1,33 @@
+﻿DOC-FULL-NR V20.0 INSTALLER HOTFIX R1
+DATE: 2026-09-22
+
+BUG FIXED
+- Fixed One-Click startup failure: Illegal characters in path.
+- 00_INSTALL_UPDATE_SYSTEM.cmd no longer passes -PackageRoot with a trailing directory separator.
+- UPDATE_SYSTEM.ps1 derives PackageRoot from its own _INSTALLER directory.
+- Package root is normalized with System.IO.Path.GetFullPath.
+- Rollback path validation is isolated so it cannot mask the original deployment error.
+- No-change reruns now verify GitHub Actions success before claiming ACTIONS = SUCCESS.
+
+INSTALLER CONTRACT
+- CMD has no -PackageRoot argument: PASS
+- Self-derived package root: PASS
+- Space / parentheses / Thai path simulation: PASS
+- Rollback guard: PASS
+- Original-error preservation: PASS
+
+REGRESSION
+- V20 teaching/presentation/unified contract: PASS
+- V20 browser contrast/presentation/close-teaching: PASS
+- Responsive: PASS at 1920x1080, 1366x768, 1024x768, 768x1024, 390x844, 844x390
+- V19.6 print static/browser contract: PASS
+- V19.8 special activity contract: PASS
+- V19.5 exam preset contract: PASS
+- V19.4 classroom/back contract: PASS
+- Earlier non-browser compatibility contracts through V20: PASS
+- JavaScript syntax checks: PASS
+
+APPLICATION/BACKEND
+- V20.0 application source retained.
+- No additional database migration is required for this installer-only hotfix.
+- Existing V20.0 Production migrations remain applied.

@@ -1,0 +1,104 @@
+DOC-FULL-NR V20.0 FINAL TEST RESULTS
+Date: 2026-09-22
+Release: V20.0 TEACHING PRESENTATION • UNIFIED UX • PRINT DESIGN
+
+SOURCE AUDIT
+- Source of truth: NEW_______DOC______V7-main (uploaded ZIP)
+- Architecture preserved: app.js remains the shell/router owner; existing V16–V19 compatibility modules remain in place.
+- Active subjects: 11
+- Canonical worksheet templates: 374 (187 Digital + 187 Paper)
+- Built-in teaching decks: 187 × 20 = 3,740 logical slide pages
+
+V20 CHANGES VERIFIED
+- Teaching slides use worksheet Learning Goal, Key Concepts, Practice Steps, Control Points, Case Study and Review Questions from production metadata.
+- Teaching knowledge layer is subject-specific and derived from existing exam-bank explanations only; student-facing Answer Key/options are not exposed.
+- Slide contrast verified in Light/Dark mode.
+- Presentation mode supports expanded/fullscreen display and explicit exit.
+- PWA manifest uses fullscreen display; normal browser makes a best-effort request on startup and retries on the first trusted gesture, with an explicit fullscreen button retained.
+- Admin can close only the latest opened teaching unit; backend sets the unit back to draft without deleting assignments, submissions, grades or history.
+- Special Activities remains a top-level Admin/User menu.
+- V19.6 Print System features are retained and receive the unified V20 print header/design layer.
+- User-visible release is V20.0 from release-meta.js; legacy version strings remain only as compatibility identifiers/comments.
+
+STATIC / CONTRACT REGRESSION: PASS
+- static_validation.py
+- unified_contract.py
+- button_contract.py
+- course_code_contract.py
+- branding_contract.py
+- runtime_v173_contract.py
+- learning_content_v174_contract.py
+- v175_workpair_contract.py
+- v176_fullset_contract.py
+- v1761_icon_contract.py
+- v177_transaction_contract.py
+- v178_notification_contract.py
+- v179_full_system_hardening_contract.py
+- v181_complete_learning_system_contract.py
+- v182_complete_system_final_contract.py
+- v19_classroom_flow_contract.py
+- v191_complete_user_requests_contract.py
+- v1913_responsive_fit_contract.py
+- v192_production_ux_contract.py
+- v193_gradebook_contract.py
+- v194_classroom_back_contract.py
+- v195_exam_preset_contract.py
+- v196_print_system_contract.py
+- v197_programming_activity_contract.py
+- v198_special_activity_hub_contract.py
+- v199_detailed_teaching_slides_contract.py
+- v200_teaching_presentation_unified_contract.py
+- node --check: all site/*.js and site/data/*.js PASS
+
+BROWSER / RESPONSIVE REGRESSION: PASS
+- browser_contract.py
+- course_code_browser_contract.py
+- real_use_browser_contract.py
+- v181_core_browser_contract.py
+- v186_room_work_checklist_browser_contract.py
+- v187_exam_admin_browser_contract.py
+- v187_exam_source_adaptation_browser_contract.py
+- v1913_responsive_fit_browser_contract.py
+- v192_production_ux_browser_contract.py
+- v193_gradebook_browser_contract.py
+- v196_print_system_browser_contract.py
+- v197_programming_activity_browser_contract.py
+- v198_special_activity_hub_browser_contract.py
+- v199_detailed_teaching_slides_browser_contract.py
+- v200_teaching_presentation_unified_browser_contract.py
+
+Required V20 viewport verification PASS:
+- 1920×1080
+- 1366×768
+- 1024×768
+- 768×1024
+- 390×844
+- 844×390
+
+PRODUCTION DATABASE: APPLIED + VERIFIED
+- Migration v20_0_teaching_slide_metadata: applied (20260922024138)
+- Migration v20_0_reversible_teaching_close: applied (20260922030232)
+- Final smoke verification used BEGIN/ROLLBACK.
+- Verified: 11 active subjects, 374 canonical templates, 187 Digital units, all 187 Digital units have key_concepts and practice_steps.
+- Existing submission count remained 1 during read-only/rollback verification.
+- No production table reset/drop and no smoke-test records were left behind.
+
+SUPABASE ADVISORS
+- Security Advisor is NOT zero-warning.
+- Existing INFO/WARN items remain, including RPC-only tables with RLS/no direct policies and authenticated SECURITY DEFINER RPC warnings.
+- Performance Advisor also reports existing items such as RLS init-plan, unindexed FKs, unused/duplicate indexes.
+- No blanket revoke/drop was performed because these are existing architecture-wide items and must be audited individually.
+
+BUILD NOTE
+- GitHub Pages production deploy is the static /site workflow; it does not run the legacy Vite/React npm build.
+- npm dependency installation was unavailable in this execution environment, so the non-production Vite build was not used as a release gate.
+- The actual Pages validation gates (static contracts, Node syntax, browser/responsive regression) passed.
+
+DEPLOYMENT STATUS AT PACKAGE BUILD
+SOURCE = READY
+DATABASE = APPLIED / VERIFIED
+GITHUB = NOT PUSHED BY PACKAGE BUILD
+ACTIONS = NOT RUN FOR THIS LOCAL PACKAGE YET
+LIVE WEBSITE = NOT CLAIMED / NOT VERIFIED FOR THIS PACKAGE YET
+
+The included one-click installer performs Git push, waits for the matching GitHub Actions run, verifies V20.0 on the live GitHub Pages site, and reverts the pushed release commit if deployment/live verification fails.
