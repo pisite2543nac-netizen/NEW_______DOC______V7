@@ -1,4 +1,4 @@
-/* DOC-FULL-NR V20.0 — Unified UX/UI, teaching presentation, print design layer. */
+/* DOC-FULL-NR V20.1 — Unified UX/UI, teaching presentation, print design layer. */
 :root{--v20-green:#176b46;--v20-green-2:#0f7a4c;--v20-ink:#173126;--v20-muted:#61776c;--v20-soft:#f4fbf7;--v20-border:#d3e6da}
 
 /* Teaching slides: force WCAG-friendly contrast regardless of legacy modal/theme rules. */

@@ -1377,7 +1377,7 @@ function printStudentGradeV196(userId){
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v20-0-teaching-presentation-unified";document.documentElement.dataset.docnrCompatRoomChecklist="v18-6-room-work-checklist";
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v20-1-content-focused-slides";document.documentElement.dataset.docnrCompatRoomChecklist="v18-6-room-work-checklist";
   syncServerTime().catch(()=>{});startHeartbeat();
   scheduleEnsureNav();
   setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},700);

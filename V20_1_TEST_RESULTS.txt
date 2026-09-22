@@ -1,0 +1,94 @@
+DOC-FULL-NR V20.1 CONTENT-FOCUSED TEACHING SLIDES — TEST RESULTS
+Date: 2026-09-22
+
+CHANGE SCOPE
+- Built-in Teaching Slides remain 20 pages per unit.
+- Pages 1–17: unit content only.
+- Page 18: analytical scenario questions.
+- Page 19: compare/distinguish questions.
+- Page 20: unit summary.
+- Dedicated Worksheet/Paper/Exam Alignment/Teacher Note slide pages removed from rendered deck.
+- Presentation fullscreen, slide contrast, Unified UX/UI, Print V19.6, exam, gradebook, attendance, PWA, special activities preserved.
+
+DATABASE
+- No V20.1 migration.
+- Production smoke verification executed inside BEGIN/ROLLBACK.
+- 11 active subjects, 187 Digital, 187 Paper, 187 Digital units with key_concepts.
+- admin_subject_unit_plan(uuid): present.
+- my_subject_learning_path(uuid): present.
+- admin_lock_subject_unit_v20(uuid,integer,uuid): present.
+- No smoke-test data retained.
+
+STATIC / CONTRACT REGRESSION
+PASS:
+- static_validation
+- unified_contract
+- button_contract
+- course_code_contract
+- branding_contract
+- runtime_v173_contract
+- learning_content_v174_contract
+- v175_workpair_contract
+- v176_fullset_contract
+- v1761_icon_contract
+- v177_transaction_contract
+- v178_notification_contract
+- v179_full_system_hardening_contract
+- v181_complete_learning_system_contract
+- v182_complete_system_final_contract
+- v19_classroom_flow_contract
+- v191_complete_user_requests_contract
+- v1913_responsive_fit_contract
+- v192_production_ux_contract
+- v193_gradebook_contract
+- v194_classroom_back_contract
+- v195_exam_preset_contract
+- v196_print_system_contract
+- v197_programming_activity_contract
+- v198_special_activity_hub_contract
+- v199_detailed_teaching_slides_contract
+- v200_teaching_presentation_unified_contract
+- v201_content_focused_slides_contract
+
+JAVASCRIPT SYNTAX
+PASS: app.js, camera-registration.js, mobile.js, v16-platform.js, v16-7-hardening.js,
+v16-8-course-flow.js, v19-ux-runtime.js, v16-exam.js, sw.js, v18-supabase.js,
+v18-offline.js, v19-programming-activity.js
+
+BROWSER REGRESSION
+PASS:
+- browser_contract
+- course_code_browser_contract
+- real_use_browser_contract
+- v181_core_browser_contract
+- v186_room_work_checklist_browser_contract
+- v187_exam_admin_browser_contract
+- v187_exam_source_adaptation_browser_contract
+- v1913_responsive_fit_browser_contract
+- v192_production_ux_browser_contract (14 viewport/orientation layouts)
+- v193_gradebook_browser_contract
+- v196_print_system_browser_contract
+- v197_programming_activity_browser_contract
+- v198_special_activity_hub_browser_contract
+- v199_detailed_teaching_slides_browser_contract
+- v200_teaching_presentation_unified_browser_contract
+  1920x1080 / 1366x768 / 1024x768 / 768x1024 / 390x844 / 844x390
+- v201_content_focused_slides_browser_contract
+
+INSTALLER
+- V20.1 release marker contract: PASS.
+- V20.0 path hotfix retained: package root is derived from installer script location.
+- Static installer path/version/contract validation: PASS.
+- Windows PowerShell 5.1 executable is not available in this Linux validation container; the PS5.1-safe path logic from the previously fixed V20.0 installer is retained unchanged except V20.1 release markers.
+
+NPM/VITE NOTE
+- This production release deploys the static /site application and GitHub Pages workflow does not run npm build.
+- An optional npm dependency installation/typecheck/build attempt could not complete in the validation container before timeout; no node_modules or dist artifacts were left in the package.
+- Release acceptance is based on the actual GitHub Pages static/browser contract workflow used by this project.
+
+FINAL LOCAL STATUS
+SOURCE = READY
+DATABASE = NO NEW V20.1 MIGRATION / V20.0 BACKEND VERIFIED
+GITHUB = NOT PUSHED BY PACKAGE CREATION
+ACTIONS = NOT RUN FOR THIS NEW COMMIT YET
+LIVE WEBSITE = NOT CLAIMED / NOT VERIFIED FOR V20.1 YET

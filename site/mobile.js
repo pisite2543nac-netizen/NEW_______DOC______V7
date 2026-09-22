@@ -3,7 +3,7 @@
 (function(){
   'use strict';
   const V173_COMPAT_RELEASE='V17.3-PWA-FULLSCREEN-RUNTIME';
-  const RELEASE=window.DOCNR_RELEASE_META?.version||'V20.0';
+  const RELEASE=window.DOCNR_RELEASE_META?.version||'V20.1';
   const $=(s,r=document)=>r.querySelector(s);
 
   function sidebar(){return document.getElementById('sidebar')}

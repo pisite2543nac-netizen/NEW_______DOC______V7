@@ -5,7 +5,7 @@ flow=(ROOT/'site/v16-8-course-flow.js').read_text('utf-8')
 css=(ROOT/'site/v16-8-course-flow.css').read_text('utf-8')
 index=(ROOT/'site/index.html').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
-assert any(x in index for x in ['v19-9-detailed-teaching-slides','v20-0-teaching-presentation-unified'])
+assert any(x in index for x in ['v19-9-detailed-teaching-slides','v20-0-teaching-presentation-unified','v20-1-content-focused-slides'])
 assert 'function topicExplanation(' in flow
 assert 'function conceptExplanation(' in flow
 assert 'function conceptExample(' in flow

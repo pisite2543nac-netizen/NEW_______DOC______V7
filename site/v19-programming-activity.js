@@ -174,4 +174,4 @@ document.addEventListener('click',e=>{
   const back=e.target.closest?.('[data-v197-back]');if(back){e.preventDefault();navigateBack()}
 },true);
 window.addEventListener('pagehide',cleanupFocus);
-window.DOCNR_V197=Object.freeze({open:openSpecial,openHub,version:window.DOCNR_RELEASE_META?.version||'V20.0',compatVersion:'V19.8-STANDALONE-SPECIAL-ACTIVITIES'});
+window.DOCNR_V197=Object.freeze({open:openSpecial,openHub,version:window.DOCNR_RELEASE_META?.version||'V20.1',compatVersion:'V19.8-STANDALONE-SPECIAL-ACTIVITIES'});

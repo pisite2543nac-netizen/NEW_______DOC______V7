@@ -1,4 +1,4 @@
-// DOC-FULL-NR V20.0 — teaching knowledge derived from exam-bank explanations only.
+// DOC-FULL-NR V20.1 — teaching knowledge derived from exam-bank explanations only.
 // No exam prompts, options, correct-answer indexes or answer keys are exposed here.
 export const TEACHING_KNOWLEDGE = Object.freeze({
   "20001-1001": [
