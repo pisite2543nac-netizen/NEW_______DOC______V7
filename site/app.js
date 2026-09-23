@@ -297,20 +297,20 @@ function signupDialog(){
 
 function navItems(){
   return isAdmin()
-    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["specialactivity","กิจกรรมพิเศษ"],["students","นักศึกษาและสิทธิ์"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["printcenter","ศูนย์พิมพ์และสรุปผล"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
+    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["specialactivity","กิจกรรมพิเศษ"],["students","นักศึกษาและสิทธิ์"],["roomgroups","จัดกลุ่มห้อง"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["printcenter","ศูนย์พิมพ์และสรุปผล"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
     : [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["specialactivity","กิจกรรมพิเศษ"],["work","งานของฉัน"],["printcenter","พิมพ์เอกสารของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
 }
 const ROUTE_TITLES={
-  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",workadmin:"งาน คะแนน และรายงาน",workcheck:"ตารางเช็กรวมการเก็บงานรายห้อง",printcenter:"ศูนย์พิมพ์และสรุปผล",paperscan:"สแกนใบงานย้อนหลัง",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",specialactivity:"กิจกรรมพิเศษ",academic:"ปีการศึกษาและระบบ",
+  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",roomgroups:"จัดกลุ่มห้องโดย Admin",workadmin:"งาน คะแนน และรายงาน",workcheck:"ตารางเช็กรวมการเก็บงานรายห้อง",printcenter:"ศูนย์พิมพ์และสรุปผล",paperscan:"สแกนใบงานย้อนหลัง",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",specialactivity:"กิจกรรมพิเศษ",academic:"ปีการศึกษาและระบบ",
   catalog:"รายวิชาทั้งหมด",work:"งานของฉัน",attendance:"เช็คชื่อ",profile:"ข้อมูลของฉัน",
   accounts:"อนุมัติบัญชี",enrollments:"สมาชิกวิชา",profiles:"โปรไฟล์นักศึกษา",presence:"สถานะออนไลน์",promotion:"เลื่อนชั้น / ปีการศึกษา",history:"ประวัติการศึกษา",
   users:"ผู้ใช้งาน",grading:"ตรวจงาน",overrides:"สิทธิ์ส่งเพิ่ม",reports:"รายงาน",audit:"Audit log",system:"ตั้งค่าระบบ",enroll:"รายวิชาทั้งหมด"
 };
-const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","printcenter","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","presence","promotion","history","enroll"]);
+const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","printcenter","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","roomgroups","presence","promotion","history","enroll"]);
 const BASE_ROUTES=new Set(["users","grading","overrides","reports","audit","system","profile"]);
-const ADMIN_ROUTES=new Set(["dashboard","courses","specialactivity","students","workadmin","workcheck","printcenter","paperscan","attendancehub","attendance","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
+const ADMIN_ROUTES=new Set(["dashboard","courses","specialactivity","students","workadmin","workcheck","printcenter","paperscan","attendancehub","attendance","exam","academic","profile","accounts","enrollments","profiles","roomgroups","presence","promotion","users","grading","overrides","reports","audit","system"]);
 const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","specialactivity","work","printcenter","attendance","exam","profile","history","presence"]);
-const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",printcenter:"printcenter",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
+const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",roomgroups:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",printcenter:"printcenter",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
 function activeNavRoute(route){
   if(isAdmin()&&route==="attendance")return "attendancehub";
   return ROUTE_GROUP[route]||route
@@ -326,7 +326,7 @@ function paintNav(){
 }
 function navKey(route,arg){return `${String(route||"")}::${String(arg||"")}`}
 function fallbackBackTarget(){
-  const parent={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"workadmin",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
+  const parent={accounts:"students",enrollments:"students",profiles:"students",roomgroups:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"workadmin",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
   if(S.route==="courses"&&S.routeArg)return {route:"courses",arg:null};
   if(isAdmin()&&S.route==="attendance")return {route:"attendancehub",arg:null};
   return {route:parent[S.route]||"dashboard",arg:null};
@@ -428,7 +428,7 @@ function renderShell(){
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
       <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • ${RELEASE_VERSION}</div></div></div>
-      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",specialactivity:"🎮",students:"👨‍🎓",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
+      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
       <header class="topbar" id="topbar">

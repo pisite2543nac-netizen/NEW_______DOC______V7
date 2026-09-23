@@ -1,8 +1,8 @@
-/* DOC-FULL-NR V20.4 adaptive UX shell runtime — presentation/navigation only.
+/* DOC-FULL-NR V20.5 adaptive UX shell runtime — presentation/navigation only.
    One drawer owner, one backdrop, device-specific navigation, no business logic. */
 (()=>{
   'use strict';
-  const RELEASE='V20.4';
+  const RELEASE='V20.5';
   const root=document.documentElement;
   const qs=(s,p=document)=>p.querySelector(s),qsa=(s,p=document)=>[...p.querySelectorAll(s)];
   const routeMeta={

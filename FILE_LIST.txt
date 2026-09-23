@@ -11,6 +11,7 @@
 AppLayout.tsx
 CONTRIBUTING.md
 ClassroomsPage.tsx
+FILE_LIST.txt
 GradingPage.tsx
 README.md
 README_FIRST_TH.txt
@@ -32,6 +33,7 @@ README_V20_1_TH.txt
 README_V20_2_TH.txt
 README_V20_3_TH.txt
 README_V20_4_TH.txt
+README_V20_5_TH.txt
 SECURITY.md
 SubjectsPage.tsx
 SubmissionPage.tsx
@@ -59,6 +61,7 @@ V20_1_TEST_RESULTS.txt
 V20_2_TEST_RESULTS.txt
 V20_3_TEST_RESULTS.txt
 V20_4_TEST_RESULTS.txt
+V20_5_TEST_RESULTS.txt
 VERSION.json
 WorksheetsPage.tsx
 app.js
@@ -100,6 +103,7 @@ docs/V19_7_PROGRAMMING_SPECIAL_ACTIVITY.md
 docs/V19_8_STANDALONE_SPECIAL_ACTIVITIES.md
 docs/V20_0_FINAL_ACCEPTANCE_REPORT.md
 docs/V20_4_FINAL_ACCEPTANCE_REPORT.md
+docs/V20_5_FINAL_ACCEPTANCE_REPORT.md
 icon-192.png
 icon-512.png
 index.html
@@ -274,13 +278,9 @@ supabase/migrations/20260920_v19_7_programming_special_activity.sql
 supabase/migrations/20260921_v19_8_special_activity_standalone_hub.sql
 supabase/migrations/20260922_v20_0_reversible_teaching_close.sql
 supabase/migrations/20260922_v20_0_teaching_slide_metadata.sql
+supabase/migrations/20260923_v20_5_teacher_late_barcode_admin_room_groups.sql
 sw.js
 tests/README.md
-tests/__pycache__/real_use_browser_contract.cpython-313.pyc
-tests/__pycache__/v197_programming_activity_contract.cpython-313.pyc
-tests/__pycache__/v200_teaching_presentation_unified_contract.cpython-313.pyc
-tests/__pycache__/v201_content_focused_slides_contract.cpython-313.pyc
-tests/__pycache__/v202_adaptive_mobile_camera_contract.cpython-313.pyc
 tests/branding_contract.py
 tests/browser_contract.py
 tests/button_contract.py
@@ -332,6 +332,8 @@ tests/v203_mobile_interaction_camera_browser_contract.py
 tests/v203_mobile_interaction_camera_contract.py
 tests/v204_real_device_mobile_router_browser_contract.py
 tests/v204_real_device_mobile_router_contract.py
+tests/v205_late_barcode_room_groups_browser_contract.py
+tests/v205_late_barcode_room_groups_contract.py
 tsconfig.app.json
 tsconfig.app.tsbuildinfo
 tsconfig.json

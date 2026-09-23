@@ -1,8 +1,8 @@
-/* DOC-FULL-NR V20.4 mobile / PWA / fullscreen / touch interaction runtime.
+/* DOC-FULL-NR V20.5 mobile / PWA / late attendance / touch interaction runtime.
    UI runtime only. Business authorization remains server-side. */
 (function(){
   'use strict';
-  const RELEASE=window.DOCNR_RELEASE_META?.version||'V20.4';
+  const RELEASE=window.DOCNR_RELEASE_META?.version||'V20.5';
   const $=(s,r=document)=>r.querySelector(s);
 
   function deviceProfile(){

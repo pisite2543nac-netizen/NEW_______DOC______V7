@@ -13,10 +13,10 @@ css=(site/'v20-unified-ui.css').read_text('utf-8')
 meta=(site/'release-meta.js').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
-assert 'data-docnr-release="v20-4-real-device-mobile-router-adaptive-camera"' in idx
-assert 'doc-full-nr-v20-4-real-device-mobile-router-adaptive-camera-20260923' in sw
-assert 'RELEASE_VERSION="V20.4"' in meta and '20260923-v20-4' in meta
-assert ver['version']=='20.4' and ver['release_marker']=='V20.4'
+assert 'data-docnr-release="v20-5-late-teacher-barcode-admin-room-groups"' in idx
+assert 'doc-full-nr-v20-5-late-teacher-barcode-admin-room-groups-20260923' in sw
+assert 'RELEASE_VERSION="V20.5"' in meta and '20260923-v20-5' in meta
+assert ver['version']=='20.5' and ver['release_marker']=='V20.5'
 
 # One mobile drawer owner: legacy backdrop is removed/disabled and a single docnr backdrop owns tap interception.
 assert "document.getElementById('mobile-nav-backdrop')?.remove()" in mobile
@@ -49,4 +49,4 @@ assert 'pagePhoto.onclick=()=>stop()' in platform
 assert 'if(window.DOCNR_CAMERA?.startScanner) return;' in hard
 assert 'window.DOCNR_CAMERA?.release==="V20.2"' not in hard
 
-print('V20.3 COMPATIBILITY MOBILE INTERACTION/CAMERA STATIC CONTRACT PASS ON V20.4')
+print('V20.3 COMPATIBILITY MOBILE INTERACTION/CAMERA STATIC CONTRACT PASS ON V20.5')

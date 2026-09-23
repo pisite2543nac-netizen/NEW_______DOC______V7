@@ -15,7 +15,7 @@ checks={
 'exam start hardened':'start_exam_v18' in exam,
 'exam submit idempotent':'submit_exam_attempt_v18' in exam and 'p_request_key' in exam,
 'exam grade hardened':'admin_grade_exam_attempt_v179' in mig,
-'attendance hardened':'scan_attendance_qr_v179' in plat,
+'attendance hardened':('scan_attendance_qr_v179' in plat or 'scan_attendance_qr_v205' in plat),
 'paper scan hardened':'admin_record_paper_scan_page_v18' in plat and 'admin_finalize_paper_scan_packet_v18' in plat,
 'unit unlock hardened':'admin_unlock_subject_unit_v179' in course,
 'digital hard deadline UI':'หลังจากนั้นใช้ Paper ย้อนหลัง' in course and 'allow_late:false' in app,

@@ -1,0 +1,57 @@
+DOC-FULL-NR V20.5 — FINAL TEST RESULTS
+Date: 2026-09-23
+Release: V20.5 LATE TEACHER BARCODE • ADMIN ROOM GROUPS • STABLE MOBILE
+
+RESULT: PASS for production static GitHub Pages path and V20.5 backend smoke flow.
+
+NEW V20.5 FLOW
+- Normal attendance remains available for the first 15 minutes.
+- After the server deadline, scan_attendance_qr_v179 blocks normal QR check-in with ATTENDANCE_WINDOW_CLOSED_SCAN_TEACHER_BARCODE.
+- Admin/teacher issues a temporary DOCNR-LATE token for the real attendance session.
+- Student uses their own phone camera/file-camera/manual fallback to scan the teacher late token.
+- Backend verifies active student, classroom membership, approved subject enrollment, token expiry, and session deadline.
+- Late check-in is idempotent and audited; existing present/late/excused is preserved.
+- Admin-defined room groups are independent from Subject Room history.
+- Admin can create/update groups, replace membership, and bulk-enroll a group to a subject; published worksheet/exam assignments are reconciled.
+
+LOCAL SOURCE VALIDATION
+- All production site JavaScript: node --check PASS.
+- All non-browser/static contract scripts: PASS, including V20.5 contract.
+- Browser contracts with real headless Chromium: PASS for core routing, Course CODE, profile/paper hub, exam admin/student flow, responsive UX, Gradebook, Print, Programming Activity, Special Activity, 20-slide teaching, Presentation/Contrast, V20.2 camera, V20.3 interaction/camera compatibility, V20.4 real-device router regression, and V20.5 late-barcode/room-groups.
+- Tested responsive viewports include 1920x1080, 1366x768, 1024x768, 768x1024, 390x844, 844x390 plus the existing 14-orientation production UX matrix.
+
+PRODUCTION SUPABASE VERIFICATION (BEGIN / ROLLBACK where mutations were needed)
+- active subjects: 11
+- canonical worksheet templates: 374 = 187 Digital + 187 Paper
+- exam question bank: 550
+- migration present: 20260923035624 v20_5_teacher_late_barcode_admin_room_groups
+- RPCs verified: admin_issue_late_attendance_barcode_v205, my_scan_teacher_late_barcode_v205, admin_room_groups_v205, admin_room_group_members_v205, admin_replace_room_group_members_v205, admin_enroll_room_group_subject_v205
+- normal attendance 15-minute server guard verified in scan_attendance_qr_v179
+- duplicate active late-token sessions: 0
+- duplicate room-group memberships: 0
+
+TRANSACTIONAL BACKEND SMOKE TEST (ROLLBACK)
+- teacher_barcode: PASS
+- student_late_scan: PASS
+- session_closed: PASS
+- admin_room_group: PASS
+No smoke-test rows were retained.
+
+KNOWN ADVISOR ITEMS — NOT CLAIMED AS ZERO-WARNING
+Security Advisor:
+- rls_enabled_no_policy: INFO 15
+- authenticated_security_definer_function_executable: WARN 131
+- auth_leaked_password_protection: WARN 1
+Performance Advisor:
+- unindexed_foreign_keys: INFO 52
+- auth_rls_initplan: WARN 11
+- no_primary_key: INFO 1
+- unused_index: INFO 41
+- duplicate_index: WARN 1
+These are existing/architecture-wide advisor findings and were not blanket-revoked/dropped because doing so without per-RPC analysis could break production behavior.
+
+CAMERA NOTE
+Browser camera lifecycle/fallback behavior is covered by Chromium MediaStream tests. Physical iPhone/Android camera hardware and OS permission UI cannot be exercised from this build environment; real-device acceptance remains recommended before a large classroom rollout.
+
+DEPLOYMENT NOTE
+The production deployment is static /site through GitHub Pages; the release gate is the repository static/browser contract suite and GitHub Actions, not the legacy Vite development build.

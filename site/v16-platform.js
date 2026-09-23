@@ -62,7 +62,15 @@ function errorText(err){
     STUDENT_NOT_IN_CLASSROOM:"นักศึกษาไม่ได้อยู่ในห้องเรียนนี้",INVALID_QR_TOKEN:"QR ไม่ถูกต้องหรือถูกยกเลิกแล้ว",
     EXAM_NOT_OPEN:"ยังไม่ถึงเวลาเปิดสอบ",EXAM_CLOSED:"หมดเวลาเปิดสอบแล้ว",MAX_ATTEMPTS_REACHED:"ใช้สิทธิ์เข้าสอบครบแล้ว",
     EXAM_TIME_EXPIRED:"หมดเวลาทำข้อสอบแล้ว",NOT_ASSIGNED:"บัญชีนี้ไม่ได้รับมอบหมายข้อสอบ",ATTEMPT_FINALIZED:"ข้อสอบถูกส่งเรียบร้อยแล้ว",
-    ATTENDANCE_WINDOW_CLOSED_USE_ADMIN:"หมดเวลาเช็คชื่อผ่านหัวหน้าห้องแล้ว กรุณาให้นักศึกษาติดต่อ Admin เพื่อเช็คชื่อเป็นมาสาย",
+    ATTENDANCE_WINDOW_CLOSED_USE_LATE_BARCODE:"หมดเวลาเช็คชื่อปกติแล้ว กรุณาให้นักศึกษาสแกนบาร์โค้ดเข้าสายจากครู",
+    ATTENDANCE_WINDOW_CLOSED_SCAN_TEACHER_BARCODE:"หมดเวลาเช็คชื่อปกติแล้ว กรุณาให้นักศึกษาสแกนบาร์โค้ดเข้าสายจากครู",
+    INVALID_LATE_ATTENDANCE_BARCODE:"บาร์โค้ดเข้าสายไม่ถูกต้อง กรุณาขอรหัสจากครูอีกครั้ง",
+    LATE_ATTENDANCE_BARCODE_EXPIRED:"บาร์โค้ดเข้าสายหมดอายุ กรุณาขอรหัสใหม่จากครู",
+    LATE_ATTENDANCE_WINDOW_NOT_STARTED:"ยังไม่ถึงเวลาเข้าสาย กรุณาใช้การเช็คชื่อปกติ",
+    LATE_BARCODE_EXPIRED_OR_INVALID:"บาร์โค้ดเข้าสายหมดอายุหรือไม่ถูกต้อง กรุณาขอรหัสใหม่จากครู",
+    LATE_WINDOW_NOT_STARTED:"ยังไม่ถึงเวลาเข้าสาย กรุณาใช้การเช็คชื่อปกติ",
+    ATTENDANCE_SESSION_NOT_CLOSED:"รอบเช็คชื่อยังไม่ปิด จึงยังออกบาร์โค้ดเข้าสายไม่ได้",
+    ROOM_GROUP_CODE_ALREADY_EXISTS:"รหัสกลุ่มห้องนี้ถูกใช้แล้ว",
     INVALID_ATTENDANCE_WINDOW:"ช่วงเวลาเช็คชื่อไม่ถูกต้อง"
   };
   for(const [k,v] of Object.entries(map))if(raw.includes(k))return v;
@@ -70,7 +78,7 @@ function errorText(err){
 }
 function busy(label="กำลังโหลดข้อมูล..."){if(content())content().innerHTML=`<div class="v14-loading"><div class="v14-spinner"></div><b>${esc(label)}</b></div>`}
 function closeOverlay(){
-  stopScanner();$("#v14-overlay")?.remove();document.body.classList.remove("v14-modal-open");
+  stopScanner();try{stopLateStudentScannerV205()}catch{};$("#v14-overlay")?.remove();document.body.classList.remove("v14-modal-open");
 }
 function overlay(html,wide=false){
   closeOverlay();document.body.classList.add("v14-modal-open");
@@ -281,6 +289,7 @@ const routes=p.role==="admin"?{
     accounts:renderAccountApprovals,
     enrollments:renderEnrollmentAdmin,
     profiles:renderAdminProfiles,
+    roomgroups:renderAdminRoomGroupsV205,
     attendance:renderAttendance,
     presence:renderPresence,
     promotion:renderPromotion
@@ -475,7 +484,7 @@ async function renderStudentDashboard(){
 }
 async function renderStudentsHub(){
   setTitle("นักศึกษาและสิทธิ์");
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">STUDENT & ACCESS FLOW</span><h1>👨‍🎓 นักศึกษาและสิทธิ์</h1><p>รวมบัญชี สิทธิ์เข้าใช้งาน สมาชิกวิชา และข้อมูลนักศึกษาไว้ใน Flow เดียว</p></div></div><div class="v1610-flow-grid">${hubCard("accounts","🟢","อนุมัติบัญชี","Pending → Approved / Rejected / Suspended","green")}${hubCard("users","👥","จัดการผู้ใช้","สร้าง • แก้ข้อมูล • ระงับ • Reset Password","cyan")}${hubCard("enrollments","🔐","สมาชิกและสิทธิ์รายวิชา","ตรวจสมาชิก/คำขอรายวิชา","orange")}${hubCard("profiles","🪪","โปรไฟล์นักศึกษา","ข้อมูลการศึกษาแก้โดย Admin เท่านั้น","violet")}</div></section>`;
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">STUDENT & ACCESS FLOW</span><h1>👨‍🎓 นักศึกษาและสิทธิ์</h1><p>รวมบัญชี สิทธิ์เข้าใช้งาน สมาชิกวิชา และข้อมูลนักศึกษาไว้ใน Flow เดียว</p></div></div><div class="v1610-flow-grid">${hubCard("accounts","🟢","อนุมัติบัญชี","Pending → Approved / Rejected / Suspended","green")}${hubCard("users","👥","จัดการผู้ใช้","สร้าง • แก้ข้อมูล • ระงับ • Reset Password","cyan")}${hubCard("enrollments","🔐","สมาชิกและสิทธิ์รายวิชา","ตรวจสมาชิก/คำขอรายวิชา","orange")}${hubCard("roomgroups","🏷️","จัดกลุ่มห้องโดย Admin","สร้างกลุ่มเอง • เพิ่ม/ย้ายนักศึกษา • เลขที่","green")}${hubCard("profiles","🪪","โปรไฟล์นักศึกษา","ข้อมูลการศึกษาแก้โดย Admin เท่านั้น","violet")}</div></section>`;
 }
 async function renderWorkAdminHub(){
   setTitle("งาน คะแนน และรายงาน");
@@ -592,7 +601,7 @@ function showRoomWorkChecklistCell(userId,pairId){
 
 async function renderAttendanceHub(){
   setTitle("เช็คชื่อและห้องเรียน");
-  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">ATTENDANCE FLOW</span><h1>📷 เช็คชื่อและห้องเรียน</h1><p>QR • Session 15 นาที • Late/Absent/Excused • หัวหน้าห้อง • Realtime Presence</p></div></div><div class="v1610-flow-grid">${hubCard("attendance","📷","Attendance","เปิด Session • Scan QR • สรุปยอด","orange")}${hubCard("presence","📡","สถานะออนไลน์","ดู Online/Away/Offline แบบ Realtime","cyan")}${hubCard("students","👨‍🎓","หัวหน้าห้อง / สมาชิก","จัดสิทธิ์นักศึกษาและสมาชิกห้อง","green")}${hubCard("courses","🏫","กลับรายวิชา","เลือกวิชาสำหรับงานเช็คชื่อ","slate")}</div></section>`;
+  content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">ATTENDANCE FLOW</span><h1>📷 เช็คชื่อและห้องเรียน</h1><p>QR • 15 นาที • หลัง 15 นาที นักศึกษาสแกนบาร์โค้ดเข้าสายจากครู • Realtime</p></div></div><div class="v1610-flow-grid">${hubCard("attendance","📷","Attendance","15 นาทีปกติ • บาร์โค้ดเข้าสายจากครู","orange")}${hubCard("roomgroups","🏷️","จัดกลุ่มห้อง","Admin สร้างกลุ่มและจัดสมาชิกเอง","green")}${hubCard("presence","📡","สถานะออนไลน์","ดู Online/Away/Offline แบบ Realtime","cyan")}${hubCard("students","👨‍🎓","หัวหน้าห้อง / สมาชิก","จัดสิทธิ์นักศึกษาและสมาชิกห้อง","green")}${hubCard("courses","🏫","กลับรายวิชา","เลือกวิชาสำหรับงานเช็คชื่อ","slate")}</div></section>`;
 }
 async function renderAcademicHub(){
   setTitle("ปีการศึกษาและระบบ");
@@ -844,7 +853,7 @@ async function renderAttendance(){
   if(state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
   const latest=lastNotice.data?.[0]||null;
   content().innerHTML=`<section class="v14-page v161-attendance-page">
-    <div class="v14-section-head"><div><span class="v14-kicker">REAL-TIME ATTENDANCE</span><h1>${canScan?"เช็คชื่อด้วย QR Code":"QR ประจำตัว / การเข้าเรียน"}</h1><p>สแกนคนแรกเริ่มเวลา 15 นาที • ครบเวลา Server สรุปยอดอัตโนมัติ • หลังหมดเวลาเช็คสายโดย Admin เท่านั้น</p></div><span class="v16-live-pill"><i></i> Real-time</span></div>
+    <div class="v14-section-head"><div><span class="v14-kicker">REAL-TIME ATTENDANCE</span><h1>${canScan?"เช็คชื่อด้วย QR Code":"QR ประจำตัว / การเข้าเรียน"}</h1><p>สแกนคนแรกเริ่มเวลา 15 นาที • ครบเวลา Server สรุปยอดอัตโนมัติ • หลังหมดเวลา นักศึกษาสแกนบาร์โค้ดเข้าสายจากครูด้วยโทรศัพท์ของตนเอง</p></div><span class="v16-live-pill"><i></i> Real-time</span></div>
     ${p.role!=="admin"?`<div class="v14-attendance-grid">
       <div class="card v161-student-id-card"><div class="v161-id-head"><div><span>QR ประจำตัวนักศึกษา</span><h2>${esc(p.full_name||"-")}</h2><p>${esc(p.grade_level||"")}${esc(p.room_label||"")} • รหัส ${esc(p.student_code||"-")}</p></div><div id="v14-my-qr"></div></div><small>QR เป็น Token สำหรับระบบ ไม่เปิดเผย user_id</small><button class="btn sm" id="v14-rotate-qr">ออก QR ใหม่</button></div>
       <div class="card"><h2>สรุปการเข้าเรียน</h2>${(summary.data||[]).map(x=>`<div class="v14-att-row"><div><b>${esc(x.subject_code)} ${esc(x.subject_name)}</b><small>มา ${x.present_count} • สาย ${x.late_count} • ขาด ${x.absent_count} • ลา ${x.excused_count}</small></div><strong>${x.attendance_percent??0}%</strong></div>`).join("")||`<div class="v14-empty">ยังไม่มีข้อมูลเช็คชื่อ</div>`}</div>
@@ -854,7 +863,7 @@ async function renderAttendance(){
       <div class="v14-section-head compact"><div><h2>📷 เช็คชื่อภายใน 15 นาที</h2><p>เลือกห้องและรายวิชา จากนั้นสแกน QR นักศึกษา การสแกนคนแรกจะเริ่มนับเวลา</p></div><div class="v161-session-summary"><b id="v161-session-count">ยังไม่เริ่มรอบ</b><span id="v161-session-countdown">15:00</span></div></div>
       <div class="v14-form-grid"><label>ห้องเรียน<select class="input" id="v14-att-class"><option value="">เลือกห้อง</option>${rooms.map(r=>`<option value="${r.classroom_id||r.id}">${esc(r.classroom_name||r.name)}</option>`).join("")}</select></label><label>รายวิชา<select class="input" id="v14-att-subject"><option value="">เลือกรายวิชา</option>${subjects.map(s=>`<option value="${s.id}">${esc(s.code)} ${esc(s.name)}</option>`).join("")}</select></label></div>
       <div class="v161-att-actions"><button class="btn primary" id="v14-start-scan" data-device-critical>📷 เปิดกล้องหลัง</button><button class="btn" id="v14-stop-scan">หยุดกล้อง</button><label class="btn v202-file-camera">📸 ถ่าย QR สำรอง<input id="v202-att-photo" type="file" accept="image/*" capture="environment" hidden></label><button class="btn green" id="v161-summary-submit" ${state.currentAttendanceSession?"":"disabled"}>✅ สรุปยอดและส่ง Admin</button><button class="btn" id="v14-att-summary-btn">📊 สรุปย้อนหลัง</button></div>
-      <div id="v161-window-note" class="alert">⏱️ รอบเช็คชื่อปกติเปิด 15 นาทีจากการสแกนคนแรก หากสรุปก่อนเวลาได้ทันที หลังปิดรอบนักศึกษาที่มาทีหลังต้องให้ Admin สแกนและระบบจะบันทึกเป็น “มาสาย”</div>
+      <div id="v161-window-note" class="alert">⏱️ รอบเช็คชื่อปกติเปิด 15 นาทีจากการสแกนคนแรก หากสรุปก่อนเวลาได้ทันที หลังปิดรอบ ครูออกบาร์โค้ดเข้าสายให้นักศึกษาสแกนด้วยกล้องของตนเอง ระบบจะบันทึกเป็น “มาสาย”</div>
       <div id="v14-att-summary-box"></div>
       <div class="v14-camera-grid"><div><video id="v14-scan-video" autoplay playsinline muted></video><canvas id="v14-scan-canvas" hidden></canvas><div id="v202-att-camera-status" class="v202-camera-status">พร้อมเปิดกล้อง • ใช้ HTTPS/PWA และอนุญาต Camera</div></div><div>
         <form id="v14-manual-scan"><label class="field"><span>กรอก Token สำรอง</span><input class="input" name="token" placeholder="DOCNR-ATTEND:..." required></label><button class="btn">บันทึก Token</button></form>
@@ -863,6 +872,16 @@ async function renderAttendance(){
     ${p.role==="admin"?`<div class="card v14-leader-admin"><h2>👑 แต่งตั้งหัวหน้าห้อง</h2><div class="row"><select id="v14-leader-class" class="input"><option value="">เลือกห้องเรียน</option>${rooms.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select><button id="v14-load-roster" class="btn">โหลดรายชื่อ</button></div><div id="v14-roster"></div></div>`:""}
     ${canScan?`<div class="card"><div class="row between"><div><h2>รอบเช็คชื่อล่าสุด</h2><small class="muted">กดรายการเพื่อดูรายชื่อทั้งหมด • Admin สามารถกำหนด มา/สาย/ขาด/ลา ได้โดยตรง</small></div><button class="btn sm" id="v14-refresh-sessions">รีเฟรช</button></div><div id="v14-session-list"></div></div>`:""}
   </section>`;
+  if(p.role!=="admin"){
+    const host=document.querySelector(".v161-attendance-page");
+    if(host){
+      host.insertAdjacentHTML("beforeend",`<div class="card v205-late-student-card"><div class="v14-section-head compact"><div><span class="v14-kicker">LATE ATTENDANCE • V20.5</span><h2>⏰ เข้าสายหลัง 15 นาที</h2><p>หลังรอบปกติปิด ให้เปิดกล้องของนักศึกษาและสแกนบาร์โค้ด/QR “เข้าสาย” ที่ครูแสดง ระบบจะบันทึกเป็นมาสายโดยผูกกับคาบเรียนจริง</p></div></div><div class="v161-att-actions"><button class="btn primary" id="v205-late-start" data-device-critical>📷 เปิดกล้องสแกนบาร์โค้ดเข้าสาย</button><button class="btn" id="v205-late-stop">หยุดกล้อง</button><label class="btn v202-file-camera">📸 ถ่ายบาร์โค้ดสำรอง<input id="v205-late-photo" type="file" accept="image/*" capture="environment" hidden></label></div><div class="v14-camera-grid"><div><video id="v205-late-video" autoplay playsinline muted></video><canvas id="v205-late-canvas" hidden></canvas><div id="v205-late-status" class="v202-camera-status">พร้อมสแกน • ขอรับบาร์โค้ดเข้าสายจากครูเมื่อเกิน 15 นาที</div></div><div><form id="v205-late-manual"><label class="field"><span>Token เข้าสายสำรอง</span><input class="input" name="token" placeholder="DOCNR-LATE:..." required></label><button class="btn">ยืนยันเข้าสาย</button></form><div id="v205-late-result" class="v14-scan-results"></div></div></div></div>`);
+      $("#v205-late-start")?.addEventListener("click",startLateStudentScannerV205);
+      $("#v205-late-stop")?.addEventListener("click",stopLateStudentScannerV205);
+      const lp=$("#v205-late-photo");if(lp){lp.onclick=()=>stopLateStudentScannerV205();lp.onchange=async()=>{const file=lp.files?.[0];if(!file)return;const st=$("#v205-late-status");if(st)st.textContent="กำลังอ่านบาร์โค้ด/QR จากภาพ...";try{const raw=await window.DOCNR_CAMERA?.scanFile?.(file,["qr_code","code_128"]);if(raw)await submitLateStudentTokenV205(raw);else toast("ไม่พบบาร์โค้ดเข้าสายในภาพ",true)}catch(e){if(st)st.textContent=window.DOCNR_CAMERA?.errorMessage?.(e)||"อ่านภาพไม่สำเร็จ"}finally{lp.value=""}}}
+      $("#v205-late-manual")?.addEventListener("submit",async e=>{e.preventDefault();await submitLateStudentTokenV205(new FormData(e.target).get("token"))});
+    }
+  }
   if(p.role!=="admin"&&qr.data?.payload&&window.QRCode){
     new QRCode($("#v14-my-qr"),{text:qr.data.payload,width:170,height:170});
     $("#v14-rotate-qr").onclick=async()=>{if(!ask("ออก QR ใหม่? QR เดิมจะใช้เช็คชื่อไม่ได้ทันที"))return;const r=await c.rpc("rotate_attendance_qr",{p_user_id:null});if(r.error){toast(errorText(r.error),true);return}renderAttendance()}
@@ -899,7 +918,7 @@ function updateAttendanceWindow(){
   const ms=new Date(state.currentAttendanceDeadline).getTime()-nowMs();
   if(ms<=0){
     el.textContent="หมดเวลา";el.classList.add("expired");
-    if(!state.attendanceFinalizeNotice){state.attendanceFinalizeNotice=true;toast("ครบ 15 นาทีแล้ว ระบบกำลังสรุปยอดอัตโนมัติ นักศึกษาที่มาทีหลังต้องเช็คกับ Admin")}
+    if(!state.attendanceFinalizeNotice){state.attendanceFinalizeNotice=true;toast("ครบ 15 นาทีแล้ว ระบบกำลังสรุปยอดอัตโนมัติ นักศึกษาที่มาทีหลังต้องสแกนบาร์โค้ดเข้าสายจากครู")}
     if(state.currentAttendanceSession&&!state.attendanceAutoClosing){
       state.attendanceAutoClosing=true;
       client().rpc("finalize_due_attendance_session_v161",{p_session_id:state.currentAttendanceSession}).then(r=>{
@@ -926,7 +945,7 @@ async function submitAttendanceToken(raw){
   const classId=$("#v14-att-class")?.value,subjectId=$("#v14-att-subject")?.value;if(!classId||!subjectId){toast("กรุณาเลือกห้องและรายวิชาก่อนสแกน",true);return}
   if(state.scanBusy)return;state.scanBusy=true;
   const {data,error}=await client().rpc("scan_attendance_qr_v179",{p_classroom_id:classId,p_subject_id:subjectId,p_token:token,p_late_after_minutes:15,p_request_key:v179RequestKey()});state.scanBusy=false;
-  if(error){toast(errorText(error),true);if(String(error.message||"").includes("ATTENDANCE_WINDOW_CLOSED_USE_ADMIN")){stopScanner();await loadAttendanceSessions()}return}
+  if(error){toast(errorText(error),true);if(/ATTENDANCE_WINDOW_CLOSED_(USE_LATE_BARCODE|SCAN_TEACHER_BARCODE)/.test(String(error.message||""))){stopScanner();await loadAttendanceSessions()}return}
   state.currentAttendanceSession=data.session_id;state.currentAttendanceDeadline=data.auto_close_at||null;
   const btn=$("#v161-summary-submit");if(btn)btn.disabled=false;
   const box=$("#v14-scan-result"),when=data.scanned_at?new Date(data.scanned_at).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"medium"}):new Date().toLocaleString("th-TH");
@@ -963,8 +982,34 @@ window.addEventListener("docnr:camera-stopped",e=>{
   const v=$("#v14-scan-video");if(v)v.srcObject=null;
   const st=$("#v202-att-camera-status");if(st&&state.route==="attendance"&&e.detail?.reason!=="manual")st.textContent="กล้องถูกพักชั่วคราว • กดเปิดกล้องอีกครั้งเมื่อต้องการสแกนต่อ";
 });
+function parseLateAttendanceTokenV205(raw){
+  const s=String(raw||"").trim();const x=s.startsWith("DOCNR-LATE:")?s.slice(11):s;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(x)?`DOCNR-LATE:${x}`:null;
+}
+async function submitLateStudentTokenV205(raw){
+  const payload=parseLateAttendanceTokenV205(raw);if(!payload){toast("บาร์โค้ดเข้าสายไม่ถูกต้อง",true);return}
+  if(state.scanBusy)return;state.scanBusy=true;
+  const token=payload.slice(11);
+  const {data,error}=await client().rpc("my_scan_teacher_late_barcode_v205",{p_token:token,p_request_key:v179RequestKey()});state.scanBusy=false;
+  const st=$("#v205-late-status");if(error){const msg=errorText(error);if(st)st.textContent=msg;toast(msg,true);return}
+  stopLateStudentScannerV205();if(st)st.textContent="เช็คชื่อเข้าสายสำเร็จ";
+  const box=$("#v205-late-result"),when=data?.scanned_at?fmt(data.scanned_at):fmt(new Date());if(box)box.innerHTML=`<div class="v161-scan-hit late"><div><strong>✅ เช็คชื่อเข้าสายแล้ว</strong><span>ระบบผูกบาร์โค้ดของครูกับคาบเรียนและบัญชีของคุณ</span></div><div><b>มาสาย</b><small>${esc(when)}</small></div></div>`;
+  toast(data?.already_checked?`มีสถานะเช็คชื่อแล้ว • ${attendanceStatusLabel(data.status)}`:"เช็คชื่อเข้าสายสำเร็จ");
+}
+async function startLateStudentScannerV205(){
+  const video=$("#v205-late-video"),canvas=$("#v205-late-canvas"),status=$("#v205-late-status"),btn=$("#v205-late-start");if(!video||!canvas)return;
+  const cam=window.DOCNR_CAMERA;if(!cam?.supportsCamera?.()){const msg=cam?.errorMessage?.({name:window.isSecureContext?"NotSupportedError":"SecurityError"})||"อุปกรณ์นี้ไม่รองรับกล้อง";if(status)status.textContent=msg;toast(msg,true);return}
+  if(btn?.dataset.cameraOpening==="1")return;if(btn){btn.dataset.cameraOpening="1";btn.disabled=true;btn.textContent="กำลังเปิดกล้อง..."}
+  try{if(status)status.textContent="กำลังเปิดกล้องหลัง...";await cam.startScanner({key:"late-attendance",video,canvas,formats:["qr_code","code_128"],fps:7,onReady:()=>{if(status)status.textContent="กล้องพร้อม • สแกนบาร์โค้ด/QR เข้าสายจากครู"},onCode:async raw=>{if(parseLateAttendanceTokenV205(raw))await submitLateStudentTokenV205(raw)},onError:e=>{if(status)status.textContent=cam.errorMessage(e)}})}catch(e){const msg=cam.errorMessage(e);if(status)status.textContent=msg;if(String(e?.name||"")!=="CAMERA_REPLACED")toast(msg,true)}finally{if(btn){delete btn.dataset.cameraOpening;btn.disabled=false;btn.textContent="📷 เปิดกล้องสแกนบาร์โค้ดเข้าสาย"}}
+}
+function stopLateStudentScannerV205(){try{window.DOCNR_CAMERA?.stopScanner?.("late-attendance","manual")}catch{}const v=$("#v205-late-video");if(v)v.srcObject=null}
+async function showLateTeacherBarcodeV205(sessionId){
+  const {data,error}=await client().rpc("admin_issue_late_attendance_barcode_v205",{p_session_id:sessionId,p_rotate:false});if(error){toast(errorText(error),true);return}
+  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">LATE ATTENDANCE • TEACHER BARCODE</span><h2>⏰ บาร์โค้ดเข้าสายของครู</h2><p>ให้นักศึกษาที่มาหลัง 15 นาทีเปิดกล้องในระบบของตนเองและสแกนรหัสนี้ • หมดอายุอัตโนมัติ</p></div><button class="btn" data-v14-close>✕</button></div><div class="v205-late-code"><div id="v205-late-qr"></div><div><b>ใช้สำหรับ “เข้าสาย” เท่านั้น</b><p>ครู: ${esc(data.teacher_name||"Admin")} • หมดอายุ ${esc(fmt(data.expires_at))}</p><code>${esc(data.payload||"")}</code><div class="row"><button class="btn orange" data-v205-late-refresh="${sessionId}">🔄 ออกรหัสใหม่</button></div></div></div>`);
+  if(window.QRCode&&data.payload)new QRCode($("#v205-late-qr"),{text:data.payload,width:240,height:240});
+}
 async function closeAttendanceCurrent(){
-  if(!state.currentAttendanceSession||!ask("สรุปยอดตอนนี้และส่งให้ Admin? ผู้ที่ยังไม่ได้เช็คชื่อจะถูกบันทึกเป็นขาด และหลังจากนี้นักศึกษาที่มาทีหลังต้องเช็คกับ Admin เป็นมาสาย"))return;
+  if(!state.currentAttendanceSession||!ask("สรุปยอดตอนนี้และส่งให้ Admin? ผู้ที่ยังไม่ได้เช็คชื่อจะถูกบันทึกเป็นขาด และหลังจากนี้นักศึกษาที่มาทีหลังต้องสแกนบาร์โค้ดเข้าสายจากครู เป็นมาสาย"))return;
   const r=await client().rpc("close_attendance_session",{p_session_id:state.currentAttendanceSession});
   if(r.error){toast(errorText(r.error),true);return}
   const s=r.data?.summary||{};toast(`ส่งสรุปให้ Admin แล้ว • มา ${s.present||0} สาย ${s.late||0} ขาด ${s.absent||0} ลา ${s.excused||0}`);
@@ -976,7 +1021,7 @@ async function loadAttendanceSessions(){
   if(error){box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}
   const rows=data||[],open=rows.find(x=>x.status==="open");
   if(open&&!state.currentAttendanceSession){state.currentAttendanceSession=open.id;state.currentAttendanceDeadline=open.auto_close_at;refreshAttendanceSnapshot()}
-  box.innerHTML=rows.map(x=>{const s=x.summary||{};return `<button class="v14-session-row" data-v14-session="${x.id}"><div><b>${esc(x.subjects?.code||"")} ${esc(x.subjects?.name||"")}</b><small>${esc(x.classrooms?.name||"")} • เริ่ม ${fmt(x.started_at)}${x.auto_close_at?` • กำหนดสรุป ${fmt(x.auto_close_at)}`:""}</small></div><div class="v161-session-row-end"><span class="v14-status ${x.status==="open"?"approved":"muted"}">${x.status==="open"?"กำลังเช็คชื่อ":"สรุปแล้ว"}</span>${x.status==="closed"?`<small>มา ${s.present||0} • สาย ${s.late||0} • ขาด ${s.absent||0} • ลา ${s.excused||0}</small>`:""}</div></button>`}).join("")||`<div class="v14-empty">ยังไม่มีรอบเช็คชื่อ</div>`;
+  box.innerHTML=rows.map(x=>{const s=x.summary||{},lateReady=x.status==="closed";return `<div class="v14-session-row v205-session-wrap"><button class="v205-session-main" data-v14-session="${x.id}"><div><b>${esc(x.subjects?.code||"")} ${esc(x.subjects?.name||"")}</b><small>${esc(x.classrooms?.name||"")} • เริ่ม ${fmt(x.started_at)}${x.auto_close_at?` • กำหนดสรุป ${fmt(x.auto_close_at)}`:""}</small></div><div class="v161-session-row-end"><span class="v14-status ${x.status==="open"?"approved":"muted"}">${x.status==="open"?"กำลังเช็คชื่อ":"สรุปแล้ว"}</span>${lateReady?`<small>มา ${s.present||0} • สาย ${s.late||0} • ขาด ${s.absent||0} • ลา ${s.excused||0}</small>`:""}</div></button>${lateReady?`<button class="btn sm orange v205-late-code-btn" data-v205-late-session="${x.id}">⏰ บาร์โค้ดเข้าสาย</button>`:""}</div>`}).join("")||`<div class="v14-empty">ยังไม่มีรอบเช็คชื่อ</div>`;
   updateAttendanceWindow();
 }
 async function loadAttendanceSummary(){
@@ -997,6 +1042,26 @@ async function loadAttendanceRoster(sessionId){
     <div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>สถานะ</th><th>เวลา</th></tr></thead><tbody>${(rr.data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.grade_level||"")}${esc(x.room_label||"")}</td><td>${editable?`<select class="input" data-v161-att-user="${x.user_id}" data-session="${sessionId}"><option value="pending" ${x.status==="pending"?"selected":""} disabled>รอเช็คชื่อ</option><option value="present" ${x.status==="present"?"selected":""}>มา</option><option value="late" ${x.status==="late"?"selected":""}>สาย</option><option value="absent" ${x.status==="absent"?"selected":""}>ขาด</option><option value="excused" ${x.status==="excused"?"selected":""}>ลา</option></select>`:`<span class="v14-status ${x.status}">${attendanceStatusLabel(x.status)}</span>`}</td><td>${fmt(x.scanned_at)}</td></tr>`).join("")}</tbody></table></div>`,true);
 }
 async function loadLeaderRoster(){const cid=$("#v14-leader-class").value,box=$("#v14-roster");if(!cid){toast("เลือกห้องก่อน",true);return}box.innerHTML="กำลังโหลด...";const {data,error}=await client().rpc("admin_classroom_roster",{p_classroom_id:cid});if(error){box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}box.innerHTML=`<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ระดับ</th><th>สิทธิ์</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.grade_level||"")}${esc(x.room_label||"")}</td><td><button class="btn sm ${x.is_leader?"red":"green"}" data-v14-leader-user="${x.user_id}" data-class="${cid}" data-active="${x.is_leader?"false":"true"}">${x.is_leader?"ยกเลิกหัวหน้าห้อง":"แต่งตั้งหัวหน้าห้อง"}</button></td></tr>`).join("")}</tbody></table></div>`}
+
+// ---------------------------------------------------------------------------
+// V20.5 Admin-defined room groups
+// ---------------------------------------------------------------------------
+async function renderAdminRoomGroupsV205(){
+  setTitle("จัดกลุ่มห้องโดย Admin");busy("กำลังโหลดกลุ่มห้อง...");const c=client();const [r,sr]=await Promise.all([c.rpc("admin_room_groups_v205"),allSubjects()]);if(r.error)throw r.error;const groups=r.data||[],subjects=sr||[];
+  content().innerHTML=`<section class="v14-page v205-roomgroups"><div class="v14-section-head"><div><span class="v14-kicker">ADMIN ROOM GROUPING • V20.5</span><h1>🏷️ จัดกลุ่มห้องโดย Admin</h1><p>ระบบแยกจาก Subject Room เดิม • Admin สร้างกลุ่มเอง จัดสมาชิก เลขที่ ระดับ แผนก สาขา ปีการศึกษาและภาคเรียนได้ โดยไม่ลบประวัติวิชา/งาน/คะแนน</p></div><button class="btn primary" id="v205-group-new">＋ สร้างกลุ่มห้อง</button></div><div class="v205-group-grid">${groups.map(g=>`<article class="card v205-group-card ${g.active?"":"is-off"}"><div><span class="v14-kicker">${esc(g.code)}</span><h3>${esc(g.name)}</h3><p>${esc(g.description||"กลุ่มที่ Admin กำหนด")}</p><small>${esc(g.academic_year||"-")} • ภาค ${esc(g.semester||"-")} • ${esc(g.level||"")} ${esc(g.department||"")} ${esc(g.major||"")} • สมาชิก ${Number(g.member_count||0)} คน</small></div><div class="row"><button class="btn primary" data-v205-group-roster="${g.id}">จัดสมาชิก</button><button class="btn green" data-v205-group-enroll="${g.id}">เพิ่มกลุ่มเข้ารายวิชา</button><button class="btn" data-v205-group-edit="${g.id}" data-code="${esc(g.code)}" data-name="${esc(g.name)}" data-year="${esc(g.academic_year||"")}" data-sem="${esc(g.semester||"")}" data-level="${esc(g.level||"")}" data-dept="${esc(g.department||"")}" data-major="${esc(g.major||"")}" data-desc="${esc(g.description||"")}" data-active="${g.active}">แก้ไข</button></div></article>`).join("")||`<div class="v14-empty">ยังไม่มีกลุ่มห้องที่ Admin สร้าง</div>`}</div></section>`;
+  state.v205Subjects=subjects;$("#v205-group-new")?.addEventListener("click",()=>editAdminRoomGroupV205());
+}
+function editAdminRoomGroupV205(data={}){
+  overlay(`<div class="v14-modal-head"><div><h2>${data.id?"แก้ไข":"สร้าง"}กลุ่มห้อง</h2><p>กลุ่มนี้เป็นการจัดกลุ่มโดย Admin และไม่เปลี่ยนสมาชิก Subject Room เดิม</p></div><button class="btn" data-v14-close>✕</button></div><form id="v205-group-form" class="v205-group-form"><div class="v14-form-grid"><label>รหัสกลุ่ม<input class="input" name="code" value="${esc(data.code||"")}" maxlength="24" required></label><label>ชื่อกลุ่ม<input class="input" name="name" value="${esc(data.name||"")}" maxlength="120" required></label><label>ปีการศึกษา<input class="input" name="year" value="${esc(data.year||"")}"></label><label>ภาคเรียน<input class="input" name="sem" value="${esc(data.sem||"")}"></label><label>ระดับ<input class="input" name="level" value="${esc(data.level||"")}"></label><label>แผนก<input class="input" name="dept" value="${esc(data.dept||"")}"></label><label>สาขา<input class="input" name="major" value="${esc(data.major||"")}"></label></div><label class="field"><span>รายละเอียด</span><textarea class="input" name="desc">${esc(data.desc||"")}</textarea></label><label class="field"><span><input type="checkbox" name="active" ${data.active===false?"":"checked"}> เปิดใช้งานกลุ่ม</span></label><div class="row end"><button class="btn primary">บันทึกกลุ่ม</button></div></form>`);
+  $("#v205-group-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),r=await client().rpc("admin_upsert_room_group_v205",{p_group_id:data.id||null,p_code:String(f.get("code")||"")||null,p_name:String(f.get("name")||""),p_academic_year:String(f.get("year")||"")||null,p_semester:String(f.get("sem")||"")||null,p_level:String(f.get("level")||"")||null,p_department:String(f.get("dept")||"")||null,p_major:String(f.get("major")||"")||null,p_description:String(f.get("desc")||"")||null,p_active:f.get("active")==="on"});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกกลุ่มห้องแล้ว");renderAdminRoomGroupsV205()};
+}
+async function openAdminRoomGroupRosterV205(groupId){
+  const c=client();const [mr,pr]=await Promise.all([c.rpc("admin_room_group_members_v205",{p_group_id:groupId}),c.from("profiles").select("id,student_code,full_name,display_name,grade_level,room_label,class_name,department,major,seat_number").eq("role","user").eq("active",true).eq("approval_status","approved").order("student_code")]);if(mr.error){toast(errorText(mr.error),true);return}if(pr.error){toast(errorText(pr.error),true);return}
+  const members=new Map((mr.data||[]).filter(x=>x.active).map(x=>[x.user_id,x]));const rows=(pr.data||[]).map(p=>({...p,in_group:members.has(p.id),group_seat_number:members.get(p.id)?.seat_number??null}));state.v205RoomGroupRoster={groupId,rows,selected:new Set([...members.keys()])};
+  overlay(`<div class="v14-modal-head"><div><h2>จัดสมาชิกกลุ่มห้อง</h2><p>เลือกนักศึกษาที่อยู่ในกลุ่ม แล้วกดบันทึก • การจัดกลุ่มนี้ไม่ลบสมาชิกวิชาเดิม</p></div><button class="btn" data-v14-close>✕</button></div><div class="v205-roster-toolbar row"><input id="v205-roster-q" class="input" placeholder="ค้นหารหัส ชื่อ ห้อง แผนก สาขา"><button class="btn primary" id="v205-roster-save">💾 บันทึกสมาชิก</button></div><div id="v205-roster-list" class="v205-roster-list"></div>`,true);
+  const draw=()=>{const q=$("#v205-roster-q")?.value.trim().toLowerCase()||"",host=$("#v205-roster-list"),ctx=state.v205RoomGroupRoster;if(!host||!ctx)return;host.innerHTML=ctx.rows.filter(x=>!q||`${x.student_code||""} ${x.full_name||""} ${x.grade_level||""}${x.room_label||""} ${x.department||""} ${x.major||""}`.toLowerCase().includes(q)).map(x=>`<label class="v205-roster-row ${ctx.selected.has(x.id)?"in":""}"><div><b>${esc(x.student_code||"")} • ${esc(x.full_name||"")}</b><small>${esc(x.grade_level||"")}${esc(x.room_label||"")} • ${esc(x.department||"")} ${esc(x.major||"")}</small></div><span>เลขที่ ${esc(x.group_seat_number??x.seat_number??"-")}</span><input type="checkbox" data-v205-member-check="${x.id}" ${ctx.selected.has(x.id)?"checked":""}></label>`).join("")||`<div class="v14-empty">ไม่พบรายชื่อ</div>`};draw();$("#v205-roster-q").oninput=draw;$("#v205-roster-list").onchange=e=>{const cb=e.target.closest("[data-v205-member-check]");if(!cb)return;cb.checked?state.v205RoomGroupRoster.selected.add(cb.dataset.v205MemberCheck):state.v205RoomGroupRoster.selected.delete(cb.dataset.v205MemberCheck);draw()};$("#v205-roster-save").onclick=async()=>{const ids=[...state.v205RoomGroupRoster.selected],r=await client().rpc("admin_replace_room_group_members_v205",{p_group_id:groupId,p_user_ids:ids});if(r.error){toast(errorText(r.error),true);return}toast(`บันทึกสมาชิก ${r.data?.member_count??ids.length} คนแล้ว`);await openAdminRoomGroupRosterV205(groupId)};
+}
+function openRoomGroupEnrollV205(groupId){const subjects=state.v205Subjects||[];overlay(`<div class="v14-modal-head"><div><h2>เพิ่มกลุ่มเข้ารายวิชา</h2><p>สมาชิกที่พร้อมใช้งานจะได้รับอนุมัติรายวิชา พร้อม Worksheet/Exam ที่เผยแพร่แล้ว</p></div><button class="btn" data-v14-close>✕</button></div><form id="v205-group-enroll-form"><label class="field"><span>รายวิชา</span><select class="input" name="subject" required><option value="">เลือกรายวิชา</option>${subjects.map(s=>`<option value="${s.id}">${esc(s.code)} ${esc(s.name)}</option>`).join("")}</select></label><div class="row end"><button class="btn primary">ยืนยันเพิ่มกลุ่มเข้ารายวิชา</button></div></form>`);$("#v205-group-enroll-form").onsubmit=async e=>{e.preventDefault();const sid=new FormData(e.target).get("subject");if(!sid)return;const r=await client().rpc("admin_enroll_room_group_subject_v205",{p_group_id:groupId,p_subject_id:sid});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast(`เพิ่มสมาชิกกลุ่มเข้ารายวิชาแล้ว ${r.data?.affected||0} คน`)}}
 
 // ---------------------------------------------------------------------------
 // Promotion Admin approval flow
@@ -1370,6 +1435,11 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v15-jump]")){document.querySelector(t.dataset.v15Jump)?.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(t.matches("[data-v14-open-work]")){if(window.DOCNR_BASE?.openWorksheet)window.DOCNR_BASE.openWorksheet(t.dataset.v14OpenWork);else toast("ตัวเปิดใบงานหลักยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
   if(t.matches("[data-v14-profile]")){showAdminProfile(t.dataset.v14Profile);return}
+  if(t.matches("[data-v205-late-session]")){await showLateTeacherBarcodeV205(t.dataset.v205LateSession);return}
+  if(t.matches("[data-v205-late-refresh]")){const {data,error}=await client().rpc("admin_issue_late_attendance_barcode_v205",{p_session_id:t.dataset.v205LateRefresh,p_rotate:true});if(error){toast(errorText(error),true);return}closeOverlay();await showLateTeacherBarcodeV205(t.dataset.v205LateRefresh);return}
+  if(t.matches("[data-v205-group-roster]")){await openAdminRoomGroupRosterV205(t.dataset.v205GroupRoster);return}
+  if(t.matches("[data-v205-group-edit]")){editAdminRoomGroupV205({id:t.dataset.v205GroupEdit,code:t.dataset.code,name:t.dataset.name,year:t.dataset.year,sem:t.dataset.sem,level:t.dataset.level,dept:t.dataset.dept,major:t.dataset.major,desc:t.dataset.desc,active:t.dataset.active==="true"});return}
+  if(t.matches("[data-v205-group-enroll]")){openRoomGroupEnrollV205(t.dataset.v205GroupEnroll);return}
   if(t.matches("[data-v14-session]")){loadAttendanceRoster(t.dataset.v14Session);return}
   if(t.matches("[data-v14-leader-user]")){const active=t.dataset.active==="true",r=await client().rpc("set_classroom_leader",{p_classroom_id:t.dataset.class,p_user_id:t.dataset.v14LeaderUser,p_active:active});if(r.error)toast(errorText(r.error),true);else{toast(active?"แต่งตั้งหัวหน้าห้องแล้ว":"ยกเลิกหัวหน้าห้องแล้ว");loadLeaderRoster()}return}
 },false);
@@ -1435,7 +1505,7 @@ function printStudentGradeV196(userId){
 // Boot
 // ---------------------------------------------------------------------------
 async function boot(){
-  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v20-3-device-adaptive-interaction-camera-stability";document.documentElement.dataset.docnrCompatRoomChecklist="v18-6-room-work-checklist";
+  document.documentElement.classList.add("v14-tech");document.documentElement.dataset.docnrVersion="v20-5-late-teacher-barcode-admin-room-groups";document.documentElement.dataset.docnrCompatRoomChecklist="v18-6-room-work-checklist";
   syncServerTime().catch(()=>{});startHeartbeat();
   scheduleEnsureNav();
   setTimeout(()=>{ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},700);

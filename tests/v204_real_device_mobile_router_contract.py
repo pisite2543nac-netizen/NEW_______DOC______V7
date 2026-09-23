@@ -11,9 +11,9 @@ idx=(site/'index.html').read_text('utf-8')
 meta=(site/'release-meta.js').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
-assert 'data-docnr-release="v20-4-real-device-mobile-router-adaptive-camera"' in idx
-assert 'RELEASE_VERSION="V20.4"' in meta and '20260923-v20-4' in meta
-assert ver['version']=='20.4' and ver['release_marker']=='V20.4'
+assert 'data-docnr-release="v20-5-late-teacher-barcode-admin-room-groups"' in idx
+assert 'RELEASE_VERSION="V20.5"' in meta and '20260923-v20-5' in meta
+assert ver['version']=='20.5' and ver['release_marker']=='V20.5'
 # Real phone recording regression: Admin Attendance was missing from route authorization and fell back to dashboard.
 m=re.search(r'const ADMIN_ROUTES=new Set\(\[([^\]]+)\]\)',app)
 assert m and '"attendance"' in m.group(1), 'Admin attendance subroute must be authorized'
