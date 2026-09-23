@@ -1,6 +1,6 @@
 {
-  "release": "V20.3 DEVICE ADAPTIVE UX • MOBILE INTERACTION & CAMERA STABILITY",
-  "date": "2026-09-22",
+  "release": "V20.4 REAL-DEVICE MOBILE ROUTER • ADAPTIVE UX • CAMERA FLOW",
+  "date": "2026-09-23",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
   "pages": "https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/",
@@ -16,18 +16,18 @@
   "ready_templates": 374,
   "paper_templates": 187,
   "digital_templates": 187,
-  "release_marker": "V20.3",
+  "release_marker": "V20.4",
   "compatibility_release_marker": "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "20.3",
-  "notes": "V20.3 fixes the production-critical phone interaction failure and camera open/close loop: one drawer/backdrop owner, no invisible overlay interception, touch-safe fullscreen behavior, race-safe camera ownership, permission-prompt visibility guard, native camera-picker handoff, and device-specific Phone/Tablet/Desktop UX while preserving all V20.2 backend contracts.",
+  "version": "20.4",
+  "notes": "V20.4 fixes the real-device Admin Attendance navigation defect reproduced from the user phone recording: attendance is now an authorized Admin subroute, phone navigation calls routes directly instead of proxy-clicking sidebar elements, stale async route renders are cancelled, camera streams stop on route lifecycle, and Phone/Tablet/Desktop UX adapts to the device while preserving all V20.3 backend contracts.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
-  "release_date": "2026-09-22",
+  "release_date": "2026-09-23",
   "grade_report": "A4 landscape and Excel-compatible .xls with behavior, 17-unit work/40, midterm/20, final/20, total/100, grade, and pass/fail.",
   "work_detail_visibility": "Admin web only; hidden from print/download summary.",
   "phone_policy": "profiles.phone is contact data only; no OTP/SMS gate; student profile remains read-only",
@@ -35,7 +35,7 @@
   "backend_health_rpc": "admin_system_health_v17",
   "router_contract": "single owner app.js; direct data-app-route bridge; no V16.9 overlay/rescue and no hidden-menu click navigation in production",
   "master_flow": "auth -> role dashboard -> direct functional hub -> backend/RPC -> deterministic render/error; course CODE -> enrollment -> 17 sequential units -> 20-slide learning content -> logical Digital/Paper work pair -> attendance/exam/grade/report/promotion",
-  "focus": "Stable real-device use: phone is camera-first for attendance QR and late-paper evidence, with reliable tap targets and no overlay interception; tablet keeps full touch learning/editing; desktop remains compact and information-dense.",
+  "focus": "Real-device stability: phone-first attendance QR and late-paper capture with direct routing; Digital Worksheet view-only on phones; tablet/desktop full worksheet editing; adaptive green-white UX; preserved teaching, exam, gradebook, print, PWA and special activities.",
   "pwa": "installable phone/tablet/desktop; one adaptive shell; phone/tablet interactions never auto-enter native fullscreen on first touch; camera lifecycle is race-safe; explicit fullscreen remains available; offline shell/draft compatibility preserved.",
   "copy_protection": "system-wide UI deterrence for selection/copy/cut/context menu/drag; input fields and Admin CODE copy are allowed; sensitive data remains protected server-side",
   "relationship_hardening": "subject_enrollments.user_id and exam_attempts.user_id are explicit profile embed paths; actor fields use auth.users to avoid PostgREST ambiguity",
@@ -53,7 +53,7 @@
   "exam_question_bank": 550,
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
   "exam_bank_source": "V19.5 curated from the original 550-question ALL_Test-adapted bank: 25 course-reference + 25 analytical per subject; hard-option giveaway wording removed; current SHA256 623e28853ce20354b9e8f3f80f3d08a0bbb0a606091426795123987089205aef",
-  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub + V20.0 teaching/presentation/unified UX/print/fullscreen/close-teaching + V20.1 content-focused slides + V20.2 adaptive mobile/camera stability + V20.3 mobile click/drawer/camera race hardening + device-adaptive shell",
+  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub + V20.0 teaching/presentation/unified UX/print/fullscreen/close-teaching + V20.1 content-focused slides + V20.2 adaptive mobile/camera stability + V20.3 mobile interaction/camera race hardening + V20.4 real-device Admin attendance router regression + adaptive phone/tablet/desktop shell",
   "base_release": "V19.0 STABILIZED CLASSROOM FLOW",
   "v19_features": {
     "admin_class_leader_from_student_list": true,
@@ -252,7 +252,7 @@
     "device_detection": "UA hints + touch + physical short screen classification; not CSS width alone"
   },
   "camera_runtime": {
-    "release": "V20.3",
+    "release": "V20.4",
     "rear_camera_preferred": true,
     "constraint_fallback_chain": true,
     "secure_context_required": true,
@@ -271,6 +271,9 @@
     "jpeg_evidence_normalization": true,
     "permission_prompt_visibility_guard": true,
     "video_metadata_timeout_guard": true,
-    "single_stream_per_feature": true
-  }
+    "single_stream_per_feature": true,
+    "route_start_teardown": true,
+    "direct_mobile_route_navigation": true
+  },
+  "phone_workflow": "Phone is camera-first: direct Attendance QR scan and late-paper evidence capture are primary; Digital Worksheet is view-only on phones. The mobile shell uses direct route descriptors and does not proxy navigation through hidden desktop/sidebar controls."
 }

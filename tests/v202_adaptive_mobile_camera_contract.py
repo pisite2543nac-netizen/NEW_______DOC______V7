@@ -13,12 +13,12 @@ meta=(site/'release-meta.js').read_text('utf-8')
 version=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 manifest=json.loads((site/'manifest.webmanifest').read_text('utf-8'))
 
-assert 'data-docnr-release="v20-3-device-adaptive-interaction-camera-stability"' in index
+assert 'data-docnr-release="v20-4-real-device-mobile-router-adaptive-camera"' in index
 assert index.index('device-camera-runtime.js') < index.index('app.js') < index.index('v16-platform.js')
-assert 'doc-full-nr-v20-3-device-adaptive-interaction-camera-stability' in sw
-assert './device-camera-runtime.js?v=20260922-v20-3' in sw
-assert 'RELEASE_VERSION="V20.3"' in meta and '20260922-v20-3' in meta
-assert version['version']=='20.3' and version['release_marker']=='V20.3'
+assert 'doc-full-nr-v20-4-real-device-mobile-router-adaptive-camera' in sw
+assert './device-camera-runtime.js?v=20260923-v20-4' in sw
+assert 'RELEASE_VERSION="V20.4"' in meta and '20260923-v20-4' in meta
+assert version['version']=='20.4' and version['release_marker']=='V20.4'
 assert any(version['device_usage_policy']['phone'].startswith(x) for x in ['attendance QR scan','camera-first attendance QR scan'])
 assert version['camera_runtime']['attendance_scan'] is True
 assert manifest['theme_color'].lower()=='#1f7a4f'

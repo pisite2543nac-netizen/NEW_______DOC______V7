@@ -1,9 +1,9 @@
-/* DOC-FULL-NR V20.3 adaptive device + camera runtime.
+/* DOC-FULL-NR V20.4 adaptive device + camera runtime.
    One camera owner, race-safe start/stop, explicit lifecycle events.
    Authorization and record writes remain server-authoritative. */
 (function(){
   'use strict';
-  const RELEASE='V20.3';
+  const RELEASE='V20.4';
   const streams=new Map();
   const scanners=new Map();
   const starts=new Map();
@@ -225,6 +225,7 @@
   // opening the system picker. A short hidden transition can also occur while Android/iOS shows
   // the camera permission sheet, so never tear down a pending getUserMedia request immediately.
   let hiddenStopTimer=null;
+  window.addEventListener('docnr:route-start',()=>{clearTimeout(hiddenStopTimer);hiddenStopTimer=null;stopAll('route-start')},{passive:true});
   document.addEventListener('visibilitychange',()=>{
     clearTimeout(hiddenStopTimer);hiddenStopTimer=null;
     if(document.visibilityState==='hidden'){

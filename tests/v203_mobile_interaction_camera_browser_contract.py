@@ -70,6 +70,6 @@ with sync_playwright() as pw:
     assert permission['calls']==1 and permission['live'],permission
     dims=page.evaluate("()=>({sw:document.body.scrollWidth,cw:document.documentElement.clientWidth,bottom:!!document.querySelector('.docnr-mobile-bottom-nav'),routes:[...document.querySelectorAll('.docnr-mobile-bottom-nav [data-mobile-route]')].map(x=>x.dataset.mobileRoute)})")
     assert dims['sw']<=dims['cw']+2,dims
-    assert dims['bottom'] and 'attendancehub' in dims['routes'] and 'paperscan' in dims['routes'],dims
+    assert dims['bottom'] and 'attendance' in dims['routes'] and 'paperscan' in dims['routes'],dims
     ctx.close();browser.close()
-print('V20.3 MOBILE INTERACTION/CAMERA BROWSER CONTRACT PASS')
+print('V20.3 COMPATIBILITY MOBILE INTERACTION/CAMERA BROWSER CONTRACT PASS ON V20.4')

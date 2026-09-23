@@ -13,10 +13,10 @@ css=(site/'v20-unified-ui.css').read_text('utf-8')
 meta=(site/'release-meta.js').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
-assert 'data-docnr-release="v20-3-device-adaptive-interaction-camera-stability"' in idx
-assert 'doc-full-nr-v20-3-device-adaptive-interaction-camera-stability-20260922' in sw
-assert 'RELEASE_VERSION="V20.3"' in meta and '20260922-v20-3' in meta
-assert ver['version']=='20.3' and ver['release_marker']=='V20.3'
+assert 'data-docnr-release="v20-4-real-device-mobile-router-adaptive-camera"' in idx
+assert 'doc-full-nr-v20-4-real-device-mobile-router-adaptive-camera-20260923' in sw
+assert 'RELEASE_VERSION="V20.4"' in meta and '20260923-v20-4' in meta
+assert ver['version']=='20.4' and ver['release_marker']=='V20.4'
 
 # One mobile drawer owner: legacy backdrop is removed/disabled and a single docnr backdrop owns tap interception.
 assert "document.getElementById('mobile-nav-backdrop')?.remove()" in mobile
@@ -27,8 +27,8 @@ assert '.docnr-sidebar-backdrop:not(.open)' in css and 'pointer-events:none!impo
 assert '#mobile-nav-backdrop{display:none!important' in css
 
 # Phone navigation is camera-first for Admin.
-assert "['dashboard','attendancehub','paperscan','students']" in ux
-assert 'v203-phone-hub' in platform and 'PHONE WORK MODE' in platform
+assert "['dashboard','attendance','paperscan','students']" in ux
+assert 'v204-phone-primary' in platform and 'PHONE CAPTURE MODE' in platform
 
 # Mobile/touch must not spend the trusted gesture on automatic fullscreen.
 assert 'if(!DEVICE.isDesktop' in mobile
@@ -49,4 +49,4 @@ assert 'pagePhoto.onclick=()=>stop()' in platform
 assert 'if(window.DOCNR_CAMERA?.startScanner) return;' in hard
 assert 'window.DOCNR_CAMERA?.release==="V20.2"' not in hard
 
-print('V20.3 MOBILE INTERACTION/CAMERA STATIC CONTRACT PASS')
+print('V20.3 COMPATIBILITY MOBILE INTERACTION/CAMERA STATIC CONTRACT PASS ON V20.4')

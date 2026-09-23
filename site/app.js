@@ -7,7 +7,7 @@ const sb=getClient();
 const S={
   session:null, profile:null, route:"dashboard", routeArg:null, installPrompt:null,
   editor:null, pendingWorksheet:new URLSearchParams(location.search).get("worksheet"),
-  autosaveTimer:null, serverOffsetMs:0, navHistory:[]
+  autosaveTimer:null, serverOffsetMs:0, navHistory:[], navSerial:0
 };
 
 const $=(s,r=document)=>r.querySelector(s);
@@ -308,20 +308,27 @@ const ROUTE_TITLES={
 };
 const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","printcenter","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","presence","promotion","history","enroll"]);
 const BASE_ROUTES=new Set(["users","grading","overrides","reports","audit","system","profile"]);
-const ADMIN_ROUTES=new Set(["dashboard","courses","specialactivity","students","workadmin","workcheck","printcenter","paperscan","attendancehub","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
+const ADMIN_ROUTES=new Set(["dashboard","courses","specialactivity","students","workadmin","workcheck","printcenter","paperscan","attendancehub","attendance","exam","academic","profile","accounts","enrollments","profiles","presence","promotion","users","grading","overrides","reports","audit","system"]);
 const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","specialactivity","work","printcenter","attendance","exam","profile","history","presence"]);
 const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",printcenter:"printcenter",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
-function activeNavRoute(route){return ROUTE_GROUP[route]||route}
+function activeNavRoute(route){
+  if(isAdmin()&&route==="attendance")return "attendancehub";
+  return ROUTE_GROUP[route]||route
+}
 function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:USER_ROUTES).has(route)}
 function paintNav(){
-  const active=activeNavRoute(S.route);
+  const active=activeNavRoute(S.route),root=document.documentElement;
+  root.dataset.appRoute=S.route||"dashboard";
+  if(S.routeArg)root.dataset.appArg=String(S.routeArg);else delete root.dataset.appArg;
   $$("#sidebar .nav [data-route]").forEach(b=>b.classList.toggle("active",b.dataset.route===active));
   syncGlobalBackButton();
+  try{window.dispatchEvent(new CustomEvent("docnr:route-state",{detail:{route:S.route||"dashboard",arg:S.routeArg??null,active}}))}catch{}
 }
 function navKey(route,arg){return `${String(route||"")}::${String(arg||"")}`}
 function fallbackBackTarget(){
   const parent={accounts:"students",enrollments:"students",profiles:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"workadmin",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
   if(S.route==="courses"&&S.routeArg)return {route:"courses",arg:null};
+  if(isAdmin()&&S.route==="attendance")return {route:"attendancehub",arg:null};
   return {route:parent[S.route]||"dashboard",arg:null};
 }
 function syncGlobalBackButton(){
@@ -329,22 +336,29 @@ function syncGlobalBackButton(){
   const show=S.route!=="dashboard"||!!S.routeArg||S.navHistory.length>0;
   btn.hidden=!show;btn.disabled=!show;
 }
+function routeLifecycle(name,detail){try{window.dispatchEvent(new CustomEvent(name,{detail}))}catch{}}
 async function goBackUnified(){
   let target=null;
   while(S.navHistory.length&&!target){const x=S.navHistory.pop();if(x&&routeAllowed(x.route)&&navKey(x.route,x.arg)!==navKey(S.route,S.routeArg))target=x}
   if(!target)target=fallbackBackTarget();
+  const serial=++S.navSerial;
   S.route=target.route;S.routeArg=target.arg??null;$("#sidebar")?.classList.remove("open");paintNav();
-  await routeCurrent();return true;
+  document.documentElement.dataset.navBusy="1";routeLifecycle("docnr:route-start",{route:S.route,arg:S.routeArg,serial,source:"back"});
+  try{await routeCurrent(serial)}finally{if(serial===S.navSerial){delete document.documentElement.dataset.navBusy;routeLifecycle("docnr:route-ready",{route:S.route,arg:S.routeArg,serial})}}
+  return true;
 }
 async function navigateUnified(route,arg=null){
   route=String(route||"dashboard");
   if(!routeAllowed(route))route="dashboard";
-  if(navKey(S.route,S.routeArg)!==navKey(route,arg)){
+  const nextKey=navKey(route,arg);
+  if(navKey(S.route,S.routeArg)!==nextKey){
     S.navHistory.push({route:S.route||"dashboard",arg:S.routeArg??null});
     if(S.navHistory.length>30)S.navHistory.splice(0,S.navHistory.length-30);
   }
+  const serial=++S.navSerial;
   S.route=route;S.routeArg=arg;$("#sidebar")?.classList.remove("open");paintNav();
-  await routeCurrent();
+  document.documentElement.dataset.navBusy="1";routeLifecycle("docnr:route-start",{route,arg,serial,source:"navigate"});
+  try{await routeCurrent(serial)}finally{if(serial===S.navSerial){delete document.documentElement.dataset.navBusy;routeLifecycle("docnr:route-ready",{route:S.route,arg:S.routeArg,serial})}}
   return true;
 }
 function appDisplayMode(){
@@ -439,6 +453,7 @@ function renderShell(){
   const themeBtn=$("#theme-toggle");if(themeBtn)themeBtn.onclick=toggleTheme;
   applyTheme();
   const fsBtn=$("#fullscreen");if(fsBtn)fsBtn.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
+  paintNav();
   route();
 
   const autoCred=sessionStorage.getItem("docnr_test_credentials");
@@ -459,15 +474,16 @@ async function waitFeatureRouter(timeoutMs=6000){
   }
   return null;
 }
-async function routeCurrent(){
+async function routeCurrent(expectedSerial=S.navSerial){
   syncServerClock().catch(()=>{});
   const route=S.route||"dashboard",arg=S.routeArg;
+  if(expectedSerial!==S.navSerial)return;
   const title=ROUTE_TITLES[route]||"";const titleEl=$("#pagetitle");if(titleEl)titleEl.textContent=title;
   try{
     if(route==="specialactivity"){
       const open=window.DOCNR_V197?.openHub;
       if(!open)throw new Error("SPECIAL_ACTIVITY_NOT_READY");
-      await open();return;
+      await open();if(expectedSerial!==S.navSerial)return;return;
     }
     if(route==="exam"){
       const q=arg?`?subject=${encodeURIComponent(arg)}&from=room`:`?from=app`;
@@ -478,12 +494,12 @@ async function routeCurrent(){
     if(BASE_ROUTES.has(route)){
       const f={users,grading,overrides,reports,audit,system,profile}[route];
       if(!f)throw new Error("ROUTE_NOT_IMPLEMENTED");
-      await f();return;
+      await f();if(expectedSerial!==S.navSerial)return;return;
     }
     if(FEATURE_ROUTES.has(route)){
       const feature=await waitFeatureRouter();
       if(!feature)throw new Error("FEATURE_ROUTER_NOT_READY");
-      await feature.navigate(route,arg);return;
+      await feature.navigate(route,arg);if(expectedSerial!==S.navSerial)return;return;
     }
     throw new Error("ROUTE_NOT_IMPLEMENTED");
   }catch(e){

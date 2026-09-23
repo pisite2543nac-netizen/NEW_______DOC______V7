@@ -1,0 +1,42 @@
+DOC-FULL-NR V20.4 — TEST RESULTS
+Date: 2026-09-23
+Release: V20.4 REAL-DEVICE MOBILE ROUTER • ADAPTIVE UX • CAMERA FLOW
+
+REAL-DEVICE DEFECT REPRODUCED FROM USER VIDEO
+- The phone recording showed V20.3 repeatedly returning from Admin Attendance Flow to Dashboard before the camera workflow could be reached.
+- Root cause: the Admin route authorization set did not include the `attendance` feature subroute. navigateUnified() therefore replaced it with `dashboard`.
+- V20.4 adds the authorized Admin attendance subroute, maps it back to the Attendance Hub for navigation state/back behavior, and adds a dedicated regression contract so this defect cannot silently return.
+
+V20.4 STABILITY CHANGES
+- Phone bottom navigation routes directly through DOCNR_BASE.navigate() instead of proxy-clicking hidden desktop/sidebar controls.
+- Monotonic app nav serial + feature nav epoch cancel stale async renders after a newer route starts.
+- Camera runtime stops all streams on docnr:route-start, pagehide, and managed lifecycle events.
+- Attendance camera requests room + subject selection before camera permission.
+- Paper Scan Hub/Center now cancel stale render work after route changes.
+- Phone UX is camera-first for Attendance and late-paper evidence; Tablet/Desktop retain full workflows.
+- Digital Worksheet remains view-only on phones; Tablet/Desktop editing/submission is preserved.
+
+VALIDATION COMPLETED
+- All production site/*.js and site/data/*.js: Node syntax PASS.
+- Static/contract regression suite: PASS, including V20.4 real-device router contract.
+- Browser regression PASS for core routing, Course CODE, real use, room checklist, exam, responsive UX, gradebook, print, special activities, teaching slides, V20.2 adaptive camera, V20.3 interaction/camera compatibility, and V20.4 direct mobile routing/camera lifecycle.
+- Responsive browser coverage retained for desktop/tablet/phone and portrait/landscape, including 390x844 and 844x390.
+- V20.4 browser regression explicitly verifies: Phone Attendance tap -> `attendance` exactly once (not dashboard), duplicate tap debounce, Paper Scan direct routing, closed backdrop cannot steal touch, and route-start terminates an active camera stream.
+
+PRODUCTION BACKEND
+- No new V20.4 database migration is required; V20.4 is frontend routing/device UX/camera lifecycle hardening.
+- Existing production backend remains the V20.0 backend contract with later frontend compatibility.
+- Previously verified production counts/contracts: 11 active subjects, 374 canonical templates (187 Digital + 187 Paper), 550 exam-bank rows, Attendance Scan RPC, Paper Scan Page RPC, and Paper Scan Finalize RPC present.
+
+KNOWN / HONEST LIMITATIONS
+- This execution environment cannot physically open an iPhone/Android camera. Camera start/stop/race/permission transitions and fallback flows are browser-simulated; final physical-device smoke testing is still required after V20.4 deployment.
+- QR decoding still has a web-library fallback dependency if native BarcodeDetector is unavailable; native file-camera and manual-token fallbacks remain available.
+- Supabase Security Advisor warnings from the existing architecture are not blanket-modified in V20.4 because indiscriminate revokes/policy changes could break production RPC workflows. They require a separate permission-by-permission audit.
+- The production Pages path is static /site. The legacy Vite development build is not the release gate for GitHub Pages.
+
+RELEASE GATE
+SOURCE: PASS
+DATABASE MIGRATION: NOT REQUIRED
+GITHUB V20.4 PUSH: NOT PERFORMED AT PACKAGE CREATION
+GITHUB ACTIONS V20.4: PENDING UNTIL PUSH
+LIVE V20.4 MARKER: PENDING UNTIL PUSH/ACTIONS/PAGES VERIFY

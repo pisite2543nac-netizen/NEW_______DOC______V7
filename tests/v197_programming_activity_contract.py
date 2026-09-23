@@ -13,12 +13,12 @@ cat=json.loads((ROOT/'site/data/programming-activity-v197.json').read_text('utf-
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
 assert any(x in index for x in ['data-docnr-release="v19-8-standalone-special-activities"','data-docnr-release="v19-9-detailed-teaching-slides"','data-docnr-release="v20-0-teaching-presentation-unified"'])
-assert any(x in index for x in ['v19-programming-activity.css?v=20260921-v19-8','v19-programming-activity.css?v=20260922-v19-9','v19-programming-activity.css?v=20260922-v20-0','v19-programming-activity.css?v=20260922-v20-1','v19-programming-activity.css?v=20260922-v20-2','v19-programming-activity.css?v=20260922-v20-3'])
-assert any(x in index for x in ['v19-programming-activity.js?v=20260921-v19-8','v19-programming-activity.js?v=20260922-v19-9','v19-programming-activity.js?v=20260922-v20-0','v19-programming-activity.js?v=20260922-v20-1','v19-programming-activity.js?v=20260922-v20-2','v19-programming-activity.js?v=20260922-v20-3'])
+assert any(x in index for x in ['v19-programming-activity.css?v=20260921-v19-8','v19-programming-activity.css?v=20260922-v19-9','v19-programming-activity.css?v=20260922-v20-0','v19-programming-activity.css?v=20260922-v20-1','v19-programming-activity.css?v=20260922-v20-2','v19-programming-activity.css?v=20260922-v20-3','v19-programming-activity.css?v=20260923-v20-4'])
+assert any(x in index for x in ['v19-programming-activity.js?v=20260921-v19-8','v19-programming-activity.js?v=20260922-v19-9','v19-programming-activity.js?v=20260922-v20-0','v19-programming-activity.js?v=20260922-v20-1','v19-programming-activity.js?v=20260922-v20-2','v19-programming-activity.js?v=20260922-v20-3','v19-programming-activity.js?v=20260923-v20-4'])
 assert index.index('v19-programming-activity.css') > index.index('v19-production-ui.css')
 assert any(x in sw for x in ['doc-full-nr-v19-8-standalone-special-activities-20260921','doc-full-nr-v19-9-detailed-teaching-slides-20260922','doc-full-nr-v20-0-teaching-presentation-unified-20260922'])
 assert './data/programming-activity-v197.json' in sw
-assert any(x in sw for x in ['./v19-programming-activity.js?v=20260921-v19-8','./v19-programming-activity.js?v=20260922-v19-9','./v19-programming-activity.js?v=20260922-v20-0','./v19-programming-activity.js?v=20260922-v20-1','./v19-programming-activity.js?v=20260922-v20-2','./v19-programming-activity.js?v=20260922-v20-3'])
+assert any(x in sw for x in ['./v19-programming-activity.js?v=20260921-v19-8','./v19-programming-activity.js?v=20260922-v19-9','./v19-programming-activity.js?v=20260922-v20-0','./v19-programming-activity.js?v=20260922-v20-1','./v19-programming-activity.js?v=20260922-v20-2','./v19-programming-activity.js?v=20260922-v20-3','./v19-programming-activity.js?v=20260923-v20-4'])
 
 # V19.8 keeps the V19.7 engine but removes course-room entry buttons.
 assert 'data-v197-special' not in platform

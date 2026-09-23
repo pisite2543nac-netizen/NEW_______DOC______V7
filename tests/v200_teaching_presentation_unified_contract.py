@@ -13,8 +13,8 @@ knowledge=(ROOT/'site/data/teaching-knowledge-v20.js').read_text('utf-8')
 mig1=(ROOT/'supabase/migrations/20260922_v20_0_teaching_slide_metadata.sql').read_text('utf-8')
 mig2=(ROOT/'supabase/migrations/20260922_v20_0_reversible_teaching_close.sql').read_text('utf-8')
 
-assert ('data-docnr-release="v20-0-teaching-presentation-unified"' in idx) or (('data-docnr-release="v20-1-content-focused-slides"' in idx) or ('data-docnr-release="v20-2-adaptive-mobile-camera-stability"' in idx) or ('data-docnr-release="v20-3-device-adaptive-interaction-camera-stability"' in idx))
-assert any(x in idx for x in ['v20-unified-ui.css?v=20260922-v20-0','v20-unified-ui.css?v=20260922-v20-1','v20-unified-ui.css?v=20260922-v20-2','v20-unified-ui.css?v=20260922-v20-3']) and idx.index('v20-unified-ui.css')>idx.index('v19-programming-activity.css')
+assert ('data-docnr-release="v20-0-teaching-presentation-unified"' in idx) or (('data-docnr-release="v20-1-content-focused-slides"' in idx) or ('data-docnr-release="v20-2-adaptive-mobile-camera-stability"' in idx) or ('data-docnr-release="v20-3-device-adaptive-interaction-camera-stability"' in idx) or ('data-docnr-release="v20-4-real-device-mobile-router-adaptive-camera"' in idx))
+assert any(x in idx for x in ['v20-unified-ui.css?v=20260922-v20-0','v20-unified-ui.css?v=20260922-v20-1','v20-unified-ui.css?v=20260922-v20-2','v20-unified-ui.css?v=20260922-v20-3','v20-unified-ui.css?v=20260923-v20-4']) and idx.index('v20-unified-ui.css')>idx.index('v19-programming-activity.css')
 assert 'release-meta.js' in flow and 'RELEASE_VERSION' in flow
 assert 'TEACHING_KNOWLEDGE' in flow and 'teaching-knowledge-v20.js' in flow
 for marker in ['DEFINITION','KEY CONCEPTS','PRINCIPLE','PROCESS','CORRECT / INCORRECT','CASE STUDY','COMMON MISTAKE + TROUBLESHOOTING','SAFETY / PRECAUTION','WORKSHEET • DIGITAL','WORKSHEET • PAPER','EXAM ALIGNMENT','TEACHER NOTE + REVIEW','KEY TAKEAWAY']:
@@ -49,7 +49,7 @@ assert 'หนึ่ง Router = หนึ่ง Backend Contract' not in platfo
 # PWA/browser focus mode.
 assert manifest['display']=='fullscreen' and 'fullscreen' in manifest.get('display_override',[])
 assert ('tryFocusFullscreen' in mobile or 'tryDesktopFocusFullscreen' in mobile) and 'enterFullscreen' in mobile and 'pointerdown' in mobile
-assert ('doc-full-nr-v20-0-teaching-presentation-unified-20260922' in sw) or (('doc-full-nr-v20-1-content-focused-slides-20260922' in sw) or ('doc-full-nr-v20-2-adaptive-mobile-camera-stability-20260922' in sw) or ('doc-full-nr-v20-3-device-adaptive-interaction-camera-stability-20260922' in sw))
+assert ('doc-full-nr-v20-0-teaching-presentation-unified-20260922' in sw) or (('doc-full-nr-v20-1-content-focused-slides-20260922' in sw) or ('doc-full-nr-v20-2-adaptive-mobile-camera-stability-20260922' in sw) or ('doc-full-nr-v20-3-device-adaptive-interaction-camera-stability-20260922' in sw) or ('doc-full-nr-v20-4-real-device-mobile-router-adaptive-camera-20260923' in sw))
 assert float(ver['version'])>=20.0 and ver['teaching_slides']['logical_slide_pages']==3740
 assert ver['print_system']['legacy_engine_retained']=='V19.6'
 assert ver['teaching_unit_close']['backend_enforced'] is True

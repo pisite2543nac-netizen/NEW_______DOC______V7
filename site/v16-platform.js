@@ -20,7 +20,7 @@ const state={
   heartbeatTimer:null,countdownTimer:null,navTimer:null,presenceChannel:null,
   scanner:null,scanBusy:false,lastScanToken:null,lastScanAt:0,currentAttendanceSession:null,currentAttendanceDeadline:null,
   rtClient:null,roomChannel:null,roomRefreshTimer:null,currentRoomMode:null,
-  notificationChannel:null,notificationReady:false,notificationUid:null,attendanceTimer:null,attendanceFinalizeNotice:false,attendanceAutoClosing:false,workChecklist:null,cameraCleanup:null
+  notificationChannel:null,notificationReady:false,notificationUid:null,attendanceTimer:null,attendanceFinalizeNotice:false,attendanceAutoClosing:false,workChecklist:null,cameraCleanup:null,navEpoch:0
 };
 
 function readSession(){
@@ -257,13 +257,16 @@ shellObserver.observe($("#app")||document.body,{childList:true,subtree:true});
 async function otpConfig(){return {enabled:false,mode:"disabled",phone_profile_only:true}}
 async function requirePhoneGate(){return false}
 async function navigate(route,arg=null){
-  // V20.3: release page-local camera listeners and media tracks before route transition.
+  // V20.4: one feature-route owner with monotonic route epochs. A stale async
+  // route may finish its network request, but it must never replace a newer page.
+  const navEpoch=++state.navEpoch;
   try{state.cameraCleanup?.()}catch{};state.cameraCleanup=null;
   try{window.DOCNR_CAMERA?.stopAll?.("route-change")}catch{}
   stopScanner();
   clearPresenceChannel();clearRoomChannel();state.route=route;state.subjectId=null;heartbeat();
-  const p=await getProfile(true);if(!p)return;
+  const p=await getProfile(true);if(!p||navEpoch!==state.navEpoch||state.route!==route)return;
   if(await requirePhoneGate(route))return;
+  if(navEpoch!==state.navEpoch||state.route!==route)return;
   // Legacy contract marker: workcheck:renderRoomWorkChecklist
 const routes=p.role==="admin"?{
     dashboard:renderAdminDashboard,
@@ -294,7 +297,8 @@ const routes=p.role==="admin"?{
   };
   const fn=routes[route];
   if(!fn)throw new Error(`FEATURE_ROUTE_NOT_IMPLEMENTED:${route}`);
-  try{await fn()}catch(e){
+  try{await fn();if(navEpoch!==state.navEpoch||state.route!==route)return}catch(e){
+    if(navEpoch!==state.navEpoch||state.route!==route)return;
     console.error("DOC-FULL-NR feature route",route,e);
     if(content())content().innerHTML=`<div class="alert error"><b>เปิดเมนูไม่สำเร็จ</b><div>${esc(errorText(e))}</div><div class="row"><button class="btn primary" data-app-route="${esc(route)}">ลองใหม่</button><button class="btn" data-app-route="dashboard">กลับหน้าแรก</button></div></div>`;
     throw e;
@@ -447,11 +451,15 @@ function hubCard(route,icon,title,desc,tone="blue"){
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile(),kind=window.DOCNR_DEVICE_RUNTIME?.classify?.()||"desktop",phone=kind==="phone";
-  const phoneTools=phone?`<div class="card v203-phone-hub"><div><span class="v14-kicker">PHONE WORK MODE</span><h2>📱 งานหลักบนโทรศัพท์</h2><p>ออกแบบให้แตะง่ายและใช้กล้องเป็นหลัก • ระบบจะไม่แย่งสิทธิ์กล้องด้วย Fullscreen</p></div><div class="v203-phone-actions">${dashboardRouteCard("attendancehub","📷","เช็คชื่อด้วยกล้อง","สแกน QR นักศึกษา • สรุปรอบเช็คชื่อ","orange")}${dashboardRouteCard("paperscan","📄","เก็บสำเนาใบงาน","สแกน Barcode/QR • ถ่ายเอกสารครบทุกหน้า","red")}</div></div>`:"";
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • ${RELEASE_VERSION}</span><h1>ศูนย์ควบคุมการเรียนการสอน</h1><p>${phone?"โหมดโทรศัพท์เน้นเช็คชื่อและเก็บสำเนาใบงาน ส่วนเมนูอื่นยังเปิดใช้งานได้":"จัดการการเรียนการสอน กิจกรรม งาน คะแนน เช็คชื่อ สอบ พิมพ์ และระบบจากหน้าเดียว"}</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
+  const phoneTools=phone?`<div class="card v204-phone-primary"><div class="v204-phone-primary-head"><span class="v14-kicker">PHONE CAPTURE MODE</span><h2>งานหลักบนโทรศัพท์</h2><p>แตะครั้งเดียวเพื่อเข้ากล้อง • ออกแบบสำหรับเช็คชื่อและเก็บหลักฐานใบงานโดยตรง</p></div><div class="v204-phone-primary-actions">${dashboardRouteCard("attendance","📷","เปิดกล้องเช็คชื่อ","เลือกห้อง/วิชา → สแกน QR นักศึกษา","orange")}${dashboardRouteCard("paperscan","📄","ถ่ายสำเนาใบงาน","สแกน Barcode/QR → ถ่ายเอกสารทุกหน้า","red")}</div></div>`:"";
+  const mainCards=phone?
+    `${dashboardRouteCard("courses","📚","การเรียนการสอน","CODE • 17 หน่วย • สไลด์ • ใบงาน","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิก • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งานและคะแนน","ตรวจงาน • Gradebook • รายงาน","violet")}${dashboardRouteCard("exam","🧪","ระบบสอบ","ข้อสอบ • ช่วงเวลาสอบ • ผลสอบ","red")}${dashboardRouteCard("academic","⚙️","ระบบและปีการศึกษา","Promotion • Audit • Settings","slate")}`:
+    `${dashboardRouteCard("courses","📚","การเรียนการสอน","CODE • 17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Official Challenge","orange")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งานและคะแนน","ตรวจงาน • Gradebook • รายงาน • Export","violet")}${dashboardRouteCard("workcheck","✅","ตารางเช็กรวมรายห้อง","ระดับ • ห้อง • แผนก • สาขา • 17 หน่วย","cyan")}${dashboardRouteCard("printcenter","🖨️","ศูนย์พิมพ์และสรุปผล","คะแนน • เช็กงาน • Attendance • ใบงาน • PDF","green")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}`;
+  content().innerHTML=`<section class="v14-page v1610-dashboard ${phone?"v204-phone-dashboard":""}"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">DOC-FULL-NR • ${RELEASE_VERSION}</span><h1>${phone?"ศูนย์งานภาคสนาม":"ศูนย์ควบคุมการเรียนการสอน"}</h1><p>${phone?"โทรศัพท์ใช้กล้องเป็นหลัก เมนูงานละเอียดเปิดจากปุ่มเมนูด้านล่าง":"จัดการการเรียนการสอน กิจกรรม งาน คะแนน เช็คชื่อ สอบ พิมพ์ และระบบจากหน้าเดียว"}</p></div><div class="v1610-health" id="v1610-health"><i></i><b>กำลังตรวจ Backend</b><small>Health Check ไม่บล็อกการใช้งาน</small></div></div>
   ${phoneTools}
-  <div class="v1610-flow-grid">${dashboardRouteCard("courses","📚","การเรียนการสอน","CODE • 17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานคู่","cyan")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Official Challenge","orange")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิกวิชา • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งานและคะแนน","ตรวจงาน • Gradebook • รายงาน • Export","violet")}${dashboardRouteCard("workcheck","✅","ตารางเช็กรวมรายห้อง","ระดับ • ห้อง • แผนก • สาขา • 17 หน่วย","cyan")}${dashboardRouteCard("printcenter","🖨️","ศูนย์พิมพ์และสรุปผล","คะแนน • เช็กงาน • Attendance • ใบงาน • PDF","green")}${dashboardRouteCard("attendancehub","📷","เช็คชื่อและห้องเรียน","QR • 15 นาที • หัวหน้าห้อง • Online","orange")}${dashboardRouteCard("exam","🧪","ระบบสอบ","Question Bank • 50 ข้อ • 75 นาที","red")}${dashboardRouteCard("academic","⚙️","ปีการศึกษาและระบบ","Promotion • Audit • Settings","slate")}</div>
-  <div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div></section>`;
+  ${phone?`<div class="v204-phone-section-title"><b>งานอื่นที่ใช้บ่อย</b><span>เมนูทั้งหมดอยู่ที่ ☰ ด้านล่าง</span></div>`:""}
+  <div class="v1610-flow-grid ${phone?"v204-phone-secondary":""}">${mainCards}</div>
+  ${phone?"":`<div class="card v1610-system-note"><b>${esc(p?.full_name||"Admin")}</b><span>Flow ประจำวัน: รายวิชา → เปิดหน่วย → สื่อ/ใบงาน → เช็คชื่อ → สอบ → คะแนน → รายงาน</span></div>`}</section>`;
   Promise.race([client().rpc("admin_system_health_v18"),new Promise(resolve=>setTimeout(()=>resolve({error:new Error("timeout")}),4500))]).then(r=>{
     const el=$("#v1610-health");if(!el)return;const ok=!r?.error&&r?.data?.backend_ok;
     el.classList.toggle("ok",!!ok);el.innerHTML=ok?`<i></i><b>Backend พร้อมใช้งาน</b><small>${Number(r.data.active_subjects||0)} วิชา • ${Number(r.data.standard_templates||0)} ใบงาน • RPC ${Number(r.data.critical_rpcs||0)}/15</small>`:`<i></i><b>Dashboard พร้อมใช้งาน</b><small>Health Contract ตรวจไม่ครบ • เปิด System Health เพื่อตรวจรายละเอียด</small>`;
@@ -459,11 +467,11 @@ async function renderAdminDashboard(){
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile(),kind=window.DOCNR_DEVICE_RUNTIME?.classify?.()||"desktop",phone=kind==="phone";
-  const phoneNotice=phone?`<div class="card v203-phone-student-note"><b>📱 โหมดโทรศัพท์</b><span>ใช้สำหรับดูบทเรียน ดูสถานะงาน QR เช็คชื่อ และข้อมูลส่วนตัว • ใบงานอิเล็กทรอนิกส์เปิดดูได้ แต่ต้องใช้แท็บเล็ตหรือคอมพิวเตอร์ในการพิมพ์และส่ง</span></div>`:"";
-  content().innerHTML=`<section class="v14-page v1610-dashboard"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • ${RELEASE_VERSION}</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>${phone?"ระบบปรับหน้าให้เหมาะกับโทรศัพท์และคงข้อมูลการเรียนทั้งหมดไว้":"เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง"}</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
-  ${phoneNotice}
-  <div class="v1610-flow-grid">${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","การเรียนการสอน","17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Challenge","orange")}${dashboardRouteCard("work","📋","งานและคะแนนของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("printcenter","🖨️","พิมพ์เอกสารของฉัน","ใบงานย้อนหลัง • สรุปงาน • PDF","green")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}</div>
-  <div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div></section>`;
+  const phoneNotice=phone?`<div class="card v204-phone-student-note"><b>📱 โหมดโทรศัพท์</b><span>เหมาะสำหรับดูบทเรียน เช็คชื่อ ดูสถานะงานและข้อมูลส่วนตัว • ใบงานอิเล็กทรอนิกส์เปิดดูได้ แต่การพิมพ์คำตอบ/ส่งงานใช้แท็บเล็ตหรือคอมพิวเตอร์</span></div>`:"";
+  const cards=phone?`${dashboardRouteCard("attendance","📷","เช็คชื่อ","แสดง QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("courses","🏫","การเรียนการสอน","ดูหน่วย สไลด์ และสถานะใบงาน","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์และประวัติการศึกษา","slate")}`:`${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","การเรียนการสอน","17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Challenge","orange")}${dashboardRouteCard("work","📋","งานและคะแนนของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("printcenter","🖨️","พิมพ์เอกสารของฉัน","ใบงานย้อนหลัง • สรุปงาน • PDF","green")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}`;
+  content().innerHTML=`<section class="v14-page v1610-dashboard ${phone?"v204-phone-dashboard":""}"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • ${RELEASE_VERSION}</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>${phone?"หน้าจอโทรศัพท์แสดงเฉพาะงานที่เหมาะกับการใช้งานแบบสัมผัส":"เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง"}</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
+  ${phoneNotice}<div class="v1610-flow-grid ${phone?"v204-phone-secondary":""}">${cards}</div>
+  ${phone?"":`<div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div>`}</section>`;
 }
 async function renderStudentsHub(){
   setTitle("นักศึกษาและสิทธิ์");
@@ -811,27 +819,29 @@ async function showAdminProfile(id){
 // Presence
 // ---------------------------------------------------------------------------
 async function renderPresence(){
-  setTitle("สถานะออนไลน์");state.route="presence";busy("กำลังโหลดสถานะ Real-time...");const load=async()=>{const {data,error}=await client().rpc("presence_dashboard");if(error)throw error;return data||[]};const draw=rows=>{if(!content())return;content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">REAL-TIME PRESENCE</span><h1>สถานะออนไลน์</h1><p>Admin เห็นทั้งหมด • หัวหน้าห้องเห็นเฉพาะห้องของตน</p></div><div class="v14-live"><i></i> Live</div></div><div class="v14-presence-grid">${rows.map(x=>{const age=x.last_seen_at?nowMs()-new Date(x.last_seen_at).getTime():Infinity,online=age<90000,away=!online&&age<300000;return `<article class="v14-presence-card"><span class="dot ${online?"online":away?"away":"offline"}"></span><div><b>${esc(x.full_name||x.student_code||"-")}</b><small>${esc(x.student_code||"")} • ${esc(x.class_name||"")}</small><span>${esc(x.activity||"offline")} • ${x.last_seen_at?fmt(x.last_seen_at):"ยังไม่เคยออนไลน์"}</span></div><em>${online?"ออนไลน์":away?"เพิ่งออก":"ออฟไลน์"}</em></article>`}).join("")||`<div class="v14-empty">ยังไม่มีข้อมูลสถานะ</div>`}</div></section>`};draw(await load());
-  const rt=await realtimeClient();if(rt){state.presenceChannel=rt.channel(`v14-presence-${uid()}`).on("postgres_changes",{event:"*",schema:"public",table:"user_presence"},async()=>{if(state.route!=="presence")return;try{draw(await load())}catch{}}).subscribe()}
+  setTitle("สถานะออนไลน์");state.route="presence";const routeEpoch=state.navEpoch;busy("กำลังโหลดสถานะ Real-time...");const load=async()=>{const {data,error}=await client().rpc("presence_dashboard");if(error)throw error;return data||[]};const draw=rows=>{if(!content())return;content().innerHTML=`<section class="v14-page"><div class="v14-section-head"><div><span class="v14-kicker">REAL-TIME PRESENCE</span><h1>สถานะออนไลน์</h1><p>Admin เห็นทั้งหมด • หัวหน้าห้องเห็นเฉพาะห้องของตน</p></div><div class="v14-live"><i></i> Live</div></div><div class="v14-presence-grid">${rows.map(x=>{const age=x.last_seen_at?nowMs()-new Date(x.last_seen_at).getTime():Infinity,online=age<90000,away=!online&&age<300000;return `<article class="v14-presence-card"><span class="dot ${online?"online":away?"away":"offline"}"></span><div><b>${esc(x.full_name||x.student_code||"-")}</b><small>${esc(x.student_code||"")} • ${esc(x.class_name||"")}</small><span>${esc(x.activity||"offline")} • ${x.last_seen_at?fmt(x.last_seen_at):"ยังไม่เคยออนไลน์"}</span></div><em>${online?"ออนไลน์":away?"เพิ่งออก":"ออฟไลน์"}</em></article>`}).join("")||`<div class="v14-empty">ยังไม่มีข้อมูลสถานะ</div>`}</div></section>`};draw(await load());
+  const rt=await realtimeClient();if(state.route!=="presence"||routeEpoch!==state.navEpoch)return;if(rt){state.presenceChannel=rt.channel(`v14-presence-${uid()}`).on("postgres_changes",{event:"*",schema:"public",table:"user_presence"},async()=>{if(state.route!=="presence")return;try{draw(await load())}catch{}}).subscribe()}
 }
 
 // ---------------------------------------------------------------------------
 // Attendance / leader controls
 // ---------------------------------------------------------------------------
 async function renderAttendance(){
-  setTitle("เช็คชื่อ / การเข้าเรียน");state.route="attendance";busy("กำลังโหลดระบบเช็คชื่อ...");
-  const p=await getProfile(),c=client();
+  setTitle("เช็คชื่อ / การเข้าเรียน");state.route="attendance";const routeEpoch=state.navEpoch;busy("กำลังโหลดระบบเช็คชื่อ...");
+  const p=await getProfile(),c=client();if(!p||state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
   const [qr,summary,leaderRooms,lastNotice]=await Promise.all([
     p.role!=="admin"?c.rpc("get_my_attendance_qr"):Promise.resolve({data:null}),
     p.role!=="admin"?c.rpc("my_attendance_summary"):Promise.resolve({data:[]}),
     p.role!=="admin"?c.rpc("my_leader_classrooms"):Promise.resolve({data:[]}),
     p.role!=="admin"?c.from("app_notifications").select("title,message,metadata,created_at").eq("user_id",uid()).eq("type","attendance_checked").order("created_at",{ascending:false}).limit(1):Promise.resolve({data:[]})
   ]);
+  if(state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
   const canScan=p.role==="admin"||(leaderRooms.data||[]).length>0;
   let rooms=[];
   if(p.role==="admin"){const rr=await c.from("classrooms").select("id,name,level,semester,academic_year").eq("active",true).order("name");rooms=rr.data||[]}
   else rooms=leaderRooms.data||[];
   const subjects=canScan?await allSubjects():[];
+  if(state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
   const latest=lastNotice.data?.[0]||null;
   content().innerHTML=`<section class="v14-page v161-attendance-page">
     <div class="v14-section-head"><div><span class="v14-kicker">REAL-TIME ATTENDANCE</span><h1>${canScan?"เช็คชื่อด้วย QR Code":"QR ประจำตัว / การเข้าเรียน"}</h1><p>สแกนคนแรกเริ่มเวลา 15 นาที • ครบเวลา Server สรุปยอดอัตโนมัติ • หลังหมดเวลาเช็คสายโดย Admin เท่านั้น</p></div><span class="v16-live-pill"><i></i> Real-time</span></div>
@@ -865,11 +875,12 @@ async function renderAttendance(){
     $("#v14-refresh-sessions").onclick=loadAttendanceSessions;$("#v14-att-summary-btn").onclick=loadAttendanceSummary;
     $("#v14-att-class").onchange=()=>{state.currentAttendanceSession=null;state.currentAttendanceDeadline=null;updateAttendanceWindow()};
     $("#v14-att-subject").onchange=()=>{state.currentAttendanceSession=null;state.currentAttendanceDeadline=null;updateAttendanceWindow()};
-    await loadAttendanceSessions();startAttendanceWindowTimer();
+    await loadAttendanceSessions();if(state.route!=="attendance"||routeEpoch!==state.navEpoch)return;startAttendanceWindowTimer();
   }
   if(p.role==="admin")$("#v14-load-roster").onclick=loadLeaderRoster;
   if(canScan){
     clearRoomChannel();const rt=await realtimeClient();
+    if(state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
     if(rt){
       const refresh=()=>{clearTimeout(state.roomRefreshTimer);state.roomRefreshTimer=setTimeout(()=>{if(state.route==="attendance"){loadAttendanceSessions().catch(()=>{});refreshAttendanceSnapshot().catch(()=>{})}},500)};
       state.roomChannel=rt.channel(`attendance-live-${uid()}-${Date.now()}`)
@@ -924,6 +935,10 @@ async function submitAttendanceToken(raw){
   await refreshAttendanceSnapshot();loadAttendanceSessions();
 }
 async function startScanner(){
+  const classEl=$("#v14-att-class"),subjectEl=$("#v14-att-subject"),classId=classEl?.value,subjectId=subjectEl?.value;
+  if(!classId||!subjectId){
+    const missing=!classId?classEl:subjectEl;toast("กรุณาเลือกห้องและรายวิชาก่อนเปิดกล้อง",true);try{missing?.focus?.()}catch{};return;
+  }
   const video=$("#v14-scan-video"),canvas=$("#v14-scan-canvas"),status=$("#v202-att-camera-status"),startBtn=$("#v14-start-scan");if(!video||!canvas)return;
   const currentStream=state.scanner?.stream;
   if(currentStream?.getVideoTracks?.().some(t=>t.readyState==="live")){if(status)status.textContent="กล้องกำลังทำงาน • หัน QR ให้อยู่กลางกรอบ";return}
@@ -1224,11 +1239,11 @@ function gradeStudentScoreDialogV193(sid,row,cfg){
 // V18.1 Paper Scan Hub — visible top-level Admin workflow
 // ---------------------------------------------------------------------------
 async function renderPaperScanHub(){
-  clearRoomChannel();state.subjectId=null;state.route="paperscan";setTitle("สแกนใบงานย้อนหลัง");busy("กำลังโหลดศูนย์รับงานกระดาษ...");
+  clearRoomChannel();state.subjectId=null;state.route="paperscan";const routeEpoch=state.navEpoch;setTitle("สแกนใบงานย้อนหลัง");busy("กำลังโหลดศูนย์รับงานกระดาษ...");
   const c=client();const [sr,pr]=await Promise.all([
     c.from("subjects").select("id,code,name,color_hex").eq("active",true).eq("subject_type","subject").order("code"),
     c.from("paper_scan_packets").select("id,worksheet_id,user_id,expected_pages,status,created_at,finalized_at").order("created_at",{ascending:false}).limit(20)
-  ]);if(sr.error)throw sr.error;
+  ]);if(state.route!=="paperscan"||routeEpoch!==state.navEpoch)return;if(sr.error)throw sr.error;
   const packets=pr.data||[];
   content().innerHTML=`<section class="v14-page v181-paper-hub"><div class="v14-section-head"><div><span class="v14-kicker">LATE PAPER EVIDENCE</span><h1>📄 ศูนย์สแกนใบงานส่งย้อนหลัง</h1><p>เลือกวิชา → อ่าน Barcode → ถ่ายสำเนาให้ครบทุกหน้า → ยืนยันรับงาน ระบบจึงสร้าง Submission และนำไปตรวจคะแนนได้</p></div><span class="v14-stat-pill">Packet ล่าสุด <b>${packets.length}</b></span></div>
   <div class="alert warn"><b>กติกาหลักฐาน:</b> ใบงานกระดาษต้องถ่ายครบตามจำนวนหน้า (อย่างน้อย 2 หน้า) ก่อนระบบยืนยันรับงานย้อนหลัง และหลักฐานที่ยืนยันแล้วถูกล็อกเป็น Immutable Evidence</div>
@@ -1239,8 +1254,8 @@ async function renderPaperScanHub(){
 // V16 Full-sheet paper scan / barcode verification / evidence copy
 // ---------------------------------------------------------------------------
 async function renderPaperScanCenter(sid){
-  clearRoomChannel();state.subjectId=sid;state.route="paperscan";setTitle("สแกนสำเนาใบงานย้อนหลัง");busy("กำลังเปิดศูนย์สแกนเอกสาร...");
-  const c=client(),[sr,rr]=await Promise.all([c.from("subjects").select("id,code,name").eq("id",sid).single(),c.rpc("admin_subject_paper_scans",{p_subject_id:sid})]);if(sr.error)throw sr.error;
+  clearRoomChannel();state.subjectId=sid;state.route="paperscan";const routeEpoch=state.navEpoch;setTitle("สแกนสำเนาใบงานย้อนหลัง");busy("กำลังเปิดศูนย์สแกนเอกสาร...");
+  const c=client(),[sr,rr]=await Promise.all([c.from("subjects").select("id,code,name").eq("id",sid).single(),c.rpc("admin_subject_paper_scans",{p_subject_id:sid})]);if(state.route!=="paperscan"||routeEpoch!==state.navEpoch)return;if(sr.error)throw sr.error;
   const subject=sr.data,recent=rr.data||[];
   content().innerHTML=`<section class="v14-page v16-scan-page">
     <button class="btn ghost" data-v14-route="paperscan">← กลับศูนย์สแกนทั้งหมด</button>
