@@ -1,0 +1,21 @@
+DOC-FULL-NR V20.7 — TEST RESULTS
+Date: 2026-09-24
+
+SOURCE                 ✅ PASS
+PRODUCTION COUNTS      ✅ PASS — 11 subjects / 187 digital / 187 paper / 374 canonical / 550 question bank
+STATIC CONTRACTS       ✅ PASS — 36/36
+JAVASCRIPT SYNTAX      ✅ PASS
+CHROMIUM CORE          ✅ PASS
+REAL-USE BROWSER       ✅ PASS
+PHONE/TABLET/DESKTOP   ✅ PASS — automated responsive/browser coverage
+ORIENTATION            ✅ PASS — automated portrait/landscape coverage
+CAMERA LIFECYCLE       ✅ PASS — Chromium MediaStream/fallback contracts
+PHYSICAL DEVICE CAMERA 🟡 NOT CERTIFIED — requires real iPhone/Android/iPad hardware
+TEACHER ROLE UI        ✅ PASS — scoped routes/RPC contracts
+ROOM GROUP V20.6       ✅ PASS — dynamic sync/seat/binding source integration
+ATTENDANCE/LATE CODE   ✅ PASS — scoped staff RPC + QR/Code128/revoke source integration
+GRADEBOOK              ✅ PASS — staff-scoped source integration + existing regression
+EXAM                    ✅ PASS — staff-scoped teacher exam workspace + existing regression
+PRINT/REPORT            ✅ PASS — existing print regression + teacher scoped entry points
+GITHUB PUSH             ❌ NOT PERFORMED — connector integration returned 403
+ACTIONS/PAGES/LIVE      ❌ NOT VERIFIED FOR V20.7 — requires successful push

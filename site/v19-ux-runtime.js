@@ -1,18 +1,20 @@
-/* DOC-FULL-NR V20.5 adaptive UX shell runtime — presentation/navigation only.
+/* DOC-FULL-NR V20.7 adaptive UX shell runtime — presentation/navigation only.
    One drawer owner, one backdrop, device-specific navigation, no business logic. */
 (()=>{
   'use strict';
-  const RELEASE='V20.5';
+  const RELEASE='V20.7';
   const root=document.documentElement;
   const qs=(s,p=document)=>p.querySelector(s),qsa=(s,p=document)=>[...p.querySelectorAll(s)];
   const routeMeta={
     dashboard:['🏠','หน้าแรก'],attendance:['📷','เช็คชื่อ'],attendancehub:['📷','เช็คชื่อ'],paperscan:['📄','เก็บงาน'],students:['👨‍🎓','นักศึกษา'],
-    courses:['📚','รายวิชา'],profile:['🪪','ข้อมูล'],work:['📋','งาน'],catalog:['📚','วิชา'],specialactivity:['🎮','กิจกรรม']
+    courses:['📚','รายวิชา'],profile:['🪪','ข้อมูล'],work:['📋','งาน'],catalog:['📚','วิชา'],specialactivity:['🎮','กิจกรรม'],workadmin:['✅','ตรวจงาน'],workcheck:['📊','เช็กงาน'],exam:['📝','สอบ'],printcenter:['🖨️','รายงาน']
   };
   let resizeTimer=0,observer=null,lastNavSig='',lastRouteAt=0,lastRoute='';
 
   function deviceKind(){return window.DOCNR_DEVICE_RUNTIME?.classify?.()||(innerWidth<=620?'phone':innerWidth<=960?'tablet':'desktop')}
-  function isAdmin(){return !!qs('#sidebar [data-route="students"]')}
+  function role(){return root.dataset.appRole||'user'}
+  function isAdmin(){return role()==='admin'||!!qs('#sidebar [data-route="students"]')}
+  function isTeacher(){return role()==='teacher'}
   function deviceState(){
     const kind=deviceKind(),w=Math.max(1,innerWidth),h=Math.max(1,innerHeight);
     root.dataset.device=kind;root.dataset.orientation=w>h?'landscape':'portrait';root.dataset.density=(kind==='desktop'&&h<760)?'compact':'comfortable';root.style.setProperty('--docnr-vh',`${h*.01}px`);
@@ -39,23 +41,23 @@
     qsa('#sidebar [data-route]').forEach(b=>{if(!b.dataset.uxCloseBound){b.dataset.uxCloseBound='1';b.addEventListener('click',()=>{if(deviceKind()!=='desktop')setTimeout(closeSidebar,0)})}});
   }
   function phoneRoutes(){
-    return isAdmin()?['dashboard','attendance','paperscan','students']:['dashboard','attendance','courses','profile'];
+    return isAdmin()?['dashboard','attendance','paperscan','students']:isTeacher()?['dashboard','attendance','courses','workadmin']:['dashboard','attendance','courses','work'];
   }
   function effectiveRoute(){
     const r=root.dataset.appRoute||qs('#sidebar [data-route].active')?.dataset.route||'dashboard';
-    if(isAdmin()&&(r==='attendancehub'||r==='presence'))return 'attendance';
+    if((isAdmin()||isTeacher())&&(r==='attendancehub'||r==='presence'))return 'attendance';
     return r;
   }
   function navigateRoute(route){
     const now=Date.now();if(route===lastRoute&&now-lastRouteAt<450)return;lastRoute=route;lastRouteAt=now;
     closeSidebar();
     if(window.DOCNR_BASE?.navigate){window.DOCNR_BASE.navigate(route);return}
-    const fallback=qs(`#sidebar [data-route="${CSS.escape(route==='attendance'&&isAdmin()?'attendancehub':route)}"]`);fallback?.click();
+    const fallback=qs(`#sidebar [data-route="${CSS.escape(route==='attendance'&&(isAdmin()||isTeacher())?'attendancehub':route)}"]`);fallback?.click();
   }
   function buildBottomNav(){
     let nav=qs('.docnr-mobile-bottom-nav');
     if(deviceKind()!=='phone'){nav?.remove();lastNavSig='';return}
-    const routes=phoneRoutes(),sig=`${isAdmin()?'admin':'user'}:${routes.join('|')}`;
+    const routes=phoneRoutes(),sig=`${isAdmin()?'admin':isTeacher()?'teacher':'user'}:${routes.join('|')}`;
     if(!nav){nav=document.createElement('nav');nav.className='docnr-mobile-bottom-nav';nav.setAttribute('aria-label','เมนูหลักบนโทรศัพท์');document.body.appendChild(nav)}
     if(sig!==lastNavSig){
       lastNavSig=sig;

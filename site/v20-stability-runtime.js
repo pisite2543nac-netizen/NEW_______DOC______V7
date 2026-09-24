@@ -1,8 +1,8 @@
-/* DOC-FULL-NR V20.6 stability runtime.
+/* DOC-FULL-NR V20.7 stability runtime.
    Presentation/runtime guard only: no business authorization and no data mutation. */
 (()=>{
   'use strict';
-  const RELEASE='V20.6';
+  const RELEASE='V20.7';
   const root=document.documentElement;
   let raf=0,lastSig='',observer=null;
   const q=(s,r=document)=>r.querySelector(s);
@@ -59,8 +59,8 @@
   addEventListener('orientationchange',()=>setTimeout(()=>syncViewport('orientation'),80),{passive:true});
   addEventListener('pageshow',()=>{syncViewport('pageshow');stabilizeContent()},{passive:true});
   addEventListener('pagehide',cleanupTransient,{passive:true});
-  addEventListener('docnr:route-start',()=>{stabilizeChrome();scheduleContent()},{passive:true});
-  addEventListener('docnr:route-ready',()=>{syncViewport('route-ready');scheduleContent()},{passive:true});
+  addEventListener('docnr:route-start',()=>{stabilizeChrome();scheduleContent();const c=q('#content');if(c&&typeof c.scrollTo==='function')c.scrollTo({top:0,left:0,behavior:'auto'})},{passive:true});
+  addEventListener('docnr:route-ready',()=>{qa('.docnr-route-loading').forEach(x=>x.remove());q('#content')?.removeAttribute('aria-busy');syncViewport('route-ready');scheduleContent()},{passive:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncViewport('visible')},{passive:true});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){q('#sidebar')?.classList.remove('open');stabilizeChrome()}},true);
   document.addEventListener('DOMContentLoaded',()=>{syncViewport('dom');stabilizeContent();startObserver()},{once:true});

@@ -16,6 +16,8 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const fmt=d=>d?new Date(d).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"}):"-";
 const uid=()=>S.session?.user?.id||null;
 const isAdmin=()=>S.profile?.role==="admin";
+const isTeacher=()=>S.profile?.role==="teacher";
+const isStaff=()=>isAdmin()||isTeacher();
 const deviceClass=()=>window.DOCNR_DEVICE_RUNTIME?.classify?.()||'desktop';
 const isPhoneDevice=()=>deviceClass()==='phone';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -296,26 +298,27 @@ function signupDialog(){
 }
 
 function navItems(){
-  return isAdmin()
-    ? [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["specialactivity","กิจกรรมพิเศษ"],["students","นักศึกษาและสิทธิ์"],["roomgroups","จัดกลุ่มห้อง"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["printcenter","ศูนย์พิมพ์และสรุปผล"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]]
-    : [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["specialactivity","กิจกรรมพิเศษ"],["work","งานของฉัน"],["printcenter","พิมพ์เอกสารของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
+  if(isAdmin())return [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["specialactivity","กิจกรรมพิเศษ"],["students","นักศึกษาและสิทธิ์"],["roomgroups","จัดกลุ่มห้อง"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["printcenter","ศูนย์พิมพ์และสรุปผล"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]];
+  if(isTeacher())return [["dashboard","หน้าแรก"],["courses","วิชาและห้องที่สอน"],["workadmin","ตรวจงานและคะแนน"],["workcheck","เช็กงานรายห้อง"],["attendancehub","เช็คชื่อ"],["exam","ระบบสอบ"],["printcenter","พิมพ์/รายงาน"],["profile","โปรไฟล์ของฉัน"]];
+  return [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["specialactivity","กิจกรรมพิเศษ"],["work","งานของฉัน"],["printcenter","พิมพ์เอกสารของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
 }
 const ROUTE_TITLES={
-  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",students:"นักศึกษาและสิทธิ์",roomgroups:"จัดกลุ่มห้องโดย Admin",workadmin:"งาน คะแนน และรายงาน",workcheck:"ตารางเช็กรวมการเก็บงานรายห้อง",printcenter:"ศูนย์พิมพ์และสรุปผล",paperscan:"สแกนใบงานย้อนหลัง",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",specialactivity:"กิจกรรมพิเศษ",academic:"ปีการศึกษาและระบบ",
+  dashboard:"หน้าแรก",courses:"การสอนและรายวิชา",teacherwork:"ตรวจงาน",students:"นักศึกษาและสิทธิ์",roomgroups:"จัดกลุ่มห้องโดย Admin",workadmin:"งาน คะแนน และรายงาน",workcheck:"ตารางเช็กรวมการเก็บงานรายห้อง",printcenter:"ศูนย์พิมพ์และสรุปผล",paperscan:"สแกนใบงานย้อนหลัง",attendancehub:"เช็คชื่อและห้องเรียน",exam:"ระบบสอบ",specialactivity:"กิจกรรมพิเศษ",academic:"ปีการศึกษาและระบบ",
   catalog:"รายวิชาทั้งหมด",work:"งานของฉัน",attendance:"เช็คชื่อ",profile:"ข้อมูลของฉัน",
   accounts:"อนุมัติบัญชี",enrollments:"สมาชิกวิชา",profiles:"โปรไฟล์นักศึกษา",presence:"สถานะออนไลน์",promotion:"เลื่อนชั้น / ปีการศึกษา",history:"ประวัติการศึกษา",
   users:"ผู้ใช้งาน",grading:"ตรวจงาน",overrides:"สิทธิ์ส่งเพิ่ม",reports:"รายงาน",audit:"Audit log",system:"ตั้งค่าระบบ",enroll:"รายวิชาทั้งหมด"
 };
-const FEATURE_ROUTES=new Set(["dashboard","courses","students","workadmin","workcheck","printcenter","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","roomgroups","presence","promotion","history","enroll"]);
+const FEATURE_ROUTES=new Set(["dashboard","courses","teacherwork","students","workadmin","workcheck","printcenter","paperscan","attendancehub","academic","catalog","work","attendance","accounts","enrollments","profiles","roomgroups","presence","promotion","history","enroll"]);
 const BASE_ROUTES=new Set(["users","grading","overrides","reports","audit","system","profile"]);
 const ADMIN_ROUTES=new Set(["dashboard","courses","specialactivity","students","workadmin","workcheck","printcenter","paperscan","attendancehub","attendance","exam","academic","profile","accounts","enrollments","profiles","roomgroups","presence","promotion","users","grading","overrides","reports","audit","system"]);
+const TEACHER_ROUTES=new Set(["dashboard","courses","workadmin","workcheck","attendancehub","attendance","exam","printcenter","profile"]);
 const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","specialactivity","work","printcenter","attendance","exam","profile","history","presence"]);
 const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",roomgroups:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",printcenter:"printcenter",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
 function activeNavRoute(route){
-  if(isAdmin()&&route==="attendance")return "attendancehub";
+  if(isStaff()&&route==="attendance")return "attendancehub";
   return ROUTE_GROUP[route]||route
 }
-function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:USER_ROUTES).has(route)}
+function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:isTeacher()?TEACHER_ROUTES:USER_ROUTES).has(route)}
 function paintNav(){
   const active=activeNavRoute(S.route),root=document.documentElement;
   root.dataset.appRoute=S.route||"dashboard";
@@ -328,7 +331,7 @@ function navKey(route,arg){return `${String(route||"")}::${String(arg||"")}`}
 function fallbackBackTarget(){
   const parent={accounts:"students",enrollments:"students",profiles:"students",roomgroups:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"workadmin",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
   if(S.route==="courses"&&S.routeArg)return {route:"courses",arg:null};
-  if(isAdmin()&&S.route==="attendance")return {route:"attendancehub",arg:null};
+  if(isStaff()&&S.route==="attendance")return {route:"attendancehub",arg:null};
   return {route:parent[S.route]||"dashboard",arg:null};
 }
 function syncGlobalBackButton(){
@@ -427,8 +430,8 @@ function renderShell(){
   if(!routeAllowed(S.route))S.route="dashboard";
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":"USER"} • ${RELEASE_VERSION}</div></div></div>
-      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":isTeacher()?"TEACHER":"USER"} • ${RELEASE_VERSION}</div></div></div>
+      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",teacherwork:"✅",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
     </aside>
     <main class="main">
       <header class="topbar" id="topbar">
@@ -487,7 +490,7 @@ async function routeCurrent(expectedSerial=S.navSerial){
     }
     if(route==="exam"){
       const q=arg?`?subject=${encodeURIComponent(arg)}&from=room`:`?from=app`;
-      try{sessionStorage.setItem("docnr-return-route",JSON.stringify({route:isAdmin()?"courses":"dashboard",arg:arg||null}))}catch{}
+      try{sessionStorage.setItem("docnr-return-route",JSON.stringify({route:isStaff()?"courses":"dashboard",arg:arg||null}))}catch{}
       location.href=`./exam.html${q}`;
       return;
     }
@@ -1424,3 +1427,5 @@ window.DOCNR_BASE = Object.freeze({
 init();
 
 // V19.2 compatibility marker retained for regression contracts.
+// V20.4 regression compatibility marker: if(isAdmin()&&route==="attendance")return "attendancehub"
+// V20.4 regression compatibility marker: if(isAdmin()&&S.route==="attendance")return {route:"attendancehub",arg:null}

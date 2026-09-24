@@ -34,6 +34,7 @@ README_V20_2_TH.txt
 README_V20_3_TH.txt
 README_V20_4_TH.txt
 README_V20_5_TH.txt
+README_V20_6_LONG_TERM_TH.txt
 README_V20_6_TH.txt
 SECURITY.md
 SubjectsPage.tsx
@@ -64,6 +65,8 @@ V20_3_TEST_RESULTS.txt
 V20_4_TEST_RESULTS.txt
 V20_5_TEST_RESULTS.txt
 V20_6_TEST_RESULTS.txt
+V20_7_FINAL_ACCEPTANCE_REPORT.md
+V20_7_TEST_RESULTS.txt
 VERSION.json
 WorksheetsPage.tsx
 app.js
@@ -197,6 +200,7 @@ site/v19-programming-activity.css
 site/v19-programming-activity.js
 site/v19-responsive-fit.css
 site/v19-ux-runtime.js
+site/v20-longterm-ui.css
 site/v20-stability-runtime.js
 site/v20-stability.css
 site/v20-unified-ui.css
@@ -340,6 +344,9 @@ tests/v205_late_barcode_room_groups_browser_contract.py
 tests/v205_late_barcode_room_groups_contract.py
 tests/v206_adaptive_stability_browser_contract.py
 tests/v206_adaptive_stability_contract.py
+tests/v206_longterm_ui_teacher_contract.py
+tests/v207_long_term_ux_teacher_browser_contract.py
+tests/v207_long_term_ux_teacher_contract.py
 tsconfig.app.json
 tsconfig.app.tsbuildinfo
 tsconfig.json

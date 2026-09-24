@@ -45,6 +45,9 @@ async function getProfile(force=false){
   if(error)return null;
   state.uid=id;state.profile=data||null;return state.profile;
 }
+const isAdminProfile=()=>state.profile?.role==="admin";
+const isTeacherProfile=()=>state.profile?.role==="teacher";
+const isStaffProfile=()=>isAdminProfile()||isTeacherProfile();
 function content(){return $("#content")}
 function setTitle(t){const e=$("#pagetitle");if(e)e.textContent=t}
 function toast(message,bad=false){
@@ -76,7 +79,13 @@ function errorText(err){
   for(const [k,v] of Object.entries(map))if(raw.includes(k))return v;
   return raw;
 }
-function busy(label="กำลังโหลดข้อมูล..."){if(content())content().innerHTML=`<div class="v14-loading"><div class="v14-spinner"></div><b>${esc(label)}</b></div>`}
+function busy(label="กำลังโหลดข้อมูล..."){
+  const host=content();if(!host)return;
+  host.setAttribute("aria-busy","true");
+  host.querySelectorAll(".docnr-route-loading").forEach(x=>x.remove());
+  if(host.children.length){host.insertAdjacentHTML("afterbegin",`<div class="docnr-route-loading" role="status"><span class="v14-spinner"></span><b>${esc(label)}</b></div>`);return}
+  host.innerHTML=`<div class="docnr-skeleton-page" role="status"><div class="docnr-skeleton-head"></div><div class="docnr-skeleton-grid"><i></i><i></i><i></i><i></i></div><span>${esc(label)}</span></div>`;
+}
 function closeOverlay(){
   stopScanner();try{stopLateStudentScannerV205()}catch{};$("#v14-overlay")?.remove();document.body.classList.remove("v14-modal-open");
 }
@@ -253,7 +262,7 @@ function navBtn(route,label){const b=document.createElement("button");b.type="bu
 async function ensureNav(){
   const p=await getProfile();if(!p)return;
   const brand=$("#sidebar .brand .smalltext");
-  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":"USER"} • ${RELEASE_VERSION}`;
+  if(brand)brand.textContent=`${p.role==="admin"?"ADMIN":p.role==="teacher"?"TEACHER":"STUDENT"} • ${RELEASE_VERSION}`;
   // V17: app.js is the single owner of Sidebar and route buttons.
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
@@ -290,9 +299,18 @@ const routes=p.role==="admin"?{
     enrollments:renderEnrollmentAdmin,
     profiles:renderAdminProfiles,
     roomgroups:renderAdminRoomGroupsV205,
+    teacherwork:renderTeacherWorkV206,
     attendance:renderAttendance,
     presence:renderPresence,
     promotion:renderPromotion
+  }:p.role==="teacher"?{
+    dashboard:renderTeacherDashboardV207,
+    courses:()=>renderTeacherCoursesV207(arg),
+    workadmin:renderTeacherWorkHubV207,
+    workcheck:()=>renderTeacherChecklistV207(arg),
+    printcenter:renderTeacherPrintCenterV207,
+    attendancehub:renderTeacherAttendanceHubV207,
+    attendance:renderAttendance
   }:{
     dashboard:renderStudentDashboard,
     catalog:renderCourseRegistrationHome,
@@ -456,6 +474,57 @@ function dashboardRouteCard(route,icon,title,desc,tone="blue"){
 }
 function hubCard(route,icon,title,desc,tone="blue"){
   return `<button class="v1610-flow-card ${tone}" data-app-route="${esc(route)}"><span class="v1610-flow-icon">${icon}</span><span><b>${esc(title)}</b><small>${esc(desc)}</small></span><i>›</i></button>`;
+}
+
+// ---------------------------------------------------------------------------
+// V20.7 Teacher workspace — RPC scoped, no direct admin table privileges.
+// ---------------------------------------------------------------------------
+async function teacherAssignmentsV207(){
+  const r=await client().rpc("my_teacher_assignments_v206");if(r.error)throw r.error;return r.data||[];
+}
+async function renderTeacherDashboardV207(){
+  setTitle("ภาพรวมครู");busy("กำลังเตรียมพื้นที่ทำงานครู...");
+  const [p,ar,sr,att,ex]=await Promise.all([getProfile(true),client().rpc("my_teacher_assignments_v206"),client().rpc("staff_submission_queue_v206"),client().rpc("staff_attendance_sessions_v206"),client().rpc("staff_exam_dashboard_v206")]);
+  if(ar.error)throw ar.error;if(sr.error)throw sr.error;if(att.error)throw att.error;if(ex.error)throw ex.error;
+  const assignments=ar.data||[],subs=Array.isArray(sr.data)?sr.data:[],sessions=att.data||[],examData=ex.data||{};
+  const pending=subs.filter(x=>["submitted","confirmed"].includes(x.status)&&x.grading_status!=="final").length;
+  const openSessions=sessions.filter(x=>x.status==="open").length,examCount=(examData.exams||[]).length;
+  content().innerHTML=`<section class="v14-page docnr-teacher-page"><div class="docnr-page-hero"><div><span class="v14-kicker">TEACHER WORKSPACE • ${RELEASE_VERSION}</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"ครูผู้สอน")}</h1><p>ทุกเมนูด้านล่างจำกัดเฉพาะวิชาและห้องที่ได้รับมอบหมายจาก Admin</p></div><span class="docnr-role-chip">ครูผู้สอน</span></div>
+  <div class="docnr-kpi-grid"><div><span>วิชา/ห้องที่รับผิดชอบ</span><b>${assignments.length}</b></div><div><span>งานรอตรวจ</span><b>${pending}</b></div><div><span>รอบเช็คชื่อเปิดอยู่</span><b>${openSessions}</b></div><div><span>ชุดสอบในความรับผิดชอบ</span><b>${examCount}</b></div></div>
+  <div class="v1610-flow-grid">${hubCard("courses","📚","วิชาที่รับผิดชอบ","เลือกวิชาและห้องที่ Admin มอบหมาย","cyan")}${hubCard("workadmin","✅","ตรวจงานและคะแนน",`${pending} งานรอตรวจ • Gradebook ตามขอบเขตครู`,"violet")}${hubCard("attendance","📷","เช็คชื่อ","เปิดกล้อง • สรุป Attendance • บาร์โค้ดเข้าสาย","orange")}${hubCard("exam","🧪","ระบบสอบ","สร้าง/ปล่อยสอบ/ตรวจผล เฉพาะวิชาของตน","red")}${hubCard("workcheck","📊","เช็กงานรายห้อง","ดูความคืบหน้าและคะแนนรวม","green")}${hubCard("printcenter","🖨️","พิมพ์และรายงาน","รายงานคะแนนและการเข้าเรียน","slate")}</div>
+  <section class="card"><div class="v14-section-head compact"><div><h2>ขอบเขตการสอนของฉัน</h2><p>สิทธิ์นี้ไม่ใช่ Admin และไม่สามารถเข้าถึง System Settings หรือข้อมูลวิชาอื่น</p></div></div><div class="docnr-assignment-list">${assignments.map(x=>`<button data-app-route="courses" data-app-arg="${x.subject_id}"><span><b>${esc(x.subject_code)} ${esc(x.subject_name)}</b><small>${esc(x.classroom_name||"")}</small></span><i>›</i></button>`).join("")||`<div class="v14-empty">ยังไม่มีวิชา/ห้องที่ได้รับมอบหมาย</div>`}</div></section></section>`;
+}
+async function renderTeacherCoursesV207(subjectId=null){
+  setTitle(subjectId?"พื้นที่รายวิชาของครู":"วิชาที่รับผิดชอบ");busy("กำลังโหลดขอบเขตการสอน...");const rows=await teacherAssignmentsV207();
+  if(subjectId){const scoped=rows.filter(x=>x.subject_id===subjectId);if(!scoped.length)throw new Error("TEACHER_SCOPE_REQUIRED");const s=scoped[0];
+    const [gb,sq]=await Promise.all([client().rpc("staff_subject_gradebook_v206",{p_subject_id:subjectId}),client().rpc("staff_submission_queue_v206")]);if(gb.error)throw gb.error;if(sq.error)throw sq.error;
+    const g=gb.data||{},students=g.rows||[],pending=(Array.isArray(sq.data)?sq.data:[]).filter(x=>x.subject_id===subjectId&&["submitted","confirmed"].includes(x.status)&&x.grading_status!=="final");
+    content().innerHTML=`<section class="v14-page docnr-teacher-page"><button class="btn ghost" data-app-route="courses">← กลับรายวิชาของฉัน</button><div class="docnr-page-hero"><div><span class="v14-kicker">${esc(s.subject_code)} • TEACHER SCOPE</span><h1>${esc(s.subject_name)}</h1><p>${scoped.map(x=>x.classroom_name).filter(Boolean).join(" • ")}</p></div><span class="docnr-role-chip">${students.length} คน</span></div><div class="v1610-flow-grid">${hubCard("workadmin","✅","งานรอตรวจ",`${pending.length} รายการในวิชานี้`,"violet")}${hubCard("workcheck","📊","Gradebook / เช็กงาน","งาน 40 • จิตพิสัย 20 • กลาง 20 • ปลาย 20","green")}${hubCard("attendance","📷","การเข้าเรียน","เช็คชื่อและสรุป Attendance","orange")}${hubCard("exam","🧪","ข้อสอบ","จัดการข้อสอบของวิชานี้","red")}</div><div class="card"><h2>ภาพรวมผู้เรียน</h2><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ห้อง</th><th>งาน</th><th>รวม</th><th>เกรด</th></tr></thead><tbody>${students.map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.class_name||`${x.grade_level||""}${x.room_label||""}`)}</td><td>${Number(x.completed_work_count||0)}/17</td><td><b>${Number(x.total_score||0).toFixed(2)}</b></td><td>${Number(x.grade_value||0).toFixed(1)}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">ยังไม่มีผู้เรียนในขอบเขตนี้</td></tr>`}</tbody></table></div></div></section>`;return;
+  }
+  content().innerHTML=`<section class="v14-page docnr-teacher-page"><div class="docnr-page-hero"><div><span class="v14-kicker">TEACHING ASSIGNMENTS</span><h1>วิชาที่รับผิดชอบ</h1><p>ระบบแสดงเฉพาะคู่ วิชา × ห้อง ที่ Admin มอบหมายให้บัญชีครูนี้</p></div><span class="docnr-role-chip">${rows.length} งานสอน</span></div><div class="docnr-course-grid">${rows.map(x=>`<button class="docnr-course-card" data-app-route="courses" data-app-arg="${x.subject_id}"><span class="code">${esc(x.subject_code)}</span><b>${esc(x.subject_name)}</b><small>ห้อง ${esc(x.classroom_name||"-")}</small><i>เปิดพื้นที่วิชา ›</i></button>`).join("")||`<div class="v14-empty">ยังไม่มีวิชา/ห้องที่ได้รับมอบหมาย</div>`}</div></section>`;
+}
+async function renderTeacherWorkHubV207(){
+  setTitle("ตรวจงานและคะแนน");busy("กำลังโหลดงานที่อยู่ในขอบเขตของครู...");const [qr,ar]=await Promise.all([client().rpc("staff_submission_queue_v206"),client().rpc("my_teacher_assignments_v206")]);if(qr.error)throw qr.error;if(ar.error)throw ar.error;
+  const rows=Array.isArray(qr.data)?qr.data:[],assignments=ar.data||[],subjects=[...new Map(assignments.map(x=>[x.subject_id,{id:x.subject_id,code:x.subject_code,name:x.subject_name}])).values()];
+  content().innerHTML=`<section class="v14-page docnr-teacher-page"><div class="docnr-page-hero"><div><span class="v14-kicker">SUBMISSION QUEUE</span><h1>ตรวจงานและคะแนน</h1><p>รายการนี้ผ่าน Server scope แล้ว ครูจะไม่เห็นงานของวิชาหรือห้องที่ไม่ได้รับมอบหมาย</p></div><span class="docnr-role-chip">${rows.filter(x=>x.grading_status!=="final").length} รอตรวจ</span></div><div class="card docnr-filterbar"><input id="v207-work-q" class="input" placeholder="ค้นหารหัส/ชื่อ/ใบงาน"><select id="v207-work-subject" class="input"><option value="">ทุกวิชา</option>${subjects.map(x=>`<option value="${x.id}">${esc(x.code)} ${esc(x.name)}</option>`).join("")}</select><select id="v207-work-status" class="input"><option value="">ทุกสถานะ</option><option value="pending">รอตรวจ</option><option value="graded">ตรวจแล้ว</option></select></div><div id="v207-work-list" class="docnr-work-list"></div></section>`;
+  const draw=()=>{const q=$("#v207-work-q")?.value.trim().toLowerCase()||"",sid=$("#v207-work-subject")?.value||"",st=$("#v207-work-status")?.value||"";const f=rows.filter(x=>(!sid||x.subject_id===sid)&&(!st||(st==="graded"?x.grading_status==="final":x.grading_status!=="final"))&&(!q||`${x.student_code||""} ${x.full_name||""} ${x.worksheet_title||""} ${x.subject_code||""}`.toLowerCase().includes(q)));$("#v207-work-list").innerHTML=f.map(x=>`<article class="docnr-work-row"><div><span class="v14-kicker">${esc(x.subject_code||"")}</span><b>${esc(x.worksheet_title||"ใบงาน")}</b><small>${esc(x.student_code||"")} • ${esc(x.full_name||"")} • ${esc(x.class_name||"")}</small></div><div><span class="v14-status ${x.grading_status==="final"?"approved":"pending"}">${x.grading_status==="final"?"ตรวจแล้ว":"รอตรวจ"}</span><button class="btn primary" data-v207-submission="${x.id}">${x.grading_status==="final"?"เปิดดู/แก้คะแนน":"ตรวจงาน"}</button></div></article>`).join("")||`<div class="v14-empty">ไม่พบงานตามตัวกรอง</div>`;};draw();["#v207-work-q","#v207-work-subject","#v207-work-status"].forEach(id=>{const e=$(id);if(e){e.oninput=draw;e.onchange=draw}});
+}
+async function openTeacherSubmissionV207(id){
+  const r=await client().rpc("staff_submission_detail_v206",{p_submission_id:id});if(r.error){toast(errorText(r.error),true);return}const d=r.data||{},sub=d.submission||{},w=d.worksheet||{},stu=d.student||{},g=d.grade||{};
+  const max=Number(g.max_score||((w.questions||[]).reduce((a,q)=>a+Number(q.points||0),0))||10);
+  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">TEACHER GRADING</span><h2>${esc(w.title||"ตรวจงาน")}</h2><p>${esc(stu.student_code||"")} • ${esc(stu.full_name||"")}</p></div><button class="btn" data-v14-close>✕</button></div><div class="docnr-answer-view"><h3>คำตอบที่ส่ง</h3><pre>${esc(JSON.stringify(sub.answers||{},null,2))}</pre></div><form id="v207-grade-form" class="v16-form-stack"><div class="v14-form-grid"><label>คะแนน<input class="input" name="score" type="number" min="0" max="${max}" step="0.01" value="${Number(g.score||0)}" required></label><label>คะแนนเต็ม<input class="input" value="${max}" disabled></label></div><label>ความเห็น<textarea class="input" name="comment" rows="3">${esc(g.admin_comment||"")}</textarea></label><label>เหตุผลการบันทึก/แก้คะแนน<input class="input" name="reason" value="ตรวจและให้คะแนนโดยครูผู้สอน" required></label><div class="row end"><button class="btn primary">บันทึกคะแนน</button></div></form>`,true);
+  $("#v207-grade-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),btn=e.submitter;btn.disabled=true;const rr=await client().rpc("staff_grade_submission_v206",{p_submission_id:id,p_score:Number(f.get("score")),p_max_score:max,p_grade:null,p_admin_comment:String(f.get("comment")||"")||null,p_rubric_result:{},p_reason:String(f.get("reason")||""),p_request_key:v179RequestKey()});btn.disabled=false;if(rr.error){toast(errorText(rr.error),true);return}closeOverlay();toast("บันทึกคะแนนแล้ว");renderTeacherWorkHubV207();};
+}
+async function renderTeacherChecklistV207(subjectId=null){
+  setTitle("เช็กงานรายห้อง");busy("กำลังสรุปงานและคะแนน...");const a=await teacherAssignmentsV207();const subjects=[...new Map(a.map(x=>[x.subject_id,{id:x.subject_id,code:x.subject_code,name:x.subject_name}])).values()];const sid=subjectId||subjects[0]?.id;
+  if(!sid){content().innerHTML=`<div class="v14-empty">ยังไม่มีวิชาที่ได้รับมอบหมาย</div>`;return}const [gb,rg]=await Promise.all([client().rpc("staff_subject_gradebook_v206",{p_subject_id:sid}),client().rpc("staff_room_groups_v206")]);if(gb.error)throw gb.error;if(rg.error)throw rg.error;let rows=gb.data?.rows||[],groups=rg.data||[];
+  content().innerHTML=`<section class="v14-page docnr-teacher-page"><div class="docnr-page-hero"><div><span class="v14-kicker">PROGRESS & GRADEBOOK</span><h1>เช็กงานรายห้อง</h1><p>ใช้ข้อมูลคะแนนจริงจาก Server และกรองด้วยกลุ่มห้องโดยไม่เปลี่ยนข้อมูลต้นฉบับ</p></div></div><div class="card docnr-filterbar"><select id="v207-check-sub" class="input">${subjects.map(x=>`<option value="${x.id}" ${x.id===sid?"selected":""}>${esc(x.code)} ${esc(x.name)}</option>`).join("")}</select><select id="v207-check-group" class="input"><option value="">ทุกกลุ่มที่ฉันรับผิดชอบ</option>${groups.map(x=>`<option value="${x.id}">${esc(x.code)} ${esc(x.name)}</option>`).join("")}</select><input id="v207-check-q" class="input" placeholder="ค้นหารหัส/ชื่อ"></div><div id="v207-check-table"></div></section>`;
+  const draw=async()=>{let filtered=rows;const gid=$("#v207-check-group")?.value,q=$("#v207-check-q")?.value.trim().toLowerCase()||"";if(gid){const ur=await client().rpc("staff_room_group_user_ids_v206",{p_group_id:gid,p_subject_id:sid});if(ur.error){toast(errorText(ur.error),true);return}const ids=new Set((ur.data||[]).map(x=>x.user_id));filtered=filtered.filter(x=>ids.has(x.user_id))}if(q)filtered=filtered.filter(x=>`${x.student_code||""} ${x.full_name||""}`.toLowerCase().includes(q));$("#v207-check-table").innerHTML=`<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ห้อง</th><th>งานครบ</th><th>งาน /40</th><th>จิตพิสัย /20</th><th>กลาง /20</th><th>ปลาย /20</th><th>รวม</th><th>เกรด</th></tr></thead><tbody>${filtered.map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.class_name||`${x.grade_level||""}${x.room_label||""}`)}</td><td>${Number(x.completed_work_count||0)}/17</td><td>${Number(x.work_score||0).toFixed(2)}</td><td>${Number(x.behavior_score||0).toFixed(2)}</td><td>${Number(x.midterm_score||0).toFixed(2)}</td><td>${Number(x.final_score||0).toFixed(2)}</td><td><b>${Number(x.total_score||0).toFixed(2)}</b></td><td>${Number(x.grade_value||0).toFixed(1)}</td></tr>`).join("")||`<tr><td colspan="10" class="empty">ไม่พบข้อมูล</td></tr>`}</tbody></table></div>`};await draw();$("#v207-check-sub").onchange=e=>renderTeacherChecklistV207(e.target.value);$("#v207-check-group").onchange=draw;$("#v207-check-q").oninput=()=>{clearTimeout(draw.t);draw.t=setTimeout(draw,120)};
+}
+async function renderTeacherAttendanceHubV207(){setTitle("การเข้าเรียน");content().innerHTML=`<section class="v14-page docnr-teacher-page"><div class="docnr-page-hero"><div><span class="v14-kicker">ATTENDANCE WORKSPACE</span><h1>การเข้าเรียน</h1><p>เช็คชื่อ QR • 15 นาที • บาร์โค้ดเข้าสาย • สรุปย้อนหลัง เฉพาะห้องและวิชาที่รับผิดชอบ</p></div></div><div class="v1610-flow-grid">${hubCard("attendance","📷","เปิดระบบเช็คชื่อ","เลือกห้อง/วิชาและเปิดกล้อง","orange")}${hubCard("workcheck","📊","ดูผู้เรียนตามกลุ่มห้อง","กรอง Room Group และดูความคืบหน้า","green")}${hubCard("courses","📚","กลับวิชาที่รับผิดชอบ","เลือกขอบเขตวิชาและห้อง","cyan")}</div></section>`}
+async function renderTeacherPrintCenterV207(){
+  setTitle("พิมพ์และรายงาน");busy("กำลังเตรียมรายงานของครู...");const a=await teacherAssignmentsV207(),subjects=[...new Map(a.map(x=>[x.subject_id,{id:x.subject_id,code:x.subject_code,name:x.subject_name}])).values()];content().innerHTML=`<section class="v14-page docnr-teacher-page"><div class="docnr-page-hero"><div><span class="v14-kicker">REPORT CENTER</span><h1>พิมพ์และรายงาน</h1><p>รายงานบนหน้าจอใช้ข้อมูล Server จริง และจำกัดตามวิชาที่รับผิดชอบ</p></div><span class="docnr-role-chip">${subjects.length} วิชา</span></div><div class="docnr-course-grid">${subjects.map(x=>`<article class="docnr-course-card"><span class="code">${esc(x.code)}</span><b>${esc(x.name)}</b><div class="row wrap"><button class="btn primary" data-v207-print-grade="${x.id}">สรุปคะแนน</button><button class="btn" data-app-route="workcheck" data-app-arg="${x.id}">เช็กงาน</button><button class="btn" data-app-route="exam" data-app-arg="${x.id}">ผลสอบ</button></div></article>`).join("")||`<div class="v14-empty">ยังไม่มีรายวิชา</div>`}</div></section>`;
+  $$('[data-v207-print-grade]').forEach(b=>b.onclick=async()=>{const [sr,gr]=await Promise.all([client().from("subjects").select("id,code,name,color_hex,academic_year,semester").eq("id",b.dataset.v207PrintGrade).single(),client().rpc("staff_subject_gradebook_v206",{p_subject_id:b.dataset.v207PrintGrade})]);if(sr.error||gr.error){toast(errorText(sr.error||gr.error),true);return}printGradebookSummaryV196(sr.data,gr.data?.rows||[])});
 }
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
@@ -815,7 +884,7 @@ async function showAdminProfile(id){
         <div><span>วันที่สร้างบัญชี</span><b>${fmt(p.created_at)}</b></div><div><span>อนุมัติเมื่อ</span><b>${fmt(p.approved_at)}</b></div>
       </div>
     </div>
-    <div class="v165-profile-enrollments"><section><h3>📚 กำลังเรียนอยู่</h3><div class="v14-chip-list">${(er.data||[]).filter(x=>x.status==="approved").map(x=>`<span>${esc(x.subjects?.code||"")} ${esc(x.subjects?.name||"")}</span>`).join("")||"<span>ยังไม่มีรายวิชาที่กำลังเรียน</span>"}</div></section><section><h3>🧾 สถานะการลงทะเบียนรายวิชา</h3><div class="v14-simple-list">${(er.data||[]).map(x=>`<div><b>${esc(x.subjects?.code||"")} ${esc(x.subjects?.name||"")}</b><span>${x.status==="approved"?"กำลังเรียน":x.status==="pending"?"รออนุมัติ":x.status==="rejected"?"ไม่อนุมัติ":"ถอนแล้ว"} • ${fmt(x.requested_at)}</span></div>`).join("")||"-"}</div></section></div>
+    <div class="v165-profile-enrollments"><section><h3>📚 กำลังเรียนอยู่</h3><div class="v14-chip-list">${(er.data||[]).filter(x=>x.status==="approved").map(x=>`<span>${esc(x.subjects?.code||x.subject_code||"")} ${esc(x.subjects?.name||x.subject_name||"")}</span>`).join("")||"<span>ยังไม่มีรายวิชาที่กำลังเรียน</span>"}</div></section><section><h3>🧾 สถานะการลงทะเบียนรายวิชา</h3><div class="v14-simple-list">${(er.data||[]).map(x=>`<div><b>${esc(x.subjects?.code||x.subject_code||"")} ${esc(x.subjects?.name||x.subject_name||"")}</b><span>${x.status==="approved"?"กำลังเรียน":x.status==="pending"?"รออนุมัติ":x.status==="rejected"?"ไม่อนุมัติ":"ถอนแล้ว"} • ${fmt(x.requested_at)}</span></div>`).join("")||"-"}</div></section></div>
     <div class="v164-profile-two">
       <section><h3>อัตราการส่งงานรายวิชา</h3><div class="v14-simple-list">${Object.entries(subjectWork).map(([code,x])=>{const total=x.assigned.size,done=x.done.size,rate=total?Math.round(done*1000/total)/10:0;return `<div><b>${esc(code)} ${esc(x.name)}</b><span>${done}/${total} งาน • ${rate}%</span></div>`}).join("")||"-"}</div></section>
       <section><h3>การเข้าเรียนรายวิชา</h3><div class="v14-simple-list">${Object.entries(subjectAtt).map(([code,x])=>{const den=x.present+x.late+x.absent,rate=den?Math.round((x.present+x.late)*1000/den)/10:0;return `<div><b>${esc(code)} ${esc(x.name)}</b><span>มา ${x.present} • สาย ${x.late} • ขาด ${x.absent} • ลา ${x.excused} • ${rate}%</span></div>`}).join("")||"-"}</div></section>
@@ -838,23 +907,28 @@ async function renderPresence(){
 async function renderAttendance(){
   setTitle("เช็คชื่อ / การเข้าเรียน");state.route="attendance";const routeEpoch=state.navEpoch;busy("กำลังโหลดระบบเช็คชื่อ...");
   const p=await getProfile(),c=client();if(!p||state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
-  const [qr,summary,leaderRooms,lastNotice]=await Promise.all([
-    p.role!=="admin"?c.rpc("get_my_attendance_qr"):Promise.resolve({data:null}),
-    p.role!=="admin"?c.rpc("my_attendance_summary"):Promise.resolve({data:[]}),
-    p.role!=="admin"?c.rpc("my_leader_classrooms"):Promise.resolve({data:[]}),
-    p.role!=="admin"?c.from("app_notifications").select("title,message,metadata,created_at").eq("user_id",uid()).eq("type","attendance_checked").order("created_at",{ascending:false}).limit(1):Promise.resolve({data:[]})
+  const isStudent=p.role==="user",isTeacher=p.role==="teacher",isStaff=p.role==="admin"||isTeacher;
+  const [qr,summary,leaderRooms,lastNotice,teacherAssignments]=await Promise.all([
+    isStudent?c.rpc("get_my_attendance_qr"):Promise.resolve({data:null}),
+    isStudent?c.rpc("my_attendance_summary"):Promise.resolve({data:[]}),
+    isStudent?c.rpc("my_leader_classrooms"):Promise.resolve({data:[]}),
+    isStudent?c.from("app_notifications").select("title,message,metadata,created_at").eq("user_id",uid()).eq("type","attendance_checked").order("created_at",{ascending:false}).limit(1):Promise.resolve({data:[]}),
+    isTeacher?c.rpc("my_teacher_assignments_v206"):Promise.resolve({data:[]})
   ]);
   if(state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
-  const canScan=p.role==="admin"||(leaderRooms.data||[]).length>0;
-  let rooms=[];
-  if(p.role==="admin"){const rr=await c.from("classrooms").select("id,name,level,semester,academic_year").eq("active",true).order("name");rooms=rr.data||[]}
-  else rooms=leaderRooms.data||[];
-  const subjects=canScan?await allSubjects():[];
+  if(teacherAssignments.error)throw teacherAssignments.error;
+  const canScan=isStaff||(leaderRooms.data||[]).length>0;
+  let rooms=[],subjects=[];
+  if(p.role==="admin"){
+    const rr=await c.from("classrooms").select("id,name,level,semester,academic_year").eq("active",true).order("name");rooms=rr.data||[];subjects=await allSubjects();
+  }else if(isTeacher){
+    const a=teacherAssignments.data||[];rooms=[...new Map(a.map(x=>[x.classroom_id,{id:x.classroom_id,name:x.classroom_name,classroom_id:x.classroom_id,classroom_name:x.classroom_name}])).values()];subjects=[...new Map(a.map(x=>[x.subject_id,{id:x.subject_id,code:x.subject_code,name:x.subject_name}])).values()];
+  }else{rooms=leaderRooms.data||[];subjects=canScan?await allSubjects():[]}
   if(state.route!=="attendance"||routeEpoch!==state.navEpoch)return;
   const latest=lastNotice.data?.[0]||null;
   content().innerHTML=`<section class="v14-page v161-attendance-page">
     <div class="v14-section-head"><div><span class="v14-kicker">REAL-TIME ATTENDANCE</span><h1>${canScan?"เช็คชื่อด้วย QR Code":"QR ประจำตัว / การเข้าเรียน"}</h1><p>สแกนคนแรกเริ่มเวลา 15 นาที • ครบเวลา Server สรุปยอดอัตโนมัติ • หลังหมดเวลา นักศึกษาสแกนบาร์โค้ดเข้าสายจากครูด้วยโทรศัพท์ของตนเอง</p></div><span class="v16-live-pill"><i></i> Real-time</span></div>
-    ${p.role!=="admin"?`<div class="v14-attendance-grid">
+    ${isStudent?`<div class="v14-attendance-grid">
       <div class="card v161-student-id-card"><div class="v161-id-head"><div><span>QR ประจำตัวนักศึกษา</span><h2>${esc(p.full_name||"-")}</h2><p>${esc(p.grade_level||"")}${esc(p.room_label||"")} • รหัส ${esc(p.student_code||"-")}</p></div><div id="v14-my-qr"></div></div><small>QR เป็น Token สำหรับระบบ ไม่เปิดเผย user_id</small><button class="btn sm" id="v14-rotate-qr">ออก QR ใหม่</button></div>
       <div class="card"><h2>สรุปการเข้าเรียน</h2>${(summary.data||[]).map(x=>`<div class="v14-att-row"><div><b>${esc(x.subject_code)} ${esc(x.subject_name)}</b><small>มา ${x.present_count} • สาย ${x.late_count} • ขาด ${x.absent_count} • ลา ${x.excused_count}</small></div><strong>${x.attendance_percent??0}%</strong></div>`).join("")||`<div class="v14-empty">ยังไม่มีข้อมูลเช็คชื่อ</div>`}</div>
     </div>
@@ -870,9 +944,9 @@ async function renderAttendance(){
         <div id="v14-scan-result" class="v14-scan-results"></div></div></div>
     </div>`:""}
     ${p.role==="admin"?`<div class="card v14-leader-admin"><h2>👑 แต่งตั้งหัวหน้าห้อง</h2><div class="row"><select id="v14-leader-class" class="input"><option value="">เลือกห้องเรียน</option>${rooms.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select><button id="v14-load-roster" class="btn">โหลดรายชื่อ</button></div><div id="v14-roster"></div></div>`:""}
-    ${canScan?`<div class="card"><div class="row between"><div><h2>รอบเช็คชื่อล่าสุด</h2><small class="muted">กดรายการเพื่อดูรายชื่อทั้งหมด • Admin สามารถกำหนด มา/สาย/ขาด/ลา ได้โดยตรง</small></div><button class="btn sm" id="v14-refresh-sessions">รีเฟรช</button></div><div id="v14-session-list"></div></div>`:""}
+    ${canScan?`<div class="card"><div class="row between"><div><h2>รอบเช็คชื่อล่าสุด</h2><small class="muted">กดรายการเพื่อดูรายชื่อทั้งหมด • ผู้สอนที่มีสิทธิ์สามารถกำหนด มา/สาย/ขาด/ลา ได้</small></div><button class="btn sm" id="v14-refresh-sessions">รีเฟรช</button></div><div id="v14-session-list"></div></div>`:""}
   </section>`;
-  if(p.role!=="admin"){
+  if(isStudent){
     const host=document.querySelector(".v161-attendance-page");
     if(host){
       host.insertAdjacentHTML("beforeend",`<div class="card v205-late-student-card"><div class="v14-section-head compact"><div><span class="v14-kicker">LATE ATTENDANCE • V20.5</span><h2>⏰ เข้าสายหลัง 15 นาที</h2><p>หลังรอบปกติปิด ให้เปิดกล้องของนักศึกษาและสแกนบาร์โค้ด/QR “เข้าสาย” ที่ครูแสดง ระบบจะบันทึกเป็นมาสายโดยผูกกับคาบเรียนจริง</p></div></div><div class="v161-att-actions"><button class="btn primary" id="v205-late-start" data-device-critical>📷 เปิดกล้องสแกนบาร์โค้ดเข้าสาย</button><button class="btn" id="v205-late-stop">หยุดกล้อง</button><label class="btn v202-file-camera">📸 ถ่ายบาร์โค้ดสำรอง<input id="v205-late-photo" type="file" accept="image/*" capture="environment" hidden></label></div><div class="v14-camera-grid"><div><video id="v205-late-video" autoplay playsinline muted></video><canvas id="v205-late-canvas" hidden></canvas><div id="v205-late-status" class="v202-camera-status">พร้อมสแกน • ขอรับบาร์โค้ดเข้าสายจากครูเมื่อเกิน 15 นาที</div></div><div><form id="v205-late-manual"><label class="field"><span>Token เข้าสายสำรอง</span><input class="input" name="token" placeholder="DOCNR-LATE:..." required></label><button class="btn">ยืนยันเข้าสาย</button></form><div id="v205-late-result" class="v14-scan-results"></div></div></div></div>`);
@@ -882,7 +956,7 @@ async function renderAttendance(){
       $("#v205-late-manual")?.addEventListener("submit",async e=>{e.preventDefault();await submitLateStudentTokenV205(new FormData(e.target).get("token"))});
     }
   }
-  if(p.role!=="admin"&&qr.data?.payload&&window.QRCode){
+  if(isStudent&&qr.data?.payload&&window.QRCode){
     new QRCode($("#v14-my-qr"),{text:qr.data.payload,width:170,height:170});
     $("#v14-rotate-qr").onclick=async()=>{if(!ask("ออก QR ใหม่? QR เดิมจะใช้เช็คชื่อไม่ได้ทันที"))return;const r=await c.rpc("rotate_attendance_qr",{p_user_id:null});if(r.error){toast(errorText(r.error),true);return}renderAttendance()}
   }
@@ -1003,11 +1077,19 @@ async function startLateStudentScannerV205(){
   try{if(status)status.textContent="กำลังเปิดกล้องหลัง...";await cam.startScanner({key:"late-attendance",video,canvas,formats:["qr_code","code_128"],fps:7,onReady:()=>{if(status)status.textContent="กล้องพร้อม • สแกนบาร์โค้ด/QR เข้าสายจากครู"},onCode:async raw=>{if(parseLateAttendanceTokenV205(raw))await submitLateStudentTokenV205(raw)},onError:e=>{if(status)status.textContent=cam.errorMessage(e)}})}catch(e){const msg=cam.errorMessage(e);if(status)status.textContent=msg;if(String(e?.name||"")!=="CAMERA_REPLACED")toast(msg,true)}finally{if(btn){delete btn.dataset.cameraOpening;btn.disabled=false;btn.textContent="📷 เปิดกล้องสแกนบาร์โค้ดเข้าสาย"}}
 }
 function stopLateStudentScannerV205(){try{window.DOCNR_CAMERA?.stopScanner?.("late-attendance","manual")}catch{}const v=$("#v205-late-video");if(v)v.srcObject=null}
-async function showLateTeacherBarcodeV205(sessionId){
-  const {data,error}=await client().rpc("admin_issue_late_attendance_barcode_v205",{p_session_id:sessionId,p_rotate:false});if(error){toast(errorText(error),true);return}
-  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">LATE ATTENDANCE • TEACHER BARCODE</span><h2>⏰ บาร์โค้ดเข้าสายของครู</h2><p>ให้นักศึกษาที่มาหลัง 15 นาทีเปิดกล้องในระบบของตนเองและสแกนรหัสนี้ • หมดอายุอัตโนมัติ</p></div><button class="btn" data-v14-close>✕</button></div><div class="v205-late-code"><div id="v205-late-qr"></div><div><b>ใช้สำหรับ “เข้าสาย” เท่านั้น</b><p>ครู: ${esc(data.teacher_name||"Admin")} • หมดอายุ ${esc(fmt(data.expires_at))}</p><code>${esc(data.payload||"")}</code><div class="row"><button class="btn orange" data-v205-late-refresh="${sessionId}">🔄 ออกรหัสใหม่</button></div></div></div>`);
-  if(window.QRCode&&data.payload)new QRCode($("#v205-late-qr"),{text:data.payload,width:240,height:240});
+async function showLateTeacherBarcodeV205(sessionId,rotate=false){
+  const [issued,meta]=await Promise.all([
+    client().rpc("staff_issue_late_attendance_barcode_v206",{p_session_id:sessionId,p_rotate:!!rotate}),
+    client().rpc("staff_attendance_session_meta_v206",{p_session_id:sessionId})
+  ]);
+  if(issued.error||meta.error){toast(errorText(issued.error||meta.error),true);return}
+  const data=issued.data||{},m=meta.data||{};
+  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">LATE ATTENDANCE • STAFF CODE</span><h2>บาร์โค้ดเข้าสาย</h2><p>${esc(m.subject_code||"")} ${esc(m.subject_name||"")} • ${esc(m.classroom_name||"")} • Session ${esc(String(sessionId).slice(0,8))}</p></div><button class="btn" data-v14-close>✕</button></div>
+  <div class="v205-late-code docnr-late-code"><div class="docnr-code-visual"><div id="v205-late-qr"></div><svg id="v206-late-code128"></svg></div><div class="docnr-code-info"><b>ให้นักศึกษาสแกนจากโทรศัพท์ของตนเอง</b><p>ครู: ${esc(data.teacher_name||"ผู้สอน")} • หมดอายุ ${esc(fmt(data.expires_at))}</p><code>${esc(data.payload||"")}</code><div class="row wrap"><button class="btn primary" data-v205-late-refresh="${sessionId}">ออกรหัสใหม่</button><button class="btn red" data-v206-late-revoke="${sessionId}">ยกเลิกรหัส</button></div></div></div>`);
+  if(window.QRCode&&data.payload)new QRCode($("#v205-late-qr"),{text:data.payload,width:220,height:220});
+  try{if(window.JsBarcode&&data.payload)window.JsBarcode("#v206-late-code128",data.payload,{format:"CODE128",displayValue:false,height:70,margin:8})}catch(e){console.warn("Code128 unavailable",e)}
 }
+
 async function closeAttendanceCurrent(){
   if(!state.currentAttendanceSession||!ask("สรุปยอดตอนนี้และส่งให้ Admin? ผู้ที่ยังไม่ได้เช็คชื่อจะถูกบันทึกเป็นขาด และหลังจากนี้นักศึกษาที่มาทีหลังต้องสแกนบาร์โค้ดเข้าสายจากครู เป็นมาสาย"))return;
   const r=await client().rpc("close_attendance_session",{p_session_id:state.currentAttendanceSession});
@@ -1016,14 +1098,20 @@ async function closeAttendanceCurrent(){
   state.currentAttendanceSession=null;state.currentAttendanceDeadline=null;stopScanner();renderAttendance();
 }
 async function loadAttendanceSessions(){
-  const box=$("#v14-session-list");if(!box)return;
-  const {data,error}=await client().from("attendance_sessions").select("id,session_date,started_at,auto_close_at,closed_at,status,late_after_minutes,close_reason,summary,classrooms(name),subjects(code,name)").order("started_at",{ascending:false}).limit(20);
-  if(error){box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}
-  const rows=data||[],open=rows.find(x=>x.status==="open");
+  const box=$("#v14-session-list");if(!box)return;const p=await getProfile();let rows=[];
+  if(p?.role==="teacher"){
+    const r=await client().rpc("staff_attendance_sessions_v206");if(r.error){box.innerHTML=`<div class="alert error">${esc(errorText(r.error))}</div>`;return}
+    rows=(r.data||[]).map(x=>({...x,classrooms:{name:x.classroom_name},subjects:{code:x.subject_code,name:x.subject_name}}));
+  }else{
+    const r=await client().from("attendance_sessions").select("id,session_date,started_at,auto_close_at,closed_at,status,late_after_minutes,close_reason,summary,classrooms(name),subjects(code,name)").order("started_at",{ascending:false}).limit(20);
+    if(r.error){box.innerHTML=`<div class="alert error">${esc(errorText(r.error))}</div>`;return}rows=r.data||[];
+  }
+  const open=rows.find(x=>x.status==="open");
   if(open&&!state.currentAttendanceSession){state.currentAttendanceSession=open.id;state.currentAttendanceDeadline=open.auto_close_at;refreshAttendanceSnapshot()}
-  box.innerHTML=rows.map(x=>{const s=x.summary||{},lateReady=x.status==="closed";return `<div class="v14-session-row v205-session-wrap"><button class="v205-session-main" data-v14-session="${x.id}"><div><b>${esc(x.subjects?.code||"")} ${esc(x.subjects?.name||"")}</b><small>${esc(x.classrooms?.name||"")} • เริ่ม ${fmt(x.started_at)}${x.auto_close_at?` • กำหนดสรุป ${fmt(x.auto_close_at)}`:""}</small></div><div class="v161-session-row-end"><span class="v14-status ${x.status==="open"?"approved":"muted"}">${x.status==="open"?"กำลังเช็คชื่อ":"สรุปแล้ว"}</span>${lateReady?`<small>มา ${s.present||0} • สาย ${s.late||0} • ขาด ${s.absent||0} • ลา ${s.excused||0}</small>`:""}</div></button>${lateReady?`<button class="btn sm orange v205-late-code-btn" data-v205-late-session="${x.id}">⏰ บาร์โค้ดเข้าสาย</button>`:""}</div>`}).join("")||`<div class="v14-empty">ยังไม่มีรอบเช็คชื่อ</div>`;
+  box.innerHTML=rows.map(x=>{const sm=x.summary||{},lateReady=x.status==="closed";return `<div class="v14-session-row v205-session-wrap"><button class="v205-session-main" data-v14-session="${x.id}"><div><b>${esc(x.subjects?.code||x.subject_code||"")} ${esc(x.subjects?.name||x.subject_name||"")}</b><small>${esc(x.classrooms?.name||x.classroom_name||"")} • เริ่ม ${fmt(x.started_at)}${x.auto_close_at?` • ปิดรอบ ${fmt(x.auto_close_at)}`:""}</small></div><div class="v161-session-row-end"><span class="v14-status ${x.status==="open"?"approved":"muted"}">${x.status==="open"?"กำลังเช็คชื่อ":"สรุปแล้ว"}</span>${lateReady?`<small>มา ${sm.present||0} • สาย ${sm.late||0} • ขาด ${sm.absent||0} • ลา ${sm.excused||0}</small>`:""}</div></button>${lateReady?`<button class="btn sm orange v205-late-code-btn" data-v205-late-session="${x.id}">บาร์โค้ดเข้าสาย</button>`:""}</div>`}).join("")||`<div class="v14-empty">ยังไม่มีรอบเช็คชื่อ</div>`;
   updateAttendanceWindow();
 }
+
 async function loadAttendanceSummary(){
   const classId=$("#v14-att-class")?.value,subjectId=$("#v14-att-subject")?.value,box=$("#v14-att-summary-box");
   if(!classId||!subjectId){toast("กรุณาเลือกห้องและรายวิชาก่อนดูสรุป",true);return}
@@ -1036,32 +1124,45 @@ async function loadAttendanceSummary(){
 }
 async function loadAttendanceRoster(sessionId){
   const [rr,p,snap]=await Promise.all([client().rpc("attendance_session_roster_v161",{p_session_id:sessionId}),getProfile(),client().rpc("attendance_session_snapshot",{p_session_id:sessionId})]);
-  if(rr.error){toast(errorText(rr.error),true);return}const editable=p?.role==="admin",s=snap.data||{};
-  overlay(`<div class="v14-modal-head"><div><h2>รายชื่อการเข้าเรียน</h2><p>${editable?"Admin กำหนด มา / สาย / ขาด / ลา ได้โดยตรง":"หัวหน้าห้องดูผลแบบอ่านอย่างเดียว"} • เช็คแล้ว ${s.checked||0}/${s.expected||0}</p></div><button class="btn" data-v14-close>✕</button></div>
+  if(rr.error){toast(errorText(rr.error),true);return}const editable=p?.role==="admin"||p?.role==="teacher",s=snap.data||{};
+  overlay(`<div class="v14-modal-head"><div><h2>รายชื่อการเข้าเรียน</h2><p>${editable?(p?.role==="teacher"?"ครูกำหนด มา / สาย / ขาด / ลา ได้ในห้องที่รับผิดชอบ":"Admin กำหนด มา / สาย / ขาด / ลา ได้โดยตรง"):"หัวหน้าห้องดูผลแบบอ่านอย่างเดียว"} • เช็คแล้ว ${s.checked||0}/${s.expected||0}</p></div><button class="btn" data-v14-close>✕</button></div>
     <div class="v161-roster-summary"><span>มา <b>${s.present||0}</b></span><span>สาย <b>${s.late||0}</b></span><span>ขาด <b>${s.absent||0}</b></span><span>ลา <b>${s.excused||0}</b></span></div>
     <div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>สถานะ</th><th>เวลา</th></tr></thead><tbody>${(rr.data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.grade_level||"")}${esc(x.room_label||"")}</td><td>${editable?`<select class="input" data-v161-att-user="${x.user_id}" data-session="${sessionId}"><option value="pending" ${x.status==="pending"?"selected":""} disabled>รอเช็คชื่อ</option><option value="present" ${x.status==="present"?"selected":""}>มา</option><option value="late" ${x.status==="late"?"selected":""}>สาย</option><option value="absent" ${x.status==="absent"?"selected":""}>ขาด</option><option value="excused" ${x.status==="excused"?"selected":""}>ลา</option></select>`:`<span class="v14-status ${x.status}">${attendanceStatusLabel(x.status)}</span>`}</td><td>${fmt(x.scanned_at)}</td></tr>`).join("")}</tbody></table></div>`,true);
 }
 async function loadLeaderRoster(){const cid=$("#v14-leader-class").value,box=$("#v14-roster");if(!cid){toast("เลือกห้องก่อน",true);return}box.innerHTML="กำลังโหลด...";const {data,error}=await client().rpc("admin_classroom_roster",{p_classroom_id:cid});if(error){box.innerHTML=`<div class="alert error">${esc(errorText(error))}</div>`;return}box.innerHTML=`<div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>ระดับ</th><th>สิทธิ์</th></tr></thead><tbody>${(data||[]).map(x=>`<tr><td>${esc(x.student_code||"")}</td><td><b>${esc(x.full_name||"")}</b></td><td>${esc(x.grade_level||"")}${esc(x.room_label||"")}</td><td><button class="btn sm ${x.is_leader?"red":"green"}" data-v14-leader-user="${x.user_id}" data-class="${cid}" data-active="${x.is_leader?"false":"true"}">${x.is_leader?"ยกเลิกหัวหน้าห้อง":"แต่งตั้งหัวหน้าห้อง"}</button></td></tr>`).join("")}</tbody></table></div>`}
 
 // ---------------------------------------------------------------------------
-// V20.5 Admin-defined room groups
+// V20.7 Admin Room Groups — persistent Classroom + Subject binding + seat order.
 // ---------------------------------------------------------------------------
 async function renderAdminRoomGroupsV205(){
-  setTitle("จัดกลุ่มห้องโดย Admin");busy("กำลังโหลดกลุ่มห้อง...");const c=client();const [r,sr]=await Promise.all([c.rpc("admin_room_groups_v205"),allSubjects()]);if(r.error)throw r.error;const groups=r.data||[],subjects=sr||[];
-  content().innerHTML=`<section class="v14-page v205-roomgroups"><div class="v14-section-head"><div><span class="v14-kicker">ADMIN ROOM GROUPING • V20.5</span><h1>🏷️ จัดกลุ่มห้องโดย Admin</h1><p>ระบบแยกจาก Subject Room เดิม • Admin สร้างกลุ่มเอง จัดสมาชิก เลขที่ ระดับ แผนก สาขา ปีการศึกษาและภาคเรียนได้ โดยไม่ลบประวัติวิชา/งาน/คะแนน</p></div><button class="btn primary" id="v205-group-new">＋ สร้างกลุ่มห้อง</button></div><div class="v205-group-grid">${groups.map(g=>`<article class="card v205-group-card ${g.active?"":"is-off"}"><div><span class="v14-kicker">${esc(g.code)}</span><h3>${esc(g.name)}</h3><p>${esc(g.description||"กลุ่มที่ Admin กำหนด")}</p><small>${esc(g.academic_year||"-")} • ภาค ${esc(g.semester||"-")} • ${esc(g.level||"")} ${esc(g.department||"")} ${esc(g.major||"")} • สมาชิก ${Number(g.member_count||0)} คน</small></div><div class="row"><button class="btn primary" data-v205-group-roster="${g.id}">จัดสมาชิก</button><button class="btn green" data-v205-group-enroll="${g.id}">เพิ่มกลุ่มเข้ารายวิชา</button><button class="btn" data-v205-group-edit="${g.id}" data-code="${esc(g.code)}" data-name="${esc(g.name)}" data-year="${esc(g.academic_year||"")}" data-sem="${esc(g.semester||"")}" data-level="${esc(g.level||"")}" data-dept="${esc(g.department||"")}" data-major="${esc(g.major||"")}" data-desc="${esc(g.description||"")}" data-active="${g.active}">แก้ไข</button></div></article>`).join("")||`<div class="v14-empty">ยังไม่มีกลุ่มห้องที่ Admin สร้าง</div>`}</div></section>`;
-  state.v205Subjects=subjects;$("#v205-group-new")?.addEventListener("click",()=>editAdminRoomGroupV205());
+  setTitle("กลุ่มห้องและการ Sync");busy("กำลังโหลดกลุ่มห้องและสถานะเชื่อมต่อ...");const c=client();
+  const [r,sr,cr]=await Promise.all([c.rpc("admin_room_groups_v206"),allSubjects(),c.from("classrooms").select("id,name,level,academic_year,semester,active").eq("active",true).order("name")]);
+  if(r.error)throw r.error;if(cr.error)throw cr.error;const groups=r.data||[],subjects=sr||[],classrooms=cr.data||[];state.v205Subjects=subjects;state.v207Classrooms=classrooms;
+  content().innerHTML=`<section class="v14-page v205-roomgroups docnr-admin-groups"><div class="docnr-page-hero"><div><span class="v14-kicker">ROOM GROUP → CLASSROOM → SUBJECT</span><h1>กลุ่มห้องและการ Sync</h1><p>จัดสมาชิก เลขที่ ห้องเรียน และรายวิชาในที่เดียว • การถอดสมาชิกจะรักษาประวัติงาน คะแนน สอบ Attendance และ Audit</p></div><button class="btn primary" id="v205-group-new">สร้างกลุ่ม</button></div>
+  <div class="docnr-kpi-grid"><div><span>กลุ่มทั้งหมด</span><b>${groups.length}</b></div><div><span>เชื่อม Classroom</span><b>${groups.filter(x=>x.classroom_id).length}</b></div><div><span>สมาชิก Active</span><b>${groups.reduce((a,x)=>a+Number(x.member_count||0),0)}</b></div><div><span>Subject bindings</span><b>${groups.reduce((a,x)=>a+Number(x.bound_subject_count||0),0)}</b></div></div>
+  <div class="v205-group-grid">${groups.map(g=>`<article class="card v205-group-card ${g.active?"":"is-off"}"><div><div class="row between"><span class="v14-kicker">${esc(g.code)}</span><span class="v14-status ${g.classroom_id?"approved":"pending"}">${g.classroom_id?"เชื่อม Classroom แล้ว":"ยังไม่เชื่อม"}</span></div><h3>${esc(g.name)}</h3><p>${esc(g.description||"กลุ่มที่ Admin กำหนด")}</p><small>${esc(g.academic_year||"-")} • ภาค ${esc(g.semester||"-")} • ${esc(g.level||"")} ${esc(g.department||"")} ${esc(g.major||"")}</small><div class="docnr-mini-meta"><span>สมาชิก <b>${Number(g.member_count||0)}</b></span><span>ผูกวิชา <b>${Number(g.bound_subject_count||0)}</b></span><span>Classroom <b>${esc(g.classroom_name||"-")}</b></span></div></div><div class="docnr-card-actions"><button class="btn primary" data-v205-group-roster="${g.id}">สมาชิก/เลขที่</button><button class="btn" data-v207-group-classroom="${g.id}">เชื่อม Classroom</button><button class="btn" data-v205-group-enroll="${g.id}">ผูกรายวิชา</button><button class="btn green" data-v207-group-sync="${g.id}">Sync ตอนนี้</button><button class="btn ghost" data-v205-group-edit="${g.id}" data-code="${esc(g.code)}" data-name="${esc(g.name)}" data-year="${esc(g.academic_year||"")}" data-sem="${esc(g.semester||"")}" data-level="${esc(g.level||"")}" data-dept="${esc(g.department||"")}" data-major="${esc(g.major||"")}" data-desc="${esc(g.description||"")}" data-active="${g.active}">แก้ไข</button></div></article>`).join("")||`<div class="v14-empty">ยังไม่มีกลุ่มห้อง</div>`}</div></section>`;
+  $("#v205-group-new")?.addEventListener("click",()=>editAdminRoomGroupV205());
 }
 function editAdminRoomGroupV205(data={}){
-  overlay(`<div class="v14-modal-head"><div><h2>${data.id?"แก้ไข":"สร้าง"}กลุ่มห้อง</h2><p>กลุ่มนี้เป็นการจัดกลุ่มโดย Admin และไม่เปลี่ยนสมาชิก Subject Room เดิม</p></div><button class="btn" data-v14-close>✕</button></div><form id="v205-group-form" class="v205-group-form"><div class="v14-form-grid"><label>รหัสกลุ่ม<input class="input" name="code" value="${esc(data.code||"")}" maxlength="24" required></label><label>ชื่อกลุ่ม<input class="input" name="name" value="${esc(data.name||"")}" maxlength="120" required></label><label>ปีการศึกษา<input class="input" name="year" value="${esc(data.year||"")}"></label><label>ภาคเรียน<input class="input" name="sem" value="${esc(data.sem||"")}"></label><label>ระดับ<input class="input" name="level" value="${esc(data.level||"")}"></label><label>แผนก<input class="input" name="dept" value="${esc(data.dept||"")}"></label><label>สาขา<input class="input" name="major" value="${esc(data.major||"")}"></label></div><label class="field"><span>รายละเอียด</span><textarea class="input" name="desc">${esc(data.desc||"")}</textarea></label><label class="field"><span><input type="checkbox" name="active" ${data.active===false?"":"checked"}> เปิดใช้งานกลุ่ม</span></label><div class="row end"><button class="btn primary">บันทึกกลุ่ม</button></div></form>`);
-  $("#v205-group-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),r=await client().rpc("admin_upsert_room_group_v205",{p_group_id:data.id||null,p_code:String(f.get("code")||"")||null,p_name:String(f.get("name")||""),p_academic_year:String(f.get("year")||"")||null,p_semester:String(f.get("sem")||"")||null,p_level:String(f.get("level")||"")||null,p_department:String(f.get("dept")||"")||null,p_major:String(f.get("major")||"")||null,p_description:String(f.get("desc")||"")||null,p_active:f.get("active")==="on"});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกกลุ่มห้องแล้ว");renderAdminRoomGroupsV205()};
+  overlay(`<div class="v14-modal-head"><div><h2>${data.id?"แก้ไข":"สร้าง"}กลุ่มห้อง</h2><p>กำหนดข้อมูลกลุ่มก่อน จากนั้นจัดสมาชิกและเชื่อม Classroom</p></div><button class="btn" data-v14-close>✕</button></div><form id="v205-group-form" class="v205-group-form"><div class="v14-form-grid"><label>รหัสกลุ่ม<input class="input" name="code" value="${esc(data.code||"")}" maxlength="24" required></label><label>ชื่อกลุ่ม<input class="input" name="name" value="${esc(data.name||"")}" required></label><label>ปีการศึกษา<input class="input" name="year" value="${esc(data.year||"")}"></label><label>ภาคเรียน<input class="input" name="sem" value="${esc(data.sem||"")}"></label><label>ระดับ<input class="input" name="level" value="${esc(data.level||"")}"></label><label>แผนก<input class="input" name="dept" value="${esc(data.dept||"")}"></label><label>สาขา<input class="input" name="major" value="${esc(data.major||"")}"></label><label class="span2">รายละเอียด<textarea class="input" name="desc">${esc(data.desc||"")}</textarea></label><label class="v205-active-check"><input type="checkbox" name="active" ${data.active===false?"":"checked"}> เปิดใช้งานกลุ่มนี้</label></div><div class="row end"><button class="btn primary">บันทึกกลุ่ม</button></div></form>`);
+  $("#v205-group-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),r=await client().rpc("admin_upsert_room_group_v205",{p_group_id:data.id||null,p_code:String(f.get("code")||""),p_name:String(f.get("name")||""),p_academic_year:String(f.get("year")||"")||null,p_semester:String(f.get("sem")||"")||null,p_level:String(f.get("level")||"")||null,p_department:String(f.get("dept")||"")||null,p_major:String(f.get("major")||"")||null,p_description:String(f.get("desc")||"")||null,p_active:f.get("active")==="on"});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกกลุ่มแล้ว");renderAdminRoomGroupsV205()};
 }
 async function openAdminRoomGroupRosterV205(groupId){
-  const c=client();const [mr,pr]=await Promise.all([c.rpc("admin_room_group_members_v205",{p_group_id:groupId}),c.from("profiles").select("id,student_code,full_name,display_name,grade_level,room_label,class_name,department,major,seat_number").eq("role","user").eq("active",true).eq("approval_status","approved").order("student_code")]);if(mr.error){toast(errorText(mr.error),true);return}if(pr.error){toast(errorText(pr.error),true);return}
-  const members=new Map((mr.data||[]).filter(x=>x.active).map(x=>[x.user_id,x]));const rows=(pr.data||[]).map(p=>({...p,in_group:members.has(p.id),group_seat_number:members.get(p.id)?.seat_number??null}));state.v205RoomGroupRoster={groupId,rows,selected:new Set([...members.keys()])};
-  overlay(`<div class="v14-modal-head"><div><h2>จัดสมาชิกกลุ่มห้อง</h2><p>เลือกนักศึกษาที่อยู่ในกลุ่ม แล้วกดบันทึก • การจัดกลุ่มนี้ไม่ลบสมาชิกวิชาเดิม</p></div><button class="btn" data-v14-close>✕</button></div><div class="v205-roster-toolbar row"><input id="v205-roster-q" class="input" placeholder="ค้นหารหัส ชื่อ ห้อง แผนก สาขา"><button class="btn primary" id="v205-roster-save">💾 บันทึกสมาชิก</button></div><div id="v205-roster-list" class="v205-roster-list"></div>`,true);
-  const draw=()=>{const q=$("#v205-roster-q")?.value.trim().toLowerCase()||"",host=$("#v205-roster-list"),ctx=state.v205RoomGroupRoster;if(!host||!ctx)return;host.innerHTML=ctx.rows.filter(x=>!q||`${x.student_code||""} ${x.full_name||""} ${x.grade_level||""}${x.room_label||""} ${x.department||""} ${x.major||""}`.toLowerCase().includes(q)).map(x=>`<label class="v205-roster-row ${ctx.selected.has(x.id)?"in":""}"><div><b>${esc(x.student_code||"")} • ${esc(x.full_name||"")}</b><small>${esc(x.grade_level||"")}${esc(x.room_label||"")} • ${esc(x.department||"")} ${esc(x.major||"")}</small></div><span>เลขที่ ${esc(x.group_seat_number??x.seat_number??"-")}</span><input type="checkbox" data-v205-member-check="${x.id}" ${ctx.selected.has(x.id)?"checked":""}></label>`).join("")||`<div class="v14-empty">ไม่พบรายชื่อ</div>`};draw();$("#v205-roster-q").oninput=draw;$("#v205-roster-list").onchange=e=>{const cb=e.target.closest("[data-v205-member-check]");if(!cb)return;cb.checked?state.v205RoomGroupRoster.selected.add(cb.dataset.v205MemberCheck):state.v205RoomGroupRoster.selected.delete(cb.dataset.v205MemberCheck);draw()};$("#v205-roster-save").onclick=async()=>{const ids=[...state.v205RoomGroupRoster.selected],r=await client().rpc("admin_replace_room_group_members_v205",{p_group_id:groupId,p_user_ids:ids});if(r.error){toast(errorText(r.error),true);return}toast(`บันทึกสมาชิก ${r.data?.member_count??ids.length} คนแล้ว`);await openAdminRoomGroupRosterV205(groupId)};
+  const c=client();const [mr,pr]=await Promise.all([c.rpc("admin_room_group_user_ids_v206",{p_group_id:groupId}),c.from("profiles").select("id,student_code,full_name,display_name,grade_level,room_label,class_name,department,major,seat_number").eq("role","user").eq("active",true).eq("approval_status","approved").order("student_code")]);if(mr.error||pr.error){toast(errorText(mr.error||pr.error),true);return}
+  const members=new Map((mr.data||[]).map(x=>[x.user_id,x.seat_number]));const rows=(pr.data||[]).map(p=>({...p,in_group:members.has(p.id),group_seat_number:members.get(p.id)??null}));state.v205RoomGroupRoster={groupId,rows,selected:new Set([...members.keys()]),seats:new Map(rows.map(x=>[x.id,x.group_seat_number??x.seat_number??null]))};
+  overlay(`<div class="v14-modal-head"><div><h2>สมาชิกและเลขที่</h2><p>แก้เลขที่ได้รายคน • ระบบตรวจเลขซ้ำก่อนบันทึก • บันทึกแล้ว Sync Classroom/Subject อัตโนมัติ</p></div><button class="btn" data-v14-close>✕</button></div><div class="v205-roster-toolbar"><input id="v205-roster-q" class="input" placeholder="ค้นหารหัส ชื่อ ห้อง แผนก สาขา"><div class="row wrap"><button class="btn" id="v207-auto-number">เรียงเลขที่อัตโนมัติ</button><button class="btn primary" id="v205-roster-save">บันทึกและ Sync</button></div></div><div id="v205-roster-list" class="v205-roster-list"></div>`,true);
+  const draw=()=>{const q=$("#v205-roster-q")?.value.trim().toLowerCase()||"",host=$("#v205-roster-list"),ctx=state.v205RoomGroupRoster;if(!host||!ctx)return;host.innerHTML=ctx.rows.filter(x=>!q||`${x.student_code||""} ${x.full_name||""} ${x.grade_level||""}${x.room_label||""} ${x.department||""} ${x.major||""}`.toLowerCase().includes(q)).map(x=>`<label class="v205-roster-row ${ctx.selected.has(x.id)?"in":""}"><div><b>${esc(x.student_code||"")} • ${esc(x.full_name||"")}</b><small>${esc(x.grade_level||"")}${esc(x.room_label||"")} • ${esc(x.department||"")} ${esc(x.major||"")}</small></div><input class="input docnr-seat-input" type="number" min="1" max="999" data-v207-seat="${x.id}" value="${esc(ctx.seats.get(x.id)??"")}" placeholder="เลขที่" ${ctx.selected.has(x.id)?"":"disabled"}><input type="checkbox" data-v205-member-check="${x.id}" ${ctx.selected.has(x.id)?"checked":""}></label>`).join("")||`<div class="v14-empty">ไม่พบรายชื่อ</div>`};draw();
+  $("#v205-roster-q").oninput=draw;$("#v205-roster-list").onchange=e=>{const cb=e.target.closest("[data-v205-member-check]");if(cb){cb.checked?state.v205RoomGroupRoster.selected.add(cb.dataset.v205MemberCheck):state.v205RoomGroupRoster.selected.delete(cb.dataset.v205MemberCheck);draw();return}const seat=e.target.closest("[data-v207-seat]");if(seat)state.v205RoomGroupRoster.seats.set(seat.dataset.v207Seat,seat.value?Number(seat.value):null)};
+  $("#v205-roster-list").oninput=e=>{const seat=e.target.closest("[data-v207-seat]");if(seat)state.v205RoomGroupRoster.seats.set(seat.dataset.v207Seat,seat.value?Number(seat.value):null)};
+  $("#v207-auto-number").onclick=async()=>{const r=await client().rpc("admin_auto_number_room_group_v206",{p_group_id:groupId});if(r.error){toast(errorText(r.error),true);return}toast("เรียงเลขที่อัตโนมัติแล้ว");openAdminRoomGroupRosterV205(groupId)};
+  $("#v205-roster-save").onclick=async()=>{const ctx=state.v205RoomGroupRoster,members=[...ctx.selected].map(id=>({user_id:id,seat_number:ctx.seats.get(id)||null})),nums=members.map(x=>x.seat_number).filter(x=>x!=null);if(new Set(nums).size!==nums.length){toast("พบเลขที่ซ้ำ กรุณาแก้ก่อนบันทึก",true);return}const r=await client().rpc("admin_replace_room_group_members_v206",{p_group_id:groupId,p_members:members});if(r.error){toast(errorText(r.error),true);return}toast(`บันทึกและ Sync สมาชิก ${r.data?.member_count??members.length} คนแล้ว`);await openAdminRoomGroupRosterV205(groupId)};
 }
-function openRoomGroupEnrollV205(groupId){const subjects=state.v205Subjects||[];overlay(`<div class="v14-modal-head"><div><h2>เพิ่มกลุ่มเข้ารายวิชา</h2><p>สมาชิกที่พร้อมใช้งานจะได้รับอนุมัติรายวิชา พร้อม Worksheet/Exam ที่เผยแพร่แล้ว</p></div><button class="btn" data-v14-close>✕</button></div><form id="v205-group-enroll-form"><label class="field"><span>รายวิชา</span><select class="input" name="subject" required><option value="">เลือกรายวิชา</option>${subjects.map(s=>`<option value="${s.id}">${esc(s.code)} ${esc(s.name)}</option>`).join("")}</select></label><div class="row end"><button class="btn primary">ยืนยันเพิ่มกลุ่มเข้ารายวิชา</button></div></form>`);$("#v205-group-enroll-form").onsubmit=async e=>{e.preventDefault();const sid=new FormData(e.target).get("subject");if(!sid)return;const r=await client().rpc("admin_enroll_room_group_subject_v205",{p_group_id:groupId,p_subject_id:sid});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast(`เพิ่มสมาชิกกลุ่มเข้ารายวิชาแล้ว ${r.data?.affected||0} คน`)}}
+async function openRoomGroupEnrollV205(groupId){
+  const [br]=await Promise.all([client().rpc("admin_room_group_bindings_v206",{p_group_id:groupId})]);if(br.error){toast(errorText(br.error),true);return}const bindings=new Map((br.data||[]).map(x=>[x.subject_id,x])),subjects=state.v205Subjects||[];
+  overlay(`<div class="v14-modal-head"><div><h2>ผูกรายวิชาแบบ Dynamic</h2><p>เปิด Binding แล้วสมาชิกใหม่จะ Sync enrollment/งาน/ข้อสอบอัตโนมัติ • ถอดสมาชิกจะรักษาประวัติเดิม</p></div><button class="btn" data-v14-close>✕</button></div><div class="docnr-binding-list">${subjects.map(s=>{const b=bindings.get(s.id);return `<label><input type="checkbox" data-v207-bind-subject="${s.id}" ${b?.active?"checked":""}><span><b>${esc(s.code)} ${esc(s.name)}</b><small>${b?.active?"Binding ทำงานอยู่":"ยังไม่ผูก"}</small></span></label>`}).join("")}</div><div class="row end"><button class="btn primary" id="v207-bind-save">บันทึก Binding และ Sync</button></div>`,true);
+  $("#v207-bind-save").onclick=async()=>{const checks=$$("[data-v207-bind-subject]",$("#v14-overlay"));for(const cb of checks){const before=!!bindings.get(cb.dataset.v207BindSubject)?.active;if(before===cb.checked)continue;const r=await client().rpc("admin_bind_room_group_subject_v206",{p_group_id:groupId,p_subject_id:cb.dataset.v207BindSubject,p_active:cb.checked});if(r.error){toast(errorText(r.error),true);return}}const sync=await client().rpc("admin_sync_room_group_v206",{p_group_id:groupId});if(sync.error){toast(errorText(sync.error),true);return}closeOverlay();toast("บันทึก Binding และ Sync แล้ว");renderAdminRoomGroupsV205()};
+}
+function openRoomGroupClassroomV207(groupId){const rooms=state.v207Classrooms||[];overlay(`<div class="v14-modal-head"><div><h2>เชื่อมกับ Classroom</h2><p>เลือก Classroom เดิม หรือกด Sync โดยไม่เลือกเพื่อให้ระบบสร้าง/จับคู่จากข้อมูลกลุ่มอัตโนมัติ</p></div><button class="btn" data-v14-close>✕</button></div><label class="field"><span>Classroom</span><select id="v207-classroom-link" class="input"><option value="">สร้าง/จับคู่อัตโนมัติ</option>${rooms.map(x=>`<option value="${x.id}">${esc(x.name)} • ${esc(x.academic_year||"")} ภาค ${esc(x.semester||"")}</option>`).join("")}</select></label><div class="row end"><button class="btn primary" id="v207-classroom-link-save">เชื่อมและ Sync</button></div>`);$("#v207-classroom-link-save").onclick=async()=>{const cid=$("#v207-classroom-link").value;const r=cid?await client().rpc("admin_link_room_group_classroom_v206",{p_group_id:groupId,p_classroom_id:cid}):await client().rpc("admin_sync_room_group_v206",{p_group_id:groupId});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("เชื่อม Classroom และ Sync แล้ว");renderAdminRoomGroupsV205()}}
 
 // ---------------------------------------------------------------------------
 // Promotion Admin approval flow
@@ -1193,13 +1294,13 @@ async function renderSubjectGradebook(sid){
   const c=client();
   const [sr,gr,cr,er,detail]=await Promise.all([
     c.from("subjects").select("id,code,name,color_hex,academic_year,semester").eq("id",sid).single(),
-    c.rpc("admin_subject_gradebook_v193",{p_subject_id:sid}),
+    (isTeacherProfile()?c.rpc("staff_subject_gradebook_v206",{p_subject_id:sid}):c.rpc("admin_subject_gradebook_v193",{p_subject_id:sid})),
     c.from("subject_grade_settings").select("*").eq("subject_id",sid).maybeSingle(),
     c.from("exams").select("id,title,exam_kind,status,full_score").eq("subject_id",sid).order("created_at",{ascending:false}),
     loadSubjectWorkDetailData(sid)
   ]);
   if(sr.error)throw sr.error;if(gr.error)throw gr.error;
-  const subject=sr.data,rows=gr.data||[],cfg=cr.data||{work_points:40,behavior_points:20,midterm_points:20,final_points:20,default_behavior_score:20,midterm_exam_id:null,final_exam_id:null},exams=er.data||[];
+  const subject=sr.data,staffGrade=isTeacherProfile()?gr.data:null,rows=isTeacherProfile()?(staffGrade?.rows||[]):(gr.data||[]),cfg=isTeacherProfile()?(staffGrade?.settings||{}):(cr.data||{work_points:40,behavior_points:20,midterm_points:20,final_points:20,default_behavior_score:20,midterm_exam_id:null,final_exam_id:null}),exams=isTeacherProfile()?(staffGrade?.exams||[]):(er.data||[]);
   const activeUsers=new Set(rows.map(x=>x.user_id));
   detail.assignments=(detail.assignments||[]).filter(x=>activeUsers.has(x.user_id));
   detail.submissions=(detail.submissions||[]).filter(x=>activeUsers.has(x.user_id));
@@ -1266,7 +1367,7 @@ function gradeSettingsDialog(sid,cfg,exams){
   </form>`);
   $("#v16-grade-settings-form").onsubmit=async e=>{
     e.preventDefault();const f=new FormData(e.target);
-    const r=await client().rpc("admin_set_subject_grade_settings",{p_subject_id:sid,p_work_points:40,p_behavior_points:20,p_midterm_points:20,p_final_points:20,p_default_behavior_score:20,p_midterm_exam_id:String(f.get("midExam")||"")||null,p_final_exam_id:String(f.get("finalExam")||"")||null});
+    const r=await client().rpc(isTeacherProfile()?"staff_set_subject_grade_settings_v206":"admin_set_subject_grade_settings",isTeacherProfile()?{p_subject_id:sid,p_midterm_exam_id:String(f.get("midExam")||"")||null,p_final_exam_id:String(f.get("finalExam")||"")||null}:{p_subject_id:sid,p_work_points:40,p_behavior_points:20,p_midterm_points:20,p_final_points:20,p_default_behavior_score:20,p_midterm_exam_id:String(f.get("midExam")||"")||null,p_final_exam_id:String(f.get("finalExam")||"")||null});
     if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกชุดสอบแล้ว");renderSubjectGradebook(sid);
   };
 }
@@ -1295,7 +1396,7 @@ function gradeStudentScoreDialogV193(sid,row,cfg){
     if(!Number.isFinite(behavior)||behavior<0||behavior>20){toast("จิตพิสัยต้องอยู่ระหว่าง 0–20",true);return}
     if(!Number.isFinite(midRaw)||midRaw<0||midRaw>midMax){toast(`คะแนนดิบกลางภาคต้องอยู่ระหว่าง 0–${midMax}`,true);return}
     if(!Number.isFinite(finalRaw)||finalRaw<0||finalRaw>finMax){toast(`คะแนนดิบปลายภาคต้องอยู่ระหว่าง 0–${finMax}`,true);return}
-    const r=await client().rpc("admin_adjust_subject_scores_v193",{p_subject_id:sid,p_user_id:row.user_id,p_behavior_score:behavior,p_midterm_delta:Number((midRaw-midBase).toFixed(2)),p_final_delta:Number((finalRaw-finBase).toFixed(2)),p_note:String(f.get("note")||"")||null});
+    const r=await client().rpc(isTeacherProfile()?"staff_adjust_subject_scores_v206":"admin_adjust_subject_scores_v193",{p_subject_id:sid,p_user_id:row.user_id,p_behavior_score:behavior,p_midterm_delta:Number((midRaw-midBase).toFixed(2)),p_final_delta:Number((finalRaw-finBase).toFixed(2)),p_note:String(f.get("note")||"")||null});
     if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("บันทึกคะแนนและคำนวณเกรดใหม่แล้ว");renderSubjectGradebook(sid);
   };
 }
@@ -1407,6 +1508,7 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v1610-flow]")){e.preventDefault();return}
   if(t.matches("[data-v1610-action]")){const action=t.dataset.v1610Action;closeOverlay();if(action.startsWith("custom:")){window.DOCNR_BASE?.navigate?.(action.slice(7));return}if(action.startsWith("base:")){const r=action.slice(5);clearPresenceChannel();clearRoomChannel();state.route=`base:${r}`;state.subjectId=null;heartbeat();if(window.DOCNR_BASE?.navigate)window.DOCNR_BASE.navigate(r);else toast("Router หลักยังโหลดไม่เสร็จ",true);return}}
   if(t.matches("[data-v161-notification]")){client().rpc("mark_notification_read",{p_notification_id:t.dataset.v161Notification});return}
+  if(t.matches("[data-v207-submission]")){await openTeacherSubmissionV207(t.dataset.v207Submission);return}
   if(t.matches("[data-v15-account]")){await decideAccount(t.dataset.v15Account,t.dataset.accountStatus);return}
   if(t.matches("[data-v165-join-course]")){showJoinCourseDialog(t.dataset.v165JoinCourse,t.dataset.courseCode||"",t.dataset.courseName||"");return}
   if(t.matches("[data-v165-copy-code]")){try{await navigator.clipboard.writeText(t.dataset.v165CopyCode||"");toast("คัดลอกรหัสเข้าห้องเรียนแล้ว")}catch{toast("คัดลอกรหัสไม่สำเร็จ",true)}return}
@@ -1436,7 +1538,10 @@ document.addEventListener("click",async e=>{
   if(t.matches("[data-v14-open-work]")){if(window.DOCNR_BASE?.openWorksheet)window.DOCNR_BASE.openWorksheet(t.dataset.v14OpenWork);else toast("ตัวเปิดใบงานหลักยังโหลดไม่เสร็จ กรุณารีเฟรชหน้า",true);return}
   if(t.matches("[data-v14-profile]")){showAdminProfile(t.dataset.v14Profile);return}
   if(t.matches("[data-v205-late-session]")){await showLateTeacherBarcodeV205(t.dataset.v205LateSession);return}
-  if(t.matches("[data-v205-late-refresh]")){const {data,error}=await client().rpc("admin_issue_late_attendance_barcode_v205",{p_session_id:t.dataset.v205LateRefresh,p_rotate:true});if(error){toast(errorText(error),true);return}closeOverlay();await showLateTeacherBarcodeV205(t.dataset.v205LateRefresh);return}
+  if(t.matches("[data-v205-late-refresh]")){closeOverlay();await showLateTeacherBarcodeV205(t.dataset.v205LateRefresh,true);return}
+  if(t.matches("[data-v206-late-revoke]")){const r=await client().rpc("staff_revoke_late_attendance_barcode_v206",{p_session_id:t.dataset.v206LateRevoke});if(r.error){toast(errorText(r.error),true);return}closeOverlay();toast("ยกเลิกบาร์โค้ดเข้าสายแล้ว");return}
+  if(t.matches("[data-v207-group-classroom]")){openRoomGroupClassroomV207(t.dataset.v207GroupClassroom);return}
+  if(t.matches("[data-v207-group-sync]")){const r=await client().rpc("admin_sync_room_group_v206",{p_group_id:t.dataset.v207GroupSync});if(r.error){toast(errorText(r.error),true);return}toast("Sync กลุ่มห้องเรียบร้อย");renderAdminRoomGroupsV205();return}
   if(t.matches("[data-v205-group-roster]")){await openAdminRoomGroupRosterV205(t.dataset.v205GroupRoster);return}
   if(t.matches("[data-v205-group-edit]")){editAdminRoomGroupV205({id:t.dataset.v205GroupEdit,code:t.dataset.code,name:t.dataset.name,year:t.dataset.year,sem:t.dataset.sem,level:t.dataset.level,dept:t.dataset.dept,major:t.dataset.major,desc:t.dataset.desc,active:t.dataset.active==="true"});return}
   if(t.matches("[data-v205-group-enroll]")){openRoomGroupEnrollV205(t.dataset.v205GroupEnroll);return}
@@ -1447,7 +1552,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("change",async e=>{
   const t=e.target;
   if(t.matches("[data-v14-promotion-item]")){let reason=null;if(["transfer","suspend"].includes(t.value)){reason=prompt(t.value==="transfer"?"เหตุผลการย้ายออก (จำเป็น)":"เหตุผลการพักการเรียน (จำเป็น)","");if(!reason){renderPromotion();return}}const r=await client().rpc("set_promotion_item_decision_v15",{p_item_id:t.dataset.v14PromotionItem,p_decision:t.value,p_new_grade_level:null,p_new_room_label:null,p_new_class_name:null,p_new_seat_number:null,p_reason:reason,p_effective_at:null});if(r.error){toast(errorText(r.error),true);renderPromotion()}else toast("บันทึกการตัดสินใจแล้ว");return}
-  if(t.matches("[data-v161-att-user]")){const note=prompt(t.value==="excused"?"ระบุเหตุผลการลา (แนะนำให้กรอก)":"หมายเหตุการแก้สถานะ (ไม่บังคับ)","")||null;const r=await client().rpc("admin_set_attendance_status_v161",{p_session_id:t.dataset.session,p_user_id:t.dataset.v161AttUser,p_status:t.value,p_note:note});if(r.error){toast(errorText(r.error),true);loadAttendanceRoster(t.dataset.session);return}toast(`บันทึกสถานะ ${attendanceStatusLabel(t.value)} แล้ว`);loadAttendanceRoster(t.dataset.session);return}
+  if(t.matches("[data-v161-att-user]")){const note=prompt(t.value==="excused"?"ระบุเหตุผลการลา (แนะนำให้กรอก)":"หมายเหตุการแก้สถานะ (ไม่บังคับ)","")||null;const p=await getProfile();const rpc=p?.role==="teacher"?"staff_set_attendance_status_v206":"admin_set_attendance_status_v161";const r=await client().rpc(rpc,{p_session_id:t.dataset.session,p_user_id:t.dataset.v161AttUser,p_status:t.value,p_note:note});if(r.error){toast(errorText(r.error),true);loadAttendanceRoster(t.dataset.session);return}toast(`บันทึกสถานะ ${attendanceStatusLabel(t.value)} แล้ว`);loadAttendanceRoster(t.dataset.session);return}
   if(t.matches("[data-v14-att-status]")){const note=prompt("หมายเหตุการแก้สถานะ (ไม่บังคับ)","")||null;const r=await client().rpc("set_attendance_record_status",{p_record_id:t.dataset.v14AttStatus,p_status:t.value,p_note:note});if(r.error){toast(errorText(r.error),true);loadAttendanceRoster(t.dataset.session);return}toast("แก้สถานะการเข้าเรียนแล้ว");loadAttendanceRoster(t.dataset.session)}
 });
 
@@ -1519,8 +1624,23 @@ function cleanup(){
 
 // compatibility marker: V17-MASTER-FLOW
 // window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:"V17-MASTER-FLOW"})
+
+async function renderTeacherWorkV206(){
+  state.route="teacherwork";setTitle("ตรวจงาน");busy("กำลังโหลดงานที่ต้องตรวจ...");
+  const p=await getProfile();if(!["teacher","admin"].includes(p?.role))throw new Error("STAFF_REQUIRED");
+  const r=await client().rpc("staff_submission_queue_v206");if(r.error)throw r.error;const rows=Array.isArray(r.data)?r.data:[];
+  content().innerHTML=`<section class="v14-page v206-teacher-work"><div class="v14-section-head"><div><span class="v14-kicker">TEACHER WORKSPACE</span><h1>ตรวจงาน</h1><p>แสดงเฉพาะนักศึกษาและรายวิชาที่คุณได้รับมอบหมาย</p></div><span class="v206-count">${rows.length} รายการ</span></div><div class="v206-work-list">${rows.map(x=>`<article class="card v206-work-card"><div><span class="v14-kicker">${esc(x.subject_code||"")}</span><h3>${esc(x.worksheet_title||"ใบงาน")}</h3><p><b>${esc(x.student_code||"")}</b> ${esc(x.full_name||"")}</p><small>${esc(x.class_name||x.grade_level||"")} • ${esc(x.status||"")}${x.score!=null?` • ${Number(x.score).toFixed(2)}/${Number(x.max_score||0).toFixed(2)}`:""}</small></div><button class="btn primary" data-v206-review="${x.id}">เปิดตรวจ</button></article>`).join("")||`<div class="v14-empty">ยังไม่มีงานรอตรวจ</div>`}</div></section>`;
+  $$('[data-v206-review]').forEach(b=>b.onclick=()=>openTeacherSubmissionV206(b.dataset.v206Review));
+}
+async function openTeacherSubmissionV206(id){
+  const r=await client().rpc("staff_submission_detail_v206",{p_submission_id:id});if(r.error)return toast(errorText(r.error),true);const d=r.data||{},sub=d.submission||{},w=d.worksheet||{},st=d.student||{},g=d.grade||{};
+  overlay(`<div class="v14-modal-head"><div><span class="v14-kicker">ตรวจงาน</span><h2>${esc(w.title||"ใบงาน")}</h2><p>${esc(st.student_code||"")} ${esc(st.full_name||"")}</p></div><button class="btn" data-v14-close>✕</button></div><div class="v206-answer-box"><b>คำตอบนักศึกษา</b><pre>${esc(JSON.stringify(sub.answers||{},null,2))}</pre></div><form id="v206-grade-form" class="v16-form-stack"><div class="v14-form-grid"><label>คะแนน<input class="input" name="score" type="number" step="0.01" min="0" value="${esc(g.score??"")}" required></label><label>คะแนนเต็ม<input class="input" name="max" type="number" step="0.01" min="0.01" value="${esc(g.max_score??10)}" required></label></div><label>ความคิดเห็น<textarea class="input" name="comment">${esc(g.admin_comment||"")}</textarea></label><label>เหตุผลการบันทึก<input class="input" name="reason" value="ตรวจและให้คะแนนโดยผู้สอน" required></label><div class="row end"><button class="btn primary">บันทึกคะแนน</button></div></form>` ,true);
+  $("#v206-grade-form").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),q=await client().rpc("staff_grade_submission_v206",{p_submission_id:id,p_score:Number(f.get("score")),p_max_score:Number(f.get("max")),p_grade:null,p_admin_comment:String(f.get("comment")||"")||null,p_rubric_result:{},p_reason:String(f.get("reason")||""),p_request_key:v179RequestKey()});if(q.error)return toast(errorText(q.error),true);closeOverlay();toast("บันทึกคะแนนแล้ว");renderTeacherWorkV206()};
+}
 window.DOCNR_V16_6=Object.freeze({navigate,cleanup,version:RELEASE_VERSION,classroomVersion:V194_CLASSROOM_COMPAT});
 window.addEventListener("pagehide",cleanup);
 boot().catch(e=>console.error("DOC-FULL-NR V16.6 boot",e));
 
 // Compatibility marker: admin_set_behavior_score (superseded by admin_adjust_subject_scores_v193 in V19.3).
+// V20.5 compatibility RPC marker retained: admin_issue_late_attendance_barcode_v205
+// V20.5 compatibility RPC marker retained: admin_enroll_room_group_subject_v205
