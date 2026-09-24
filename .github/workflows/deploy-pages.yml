@@ -67,6 +67,7 @@ jobs:
           python tests/v203_mobile_interaction_camera_contract.py
           python tests/v204_real_device_mobile_router_contract.py
           python tests/v205_late_barcode_room_groups_contract.py
+          python tests/v206_adaptive_stability_contract.py
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/device-camera-runtime.js
@@ -75,6 +76,7 @@ jobs:
           node --check site/v16-7-hardening.js
           node --check site/v16-8-course-flow.js
           node --check site/v19-ux-runtime.js
+          node --check site/v20-stability-runtime.js
           node --check site/v16-exam.js
           node --check site/sw.js
           node --check site/v18-supabase.js
@@ -99,6 +101,7 @@ jobs:
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v203_mobile_interaction_camera_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v204_real_device_mobile_router_browser_contract.py
           DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v205_late_barcode_room_groups_browser_contract.py
+          DOCNR_RUN_BROWSER_CONTRACT=1 python tests/v206_adaptive_stability_browser_contract.py
       - name: Decode PWA app icons
         shell: bash
         run: |

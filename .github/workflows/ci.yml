@@ -42,6 +42,7 @@ jobs:
           node --check site/camera-registration.js
           node --check site/device-camera-runtime.js
           node --check site/mobile.js
+          node --check site/v20-stability-runtime.js
           node --check site/sw.js
           node --check site/v16-platform.js
           node --check site/v16-7-hardening.js

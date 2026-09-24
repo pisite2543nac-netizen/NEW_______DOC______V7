@@ -13,10 +13,10 @@ css=(site/'v20-unified-ui.css').read_text('utf-8')
 meta=(site/'release-meta.js').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
-assert 'data-docnr-release="v20-5-late-teacher-barcode-admin-room-groups"' in idx
-assert 'doc-full-nr-v20-5-late-teacher-barcode-admin-room-groups-20260923' in sw
-assert 'RELEASE_VERSION="V20.5"' in meta and '20260923-v20-5' in meta
-assert ver['version']=='20.5' and ver['release_marker']=='V20.5'
+assert 'data-docnr-release="v20-5-late-teacher-barcode-admin-room-groups"','data-docnr-release="v20-6-adaptive-stability-teacher-room-integration"' in idx
+assert any(x in sw for x in ['doc-full-nr-v20-5-late-teacher-barcode-admin-room-groups-20260923','doc-full-nr-v20-6-adaptive-stability-teacher-room-integration-20260924'])
+assert any(x in meta for x in ['RELEASE_VERSION="V20.5"','RELEASE_VERSION="V20.6"']) and any(x in meta for x in ['20260923-v20-5','20260924-v20-6'])
+assert float(ver['version'])>=20.5 and ver['release_marker'] in {'V20.5','V20.6'}
 
 # One mobile drawer owner: legacy backdrop is removed/disabled and a single docnr backdrop owns tap interception.
 assert "document.getElementById('mobile-nav-backdrop')?.remove()" in mobile

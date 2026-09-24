@@ -1,0 +1,26 @@
+DOC-FULL-NR V20.6 TEST RESULTS — 2026-09-24
+
+SOURCE: PASS — based on uploaded V20.5 full package, modified in-place to V20.6
+JAVASCRIPT SYNTAX: PASS — all site/*.js node --check
+STATIC CONTRACTS: PASS — 34/34 non-browser contracts
+BROWSER CONTRACTS: PASS — 20 consecutive existing Chromium contracts completed before tool timeout; remaining V20.3/V20.4/V20.5 contracts separately PASS
+V20.6 BROWSER CONTRACT: PASS — Chromium 1920x1080, 1366x768, 1024x768, 768x1024, 390x844, 844x390
+HORIZONTAL OVERFLOW: PASS on V20.6 synthetic responsive contract
+STALE BACKDROP POINTER GUARD: PASS
+REAL DEVICE CAMERA: NOT VERIFIED — requires physical Android/iPhone/iPad devices
+NPM/VITE REACT BUILD: NOT VERIFIED — dependency installation timed out; production /site is static PWA
+
+PRODUCTION DATABASE READ-ONLY CHECK
+- active subjects = 11 PASS
+- digital worksheets/templates = 187 PASS
+- paper worksheets/templates = 187 PASS
+- canonical worksheets/templates = 374 PASS
+- exam question bank = 550 PASS
+- app_role enum includes admin, teacher, user PASS
+- production migrations include V20.6 / V20.6.1 teacher + room group hardening PASS
+
+SECURITY ADVISOR (NOT CLEAN)
+- rls_enabled_no_policy = 18 INFO
+- authenticated_security_definer_function_executable = 143 WARN
+- leaked password protection disabled = 1 WARN
+No blanket REVOKE/DROP was applied.
