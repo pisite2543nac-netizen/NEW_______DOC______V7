@@ -28,7 +28,7 @@ Deno.serve(async(req:Request)=>{
     if(!ap||ap.role!=='admin'||!ap.active||ap.approval_status!=='approved')return json({error:'Forbidden'},403);
 
     const b=await req.json();
-    const role=b.role==='admin'?'admin':'user';
+    const role=b.role==='admin'?'admin':b.role==='teacher'?'teacher':'user';
     const password=String(b.password||'');
     if(password.length<8)return json({error:'INVALID_USER_DATA'},400);
 
@@ -54,7 +54,7 @@ Deno.serve(async(req:Request)=>{
     if(dup.error)return json({error:dup.error.message},500);if((dup.data||[]).length)return json({error:'USERNAME_EXISTS'},409);
     if(phone){const pd=await svc.from('profiles').select('id').eq('phone',phone).limit(1);if(pd.error)return json({error:pd.error.message},500);if((pd.data||[]).length)return json({error:'PHONE_EXISTS'},409)}
 
-    const authEmail=role==='admin'&&contact?contact:`${username.toLowerCase()}@docfullnr.local`;
+    const authEmail=role!=='user'&&contact?contact:`${username.toLowerCase()}@docfullnr.local`;
     const {data:created,error}=await svc.auth.admin.createUser({email:authEmail,password,email_confirm:true,user_metadata:{full_name:fullName,nickname,username,student_code:studentCode}});
     if(error)return json({error:error.message},400);
     const id=created.user.id,now=new Date().toISOString();

@@ -1,0 +1,32 @@
+DOC-FULL-NR V21.0 FINAL TEST RESULTS
+Date: 2026-09-24
+
+PASS
+- 37/37 non-browser/static Python contracts
+- 23/23 browser contracts
+- V21 browser matrix: 3 roles x 9 viewport/orientation cases = 27/27
+  1920x1080, 1366x768, 1024x768, 768x1024,
+  390x844, 360x800, 320x720, 288x640, 844x390
+- 24/24 site/*.js Node syntax checks
+- index.html asset references complete
+- exam.html asset references complete
+- Service Worker shell asset references complete
+- Active production page does not load mobile.js / v19-ux-runtime.js / v20-stability-runtime.js
+- Production Supabase data: 11 active subjects, Digital 187, Paper 187, total 374, exam bank 550
+- V21 required Production RPC contract: 20/20 present
+- CI/deploy workflow YAML parses successfully
+
+PRODUCTION SECURITY ADVISOR — REVIEW, NOT RELEASE-BLOCKING
+- rls_enabled_no_policy: 15 INFO
+- authenticated_security_definer_function_executable: 162 WARN
+- auth_leaked_password_protection: 1 WARN
+These are not blanket-fixed in V21 because the application intentionally uses server-authoritative RPCs and a blanket revoke/security-mode change can break production. Review per function/table before changing privileges.
+
+NOT VERIFIED IN THIS ENVIRONMENT
+- Physical iPhone/Android/iPad camera hardware and native permission UI
+- GitHub Push / Actions / Pages live deployment (connector write permission is unavailable here)
+- Windows PowerShell execution of the One-Click installer itself; installer source/gates were statically reviewed, but PowerShell is not installed in this environment
+
+RELEASE DECISION
+SOURCE PACKAGE: READY FOR DEPLOYMENT TEST
+LIVE PRODUCTION: VERIFY AFTER ONE-CLICK DEPLOY AND REAL-DEVICE CAMERA SMOKE TEST

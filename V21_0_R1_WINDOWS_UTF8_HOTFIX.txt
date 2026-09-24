@@ -1,0 +1,14 @@
+DOC-FULL-NR V21.0 R1 WINDOWS UTF-8 HOTFIX
+Date: 2026-09-24
+
+Issue found from real installer log:
+- Windows Python 3.13 used cp874 as the default text encoding.
+- Legacy/static contract files used Path.read_text() without encoding in several tests.
+- Installer stopped at v206_adaptive_stability_contract.py with UnicodeDecodeError.
+- Fail-safe rollback worked and GitHub main remained on the previous release.
+
+Fixes in R1:
+1. Every remaining bare Path.read_text() in tests now explicitly uses encoding='utf-8'.
+2. One-click CMD sets code page 65001, PYTHONUTF8=1 and PYTHONIOENCODING=utf-8.
+3. PowerShell installer also forces PYTHONUTF8/PYTHONIOENCODING and UTF-8 console output before local tests.
+4. Business/UI/backend source remains V21.0; this is an installer/test-runner robustness hotfix only.

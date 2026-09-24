@@ -77,23 +77,13 @@ function applyTheme(mode=readTheme()){
 function toggleTheme(){const next=readTheme()==='dark'?'light':'dark';try{localStorage.setItem(THEME_KEY,next)}catch{}applyTheme(next);toast(next==='dark'?'เปิดไนท์โหมดแล้ว':'เปลี่ยนเป็นโหมดสว่างแล้ว')}
 
 function syncResponsiveFit(){
+  // V21: never transform/scale the application shell. Browser zoom remains the
+  // user's responsibility; responsive layout is driven only by the real viewport.
   const root=document.documentElement;
-  const inner=Math.max(1,window.innerWidth||0),outer=Math.max(1,window.outerWidth||inner);
-  let scale=1;
-  // Chromium/Edge page zoom changes innerWidth but not outerWidth. Compensate only on desktop
-  // and only when the difference is large enough to avoid false positives from browser chrome.
-  if(inner>=1000&&outer>=700){
-    const ratio=inner/outer;
-    if(ratio>1.14&&ratio<2.6)scale=Math.min(2.25,Math.max(1,ratio));
-  }
-  root.style.setProperty('--docnr-page-scale',scale.toFixed(3));
-  root.dataset.docnrFitScale=scale.toFixed(2);
+  root.style.setProperty('--docnr-page-scale','1');
+  root.dataset.docnrFitScale='1.00';
 }
-let responsiveFitTimer=0;
-function scheduleResponsiveFit(){clearTimeout(responsiveFitTimer);responsiveFitTimer=setTimeout(syncResponsiveFit,60)}
 syncResponsiveFit();
-window.addEventListener('resize',scheduleResponsiveFit,{passive:true});
-window.visualViewport?.addEventListener('resize',scheduleResponsiveFit,{passive:true});
 
 applyTheme();
 
@@ -321,6 +311,7 @@ function activeNavRoute(route){
 function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:isTeacher()?TEACHER_ROUTES:USER_ROUTES).has(route)}
 function paintNav(){
   const active=activeNavRoute(S.route),root=document.documentElement;
+  root.dataset.role=isAdmin()?"admin":isTeacher()?"teacher":"user";
   root.dataset.appRoute=S.route||"dashboard";
   if(S.routeArg)root.dataset.appArg=String(S.routeArg);else delete root.dataset.appArg;
   $$("#sidebar .nav [data-route]").forEach(b=>b.classList.toggle("active",b.dataset.route===active));
@@ -354,6 +345,7 @@ async function navigateUnified(route,arg=null){
   route=String(route||"dashboard");
   if(!routeAllowed(route))route="dashboard";
   const nextKey=navKey(route,arg);
+  if(document.documentElement.dataset.navBusy==="1"&&navKey(S.route,S.routeArg)===nextKey)return false;
   if(navKey(S.route,S.routeArg)!==nextKey){
     S.navHistory.push({route:S.route||"dashboard",arg:S.routeArg??null});
     if(S.navHistory.length>30)S.navHistory.splice(0,S.navHistory.length-30);
@@ -411,7 +403,7 @@ function installGuide(){
     <div class="card docnr-install-note"><b>โหมดเต็มหน้าจอ</b><p class="muted">Android/Windows/Browser ที่รองรับ Manifest Fullscreen จะเปิดแบบเต็มจอจากไอคอนแอป หากระบบปฏิบัติการเปิดแบบ Standalone แทน ให้แตะ/คลิกหนึ่งครั้งแล้วระบบจะพยายามเข้า Fullscreen หรือกดปุ่ม “⛶ เต็มจอ” ด้านบน</p><p class="muted">iPhone/iPad ใช้โหมด Add to Home Screen ซึ่งซ่อนแถบ Safari; Web Fullscreen API อาจมีข้อจำกัดตามรุ่น iOS</p></div>
     <div class="card docnr-install-note"><b>🔔 แจ้งเตือนใกล้หมดเวลาส่งงาน</b><p class="muted">ระบบสร้างแจ้งเตือนเมื่อเหลือเวลา 1 ชั่วโมง และเมื่อหมดเวลาส่งออนไลน์ ผู้ใช้ต้องอนุญาต Notifications บนอุปกรณ์แต่ละเครื่องหนึ่งครั้งจากปุ่มกระดิ่ง 🔔 ภายในระบบ</p><p class="muted">หากปิดแอปแบบบังคับหรือระบบปฏิบัติการหยุด PWA ทั้งหมด การแจ้งเตือนที่สร้างไว้จะถูกแสดงเมื่อเปิดระบบและ Session กลับมาทำงานอีกครั้ง</p></div>
     <div class="row end"><button class="btn" id="install-fullscreen-help">⛶ ทดลองเต็มจอ</button><button class="btn primary" data-close>เข้าใจแล้ว</button></div>`);
-  const fs=$('#install-fullscreen-help');if(fs)fs.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
+  const fs=$('#install-fullscreen-help');if(fs)fs.onclick=()=>window.DOCNR_V21?.toggleFullscreen?.();
 }
 function renderShell(){
   const approval=S.profile?.approval_status||"approved";
@@ -431,11 +423,12 @@ function renderShell(){
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
       <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":isTeacher()?"TEACHER":"USER"} • ${RELEASE_VERSION}</div></div></div>
-      <nav class="nav nav-card-menu">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",teacherwork:"✅",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`}).join("")}</nav>
+      <nav class="nav nav-card-menu" aria-label="เมนูหลัก">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",teacherwork:"✅",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button type="button" data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span class="nav-card-label">${x[1]}</span></button>`}).join("")}</nav>
+      <div class="sidebar-footer"><div class="sidebar-user"><b>${esc(S.profile?.full_name||S.session?.user?.email||"")}</b><span>${isAdmin()?"ผู้ดูแลระบบ":isTeacher()?"ครูผู้สอน":"นักศึกษา"}</span></div><div class="sidebar-utilities"><button type="button" class="btn sm" id="sidebar-theme">◐ ธีม</button><button type="button" class="btn sm" id="sidebar-fullscreen">⛶ เต็มจอ</button><button type="button" class="btn sm" id="sidebar-install">＋ ติดตั้ง</button></div><button type="button" class="btn sm" id="sidebar-logout">ออกจากระบบ</button></div>
     </aside>
     <main class="main">
       <header class="topbar" id="topbar">
-        <div class="row topbar-leading"><button class="btn mobile-menu" id="menubtn">☰</button><button class="btn sm global-back" id="global-back" type="button" title="ย้อนกลับหน้าก่อนหน้า" aria-label="ย้อนกลับหน้าก่อนหน้า">← <span>ย้อนกลับ</span></button><b id="pagetitle"></b></div>
+        <div class="row topbar-leading"><button class="btn mobile-menu" id="menubtn" type="button" aria-label="เปิดเมนู" aria-controls="sidebar" aria-expanded="false">☰</button><button class="btn sm global-back" id="global-back" type="button" title="ย้อนกลับหน้าก่อนหน้า" aria-label="ย้อนกลับหน้าก่อนหน้า">← <span>ย้อนกลับ</span></button><b id="pagetitle"></b></div>
         <div class="row topbar-actions">
           <button class="btn sm" id="theme-toggle" title="สลับธีม">🌙 ไนท์โหมด</button>
           <button class="btn install sm" id="install">ติดตั้งแล้ว</button>
@@ -449,13 +442,18 @@ function renderShell(){
   </div>`;
 
   $$("[data-route]").forEach(b=>b.onclick=()=>navigateUnified(b.dataset.route));
-  $("#logout").onclick=async()=>{try{window.DOCNR_V16_6?.cleanup?.()}catch{}await sb.auth.signOut()};
-  $("#menubtn").onclick=()=>$("#sidebar").classList.toggle("open");
+  const doLogout=async()=>{try{window.DOCNR_V16_6?.cleanup?.()}catch{}await sb.auth.signOut()};
+  $("#logout").onclick=doLogout;
+  const sideLogout=$("#sidebar-logout");if(sideLogout)sideLogout.onclick=doLogout;
+  const sideTheme=$("#sidebar-theme");if(sideTheme)sideTheme.onclick=toggleTheme;
+  const sideFullscreen=$("#sidebar-fullscreen");if(sideFullscreen)sideFullscreen.onclick=()=>window.DOCNR_V21?.toggleFullscreen?.();
+  const sideInstall=$("#sidebar-install");if(sideInstall)sideInstall.onclick=installGuide;
+  $("#menubtn").onclick=()=>window.DOCNR_V21?.toggleDrawer?.();
   const backBtn=$("#global-back");if(backBtn)backBtn.onclick=()=>goBackUnified().catch(e=>toast(friendlyError(e),"error"));syncGlobalBackButton();
   $("#install").onclick=installGuide;
   const themeBtn=$("#theme-toggle");if(themeBtn)themeBtn.onclick=toggleTheme;
   applyTheme();
-  const fsBtn=$("#fullscreen");if(fsBtn)fsBtn.onclick=()=>window.DOCNR_MOBILE_RUNTIME?.toggleFullscreen?.();
+  const fsBtn=$("#fullscreen");if(fsBtn)fsBtn.onclick=()=>window.DOCNR_V21?.toggleFullscreen?.();
   paintNav();
   route();
 
@@ -602,11 +600,12 @@ async function users(){
     $("#userbody").innerHTML=(items||[]).filter(x=>(!level||x.grade_level===level)&&(!room||x.room_label===room)&&(!dept||x.department===dept)&&(!major||x.major===major)&&(!status||(x.approval_status||"approved")===status)&&(!z||[x.full_name,x.display_name,x.username,x.student_code,x.phone,x.class_name,x.grade_level,x.room_label,x.department,x.major].some(v=>String(v||"").toLowerCase().includes(z)))).map(x=>`<tr>
       <td><b>${esc(x.full_name||"-")}</b><div class="smalltext muted">ชื่อเล่น: ${esc(x.display_name&&x.display_name!==x.full_name?x.display_name:"-")}</div></td><td>${esc(x.username||"-")}</td><td>${esc(x.student_code||"-")}</td><td>${esc(x.class_name||"-")}</td><td>${esc(x.department||"-")}<div class="smalltext muted">${esc(normalizeMajorForLevel(x.major,x.grade_level)||"")}</div></td>
       <td><span class="badge ${x.role==="admin"?"warn":""}">${esc(x.role)}</span></td><td><span class="badge ${x.approval_status==="approved"&&x.active?"green":x.approval_status==="pending"?"warn":"red"}">${x.approval_status==="approved"&&x.active?"อนุมัติแล้ว":x.approval_status==="pending"?"รออนุมัติ":x.approval_status==="rejected"?"ไม่อนุมัติ":"ระงับ"}</span></td>
-      <td><div class="row"><button class="btn sm primary" data-edit-user="${x.id}">แก้ข้อมูล</button><button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>${x.role!=="admin"?`<button class="btn sm class-leader-btn ${activeLeaders.has(x.id)?"is-leader":""}" data-class-leader-user="${x.id}">${activeLeaders.has(x.id)?"👑 หัวหน้าห้อง":"👑 เพิ่มสิทธิหัวหน้าห้อง"}</button>`:""}${x.id!==uid()?`<button class="btn sm ${x.approval_status==="approved"&&x.active?"red":"green"}" data-user-toggle="${x.id}" data-status="${esc(x.approval_status||"pending")}">${x.approval_status==="approved"&&x.active?"ระงับบัญชี":"อนุมัติบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
+      <td><div class="row"><button class="btn sm primary" data-edit-user="${x.id}">แก้ข้อมูล</button>${x.role==="teacher"?`<button class="btn sm green" data-teacher-scope="${x.id}">งานสอน</button>`:""}${x.role==="user"?`<button class="btn sm" data-room-user="${x.id}">กำหนดห้อง</button>`:""}${x.role==="user"?`<button class="btn sm class-leader-btn ${activeLeaders.has(x.id)?"is-leader":""}" data-class-leader-user="${x.id}">${activeLeaders.has(x.id)?"👑 หัวหน้าห้อง":"👑 เพิ่มสิทธิหัวหน้าห้อง"}</button>`:""}${x.id!==uid()?`<button class="btn sm ${x.approval_status==="approved"&&x.active?"red":"green"}" data-user-toggle="${x.id}" data-status="${esc(x.approval_status||"pending")}">${x.approval_status==="approved"&&x.active?"ระงับบัญชี":"อนุมัติบัญชี"}</button>`:""}<button class="btn sm" data-reset-pass="${x.id}">ตั้งรหัสผ่าน</button></div></td>
     </tr>`).join("")||`<tr><td colspan="8" class="empty">ไม่พบผู้ใช้</td></tr>`;
     $$("[data-room-user]").forEach(b=>b.onclick=()=>assignUserRoom(b.dataset.roomUser,items.find(x=>x.id===b.dataset.roomUser),rooms||[]));
     $$("[data-user-toggle]").forEach(b=>b.onclick=async()=>{const approved=b.dataset.status==="approved";const status=approved?"suspended":"approved";const reason=approved?(prompt("เหตุผลการระงับบัญชี (ไม่บังคับ)","")||null):null;const {error}=await sb.rpc("decide_account_approval",{p_user_id:b.dataset.userToggle,p_status:status,p_reason:reason});if(error)return toast(friendlyError(error),"error");toast(status==="approved"?"อนุมัติบัญชีแล้ว":"ระงับบัญชีแล้ว");users()});
     $$('[data-edit-user]').forEach(b=>b.onclick=()=>editUserDialog(items.find(x=>x.id===b.dataset.editUser)));
+    $$('[data-teacher-scope]').forEach(b=>b.onclick=()=>teacherScopeDialog(b.dataset.teacherScope,items.find(x=>x.id===b.dataset.teacherScope)));
     $$('[data-class-leader-user]').forEach(b=>b.onclick=()=>classLeaderDialog(b.dataset.classLeaderUser,items.find(x=>x.id===b.dataset.classLeaderUser),rooms||[],activeLeaders));
     $$('[data-reset-pass]').forEach(b=>b.onclick=async()=>{const p=prompt("กำหนดรหัสผ่านใหม่ อย่างน้อย 8 ตัว");if(!p)return;if(p.length<8)return toast("รหัสผ่านต้องอย่างน้อย 8 ตัว","error");try{await adminOp({action:"reset_password",user_id:b.dataset.resetPass,password:p});toast("ตั้งรหัสผ่านใหม่แล้ว")}catch(err){toast(friendlyError(err),"error")}});
   };
@@ -620,13 +619,13 @@ function thaiOnlyInput(input){
 function createUserDialog(){
   modal(`<div class="modal-header"><div><h3>สร้างผู้ใช้</h3><div class="muted">บัญชีนักศึกษาใช้เลขนักศึกษาเป็นชื่อเข้าสู่ระบบ • ข้อมูลนักศึกษาต้องครบก่อนสร้างบัญชี</div></div><button class="btn sm" data-close>✕</button></div>
     <form id="cu"><div class="form-grid">
-      <div class="field"><label>ประเภทบัญชี</label><select name="role" id="cu-role"><option value="user">นักศึกษา (User)</option><option value="admin">ผู้ดูแลระบบ (Admin)</option></select></div>
+      <div class="field"><label>ประเภทบัญชี</label><select name="role" id="cu-role"><option value="user">นักศึกษา (User)</option><option value="teacher">ครูผู้สอน (Teacher)</option><option value="admin">ผู้ดูแลระบบ (Admin)</option></select></div>
       <div class="field"><label>ชื่อ-นามสกุล</label><input name="full_name" required></div>
       <div class="field cu-student"><label>ชื่อเล่น</label><input name="display_name" maxlength="40" required></div>
       <div class="field cu-student"><label>วันเดือนปีเกิด</label><input name="birth_date" type="date" max="${new Date().toISOString().slice(0,10)}" required></div>
       <div class="field cu-student"><label>เลขประจำตัวนักศึกษา</label><input name="student_code" inputmode="numeric" pattern="[0-9]{1,15}" maxlength="15" required></div>
-      <div class="field cu-admin" hidden><label>Username Admin</label><input name="username" minlength="4"></div>
-      <div class="field cu-admin" hidden><label>อีเมล Admin (ไม่บังคับ)</label><input name="email" type="email"></div>
+      <div class="field cu-admin" hidden><label>Username ครู / Admin</label><input name="username" minlength="4"></div>
+      <div class="field cu-admin" hidden><label>อีเมลครู / Admin (ไม่บังคับ)</label><input name="email" type="email"></div>
       <div class="field cu-student"><label>ระดับชั้น</label><select name="grade_level" required>${optionHtml(REG_LEVELS,"เลือกระดับชั้น")}</select></div>
       <div class="field cu-student"><label>ห้อง / กลุ่ม</label><select name="room_label" required>${optionHtml(REG_ROOMS,"เลือกห้อง")}</select></div>
       <div class="field cu-student"><label>แผนกวิชา</label><select name="department" required>${optionHtml(REG_DEPARTMENTS,"เลือกแผนก")}</select></div>
@@ -641,14 +640,14 @@ function createUserDialog(){
   role.onchange=toggle;toggle();thaiOnlyInput(form.elements.full_name);thaiOnlyInput(form.elements.display_name);bindMajorToLevel(form);
   form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form),btn=$("#cubtn"),roleValue=String(f.get("role")||"user"),fullName=String(f.get("full_name")||"").trim(),password=String(f.get("password")||"");
     if(password.length<8)return toast("รหัสผ่านต้องอย่างน้อย 8 ตัว","error");
-    const body=roleValue==="user"?{role:"user",password,full_name:fullName,display_name:String(f.get("display_name")||"").trim(),birth_date:String(f.get("birth_date")||""),student_code:String(f.get("student_code")||"").trim(),grade_level:String(f.get("grade_level")||""),room_label:String(f.get("room_label")||""),department:String(f.get("department")||""),major:majorForBackend(String(f.get("major")||""),String(f.get("grade_level")||"")),phone:String(f.get("phone")||"").trim(),seat_number:String(f.get("seat_number")||"").trim()||null}:{role:"admin",password,full_name:fullName,username:String(f.get("username")||"").trim(),email:String(f.get("email")||"").trim()||null};
+    const body=roleValue==="user"?{role:"user",password,full_name:fullName,display_name:String(f.get("display_name")||"").trim(),birth_date:String(f.get("birth_date")||""),student_code:String(f.get("student_code")||"").trim(),grade_level:String(f.get("grade_level")||""),room_label:String(f.get("room_label")||""),department:String(f.get("department")||""),major:majorForBackend(String(f.get("major")||""),String(f.get("grade_level")||"")),phone:String(f.get("phone")||"").trim(),seat_number:String(f.get("seat_number")||"").trim()||null}:{role:roleValue==="teacher"?"teacher":"admin",password,full_name:fullName,username:String(f.get("username")||"").trim(),email:String(f.get("email")||"").trim()||null};
     if(roleValue==="user"&&(!/[\u0E00-\u0E7F]/.test(body.full_name)||!/[\u0E00-\u0E7F]/.test(body.display_name)))return toast("ชื่อ-นามสกุลและชื่อเล่นต้องเป็นภาษาไทย","error");
     btn.disabled=true;btn.textContent="กำลังสร้าง...";const {data,error}=await sb.functions.invoke("admin-create-user",{body});if(error||data?.error){btn.disabled=false;btn.textContent="สร้างบัญชี";return toast(friendlyError(data?.error||error),"error")}closeModal();toast(`สร้างบัญชีสำเร็จ • Login: ${data?.username||body.username||body.student_code}`);users()};
 }
 function editUserDialog(user){
   if(!user)return toast("ไม่พบข้อมูลผู้ใช้","error");
-  const isUser=user.role!=="admin";
-  modal(`<div class="modal-header"><div><h3>แก้ข้อมูลผู้ใช้</h3><div class="muted">${esc(user.full_name||user.username||"")} • ${isUser?"นักศึกษา":"Admin"}</div></div><button class="btn sm" data-close>✕</button></div>
+  const isUser=user.role==="user";
+  modal(`<div class="modal-header"><div><h3>แก้ข้อมูลผู้ใช้</h3><div class="muted">${esc(user.full_name||user.username||"")} • ${isUser?"นักศึกษา":user.role==="teacher"?"ครูผู้สอน":"Admin"}</div></div><button class="btn sm" data-close>✕</button></div>
     <form id="eu"><div class="form-grid">
       <div class="field"><label>ชื่อ-นามสกุล</label><input name="full_name" value="${esc(user.full_name||"")}" required></div>
       ${isUser?`<div class="field"><label>ชื่อเล่น</label><input name="display_name" value="${esc(user.display_name&&user.display_name!==user.full_name?user.display_name:"")}" maxlength="40" required></div>
@@ -666,6 +665,27 @@ function editUserDialog(user){
     btn.disabled=true;btn.textContent="กำลังบันทึก...";try{await adminOp(body);closeModal();toast("บันทึกข้อมูลผู้ใช้แล้ว");users()}catch(err){btn.disabled=false;btn.textContent="บันทึกข้อมูล";toast(friendlyError(err),"error")}};
 }
 
+
+async function teacherScopeDialog(teacherId,user){
+  if(!teacherId||user?.role!=="teacher")return toast("บัญชีนี้ไม่ใช่ครูผู้สอน","error");
+  const [ar,sr,cr]=await Promise.all([
+    sb.rpc("admin_teacher_assignments_v206"),
+    sb.from("subjects").select("id,code,name,active,subject_type").eq("active",true).eq("subject_type","subject").order("code"),
+    sb.from("classrooms").select("id,name,level,academic_year,semester,active").eq("active",true).order("name")
+  ]);
+  if(ar.error||sr.error||cr.error)return toast(friendlyError(ar.error||sr.error||cr.error),"error");
+  const current=new Map((ar.data||[]).filter(x=>x.teacher_id===teacherId).map(x=>[`${x.subject_id}:${x.classroom_id}`,x]));
+  const subjects=sr.data||[],rooms=cr.data||[];
+  modal(`<div class="modal-header"><div><h3>งานสอนของครู</h3><div class="muted">${esc(user.full_name||user.username||"")} • กำหนดเฉพาะ วิชา × ห้อง ที่รับผิดชอบ</div></div><button class="btn sm" data-close>✕</button></div>
+    <div class="alert">ครูจะเห็นนักศึกษา งาน คะแนน ข้อสอบ และเช็คชื่อเฉพาะขอบเขตที่กำหนดในหน้านี้</div>
+    <div class="form-grid"><div class="field"><label>รายวิชา</label><select id="teacher-scope-subject">${subjects.map(x=>`<option value="${x.id}">${esc(x.code)} ${esc(x.name)}</option>`).join("")}</select></div><div class="field"><label>ห้องเรียน</label><select id="teacher-scope-room">${rooms.map(x=>`<option value="${x.id}">${esc(x.name)} • ${esc(x.academic_year||"")} / ${esc(x.semester||"")}</option>`).join("")}</select></div></div>
+    <div class="row end"><button class="btn primary" id="teacher-scope-add">+ เพิ่ม/เปิดงานสอน</button></div>
+    <div id="teacher-scope-list" class="docnr-work-list"></div>`,{wide:true});
+  const host=$("#teacher-scope-list");
+  const draw=()=>{const rows=[...current.values()].filter(x=>x.active!==false);host.innerHTML=rows.map(x=>`<article class="docnr-work-row"><div><b>${esc(x.subject_code||"")} ${esc(x.subject_name||"")}</b><small>${esc(x.classroom_name||"")}</small></div><button type="button" class="btn sm red" data-teacher-scope-off="${x.subject_id}:${x.classroom_id}">ยกเลิกงานสอน</button></article>`).join("")||`<div class="empty">ยังไม่มีงานสอน</div>`;$$('[data-teacher-scope-off]',host).forEach(b=>b.onclick=async()=>{const [subjectId,classroomId]=b.dataset.teacherScopeOff.split(":");b.disabled=true;const r=await sb.rpc("admin_set_teacher_assignment_v206",{p_teacher_id:teacherId,p_subject_id:subjectId,p_classroom_id:classroomId,p_active:false});if(r.error){b.disabled=false;return toast(friendlyError(r.error),"error")}const key=`${subjectId}:${classroomId}`;if(current.has(key))current.get(key).active=false;draw();toast("ยกเลิกงานสอนแล้ว")})};
+  draw();
+  $("#teacher-scope-add").onclick=async()=>{const subjectId=$("#teacher-scope-subject").value,classroomId=$("#teacher-scope-room").value;if(!subjectId||!classroomId)return;const btn=$("#teacher-scope-add");btn.disabled=true;const r=await sb.rpc("admin_set_teacher_assignment_v206",{p_teacher_id:teacherId,p_subject_id:subjectId,p_classroom_id:classroomId,p_active:true});btn.disabled=false;if(r.error)return toast(friendlyError(r.error),"error");const subject=subjects.find(x=>x.id===subjectId),room=rooms.find(x=>x.id===classroomId),key=`${subjectId}:${classroomId}`;current.set(key,{teacher_id:teacherId,subject_id:subjectId,subject_code:subject?.code,subject_name:subject?.name,classroom_id:classroomId,classroom_name:room?.name,active:true});draw();toast("บันทึกงานสอนแล้ว")};
+}
 
 async function classLeaderDialog(userId,user,rooms,activeLeaders){
   if(!userId||!user||user.role==="admin")return toast("กำหนดหัวหน้าห้องได้เฉพาะบัญชีนักศึกษา","error");

@@ -1,5 +1,5 @@
 {
-  "release": "V20.7 LONG-TERM UX • TEACHER WORKSPACE • PRODUCTION STABILITY",
+  "release": "V21.0 MAJOR STABILITY • UNIFIED RUNTIME • PRODUCTION READY",
   "date": "2026-09-24",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
@@ -8,7 +8,7 @@
   "supabase_project": "DOC-FULL-NR-UNIVERSAL",
   "supabase_ref": "thjscmfqunlaqxlievna",
   "deployment": "Static PWA /site via GitHub Pages",
-  "frontend_owner": "app.js is the only shell/router owner; v16-platform.js renders feature routes; v16-7-hardening.js and v16-8-course-flow.js are non-router enhancers; v16-exam.js owns exam page only",
+  "frontend_owner": "app.js is the only business shell/router owner; v21-runtime.js is the only presentation shell/viewport/drawer/mobile-nav owner; v16-platform.js renders feature routes; v16-7-hardening.js and v16-8-course-flow.js are non-router business enhancers; v16-exam.js owns the exam page.",
   "base_roles": [
     "admin",
     "teacher",
@@ -17,14 +17,14 @@
   "ready_templates": 374,
   "paper_templates": 187,
   "digital_templates": 187,
-  "release_marker": "V20.7",
+  "release_marker": "V21.0",
   "compatibility_release_marker": "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "20.7",
-  "notes": "V20.7 is a long-term usability and stability release driven by real-use mobile behavior. It redesigns adaptive UI without locking to the old color theme, keeps content visible while routes load, completes the teacher workspace with production staff-scoped RPCs, and preserves all historical academic data.",
+  "version": "21.0",
+  "notes": "V21.0 is the major stability rebuild driven by real-use desktop and phone video evidence. It removes competing shell/responsive runtimes from production loading, establishes one V21 presentation runtime, preserves business modules and data history, and packages a production-alignment backend migration plus fail-closed installer gates.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
   "realtime": "subject room, worksheets, assignments, submissions, exams, attempts, grade settings/behavior, scans, attendance and presence",
@@ -34,9 +34,9 @@
   "phone_policy": "profiles.phone is contact data only; no OTP/SMS gate; student profile remains read-only",
   "nickname_storage": "profiles.display_name",
   "backend_health_rpc": "admin_system_health_v17",
-  "router_contract": "single owner app.js; direct data-app-route bridge; no V16.9 overlay/rescue and no hidden-menu click navigation in production",
+  "router_contract": "single business router owner app.js + single presentation runtime v21-runtime.js; no production loading of mobile.js, v19-ux-runtime.js or v20-stability-runtime.js; direct data-app-route bridge; stale async route guards remain in feature renderers.",
   "master_flow": "auth -> role dashboard -> direct functional hub -> backend/RPC -> deterministic render/error; course CODE -> enrollment -> 17 sequential units -> 20-slide learning content -> logical Digital/Paper work pair -> attendance/exam/grade/report/promotion",
-  "focus": "Long-term stable operation across phone/tablet/desktop with simplified navigation, readable touch UI, non-blocking loading, teacher-scoped work/grade/exam/attendance, and dynamic room-group/Classroom/subject sync.",
+  "focus": "One shell owner, one viewport/drawer/mobile-nav runtime, non-blocking route transitions, compact responsive layouts, production-scoped Teacher/Admin/Student workflows, and fail-closed backend compatibility for long-term use.",
   "pwa": "installable phone/tablet/desktop; one adaptive shell; phone/tablet interactions never auto-enter native fullscreen on first touch; camera lifecycle is race-safe; explicit fullscreen remains available; offline shell/draft compatibility preserved.",
   "copy_protection": "system-wide UI deterrence for selection/copy/cut/context menu/drag; input fields and Admin CODE copy are allowed; sensitive data remains protected server-side",
   "relationship_hardening": "subject_enrollments.user_id and exam_attempts.user_id are explicit profile embed paths; actor fields use auth.users to avoid PostgREST ambiguity",
@@ -54,7 +54,7 @@
   "exam_question_bank": 550,
   "core_ui": "admin profile detail + user course CODE + room worksheet checklist + top-level multi-page paper scan + adapted exam center",
   "exam_bank_source": "V19.5 curated from the original 550-question ALL_Test-adapted bank: 25 course-reference + 25 analytical per subject; hard-option giveaway wording removed; current SHA256 623e28853ce20354b9e8f3f80f3d08a0bbb0a606091426795123987089205aef",
-  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub + V20.0 teaching/presentation/unified UX/print/fullscreen/close-teaching + V20.1 content-focused slides + V20.2 adaptive mobile/camera stability + V20.3 mobile interaction/camera race hardening + V20.4 real-device Admin attendance router regression + adaptive phone/tablet/desktop shell + V20.5 teacher late barcode/student scan + Admin room grouping contracts + V20.6 adaptive stability runtime/CSS + viewport/orientation/backdrop regression contracts + V20.7 long-term UX redesign + teacher scoped workspace + dynamic room-group/Classroom/subject sync + non-blocking route loading",
+  "frontend_acceptance": "legacy/static contracts + core browser flows + V19.2 responsive/UX + V19.3 gradebook + V19.4 classroom/back + V19.5 exam preset + V19.6 print + V19.7 programming + V19.8 standalone activity hub + V20.0 teaching/presentation/unified UX/print/fullscreen/close-teaching + V20.1 content-focused slides + V20.2 adaptive mobile/camera stability + V20.3 mobile interaction/camera race hardening + V20.4 real-device Admin attendance router regression + adaptive phone/tablet/desktop shell + V20.5 teacher late barcode/student scan + Admin room grouping contracts + V20.6 adaptive stability runtime/CSS + viewport/orientation/backdrop regression contracts + V20.7 long-term UX redesign + teacher scoped workspace + dynamic room-group/Classroom/subject sync + non-blocking route loading + V21.0 major stability single-runtime shell + 288/360/390 phone + tablet + desktop viewport/browser regression + backend alignment/installer gates",
   "base_release": "V19.0 STABILIZED CLASSROOM FLOW",
   "v19_features": {
     "admin_class_leader_from_student_list": true,
@@ -67,10 +67,11 @@
   },
   "responsive_fit": {
     "full_width_shell": true,
-    "fluid_sidebar": true,
+    "desktop_sidebar_px": 252,
     "tablet_drawer_at_px": 960,
     "internal_table_scroll": true,
-    "browser_zoom_compensation": true,
+    "browser_zoom_compensation": false,
+    "single_runtime_owner": "v21-runtime.js",
     "business_logic_changed": false
   },
   "legacy_release_contracts": [
@@ -98,7 +99,7 @@
     "stale_backdrop_guard": true,
     "phone_camera_first_dashboard": true,
     "touch_fullscreen_gesture_guard": true,
-    "single_drawer_runtime_owner": "v19-ux-runtime.js",
+    "single_drawer_runtime_owner": "v21-runtime.js",
     "phone_bottom_nav_under_drawer_backdrop": true,
     "phone_tap_target_min_px": 48,
     "tablet_touch_target_min_px": 46,
@@ -106,7 +107,13 @@
     "viewport_authority": true,
     "stale_backdrop_pointer_guard": true,
     "modal_scroll_guard": true,
-    "device_adaptive_final_layer": true
+    "device_adaptive_final_layer": true,
+    "theme_locked": false,
+    "single_shell_runtime": "v21-runtime.js",
+    "legacy_mobile_runtime_loaded": false,
+    "legacy_v19_ux_runtime_loaded": false,
+    "legacy_v20_stability_runtime_loaded": false,
+    "major_stability_release": "V21.0"
   },
   "v19_3_gradebook": {
     "official_work_units": 17,
@@ -231,8 +238,8 @@
     "analytical_compare_distinguish_questions": true
   },
   "unified_ux_ui": {
-    "visible_release_source": "site/release-meta.js",
-    "release_version": "V20.2",
+    "visible_release_source": "site/release-meta.js (V21.0 presentation owner)",
+    "release_version": "V21.0",
     "compact_professional": true,
     "special_activity_top_level_admin": true,
     "special_activity_top_level_user": true,
@@ -249,7 +256,7 @@
     "reopen_compatible": true,
     "rpc": "admin_lock_subject_unit_v20"
   },
-  "production_database_release": "Production verified through v20_6_room_group_filters (20260924032915); V20.7 uses existing V20.6 staff-scoped backend without destructive DDL.",
+  "production_database_release": "V20.6.1 production contract + V21.0 consolidated alignment migration",
   "device_usage_policy": {
     "phone": "camera-first attendance QR scan + late-paper barcode/evidence capture + view learning content; Digital Worksheet read-only/no draft/no submit",
     "tablet": "full learning + Digital Worksheet editing/submission + camera workflows with touch-first layout",
@@ -317,5 +324,6 @@
     "seat_number_management": true,
     "history_preservation": true,
     "staff_filtering": true
-  }
+  },
+  "backend_alignment_migration": "supabase/migrations/20260924_v21_0_production_alignment.sql"
 }

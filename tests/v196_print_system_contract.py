@@ -15,7 +15,7 @@ ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
 assert any(x in index for x in ['data-docnr-release="v19-6-production-print-system"','data-docnr-release="v19-7-programming-special-activity"','data-docnr-release="v19-8-standalone-special-activities"','data-docnr-release="v19-9-detailed-teaching-slides"','data-docnr-release="v20-0-teaching-presentation-unified"'])
 assert 'v19-print-system.css?' in index
-assert index.index('v19-print-system.css?') > index.index('v19-production-ui.css?')
+assert index.index('v19-print-system.css?') < index.index('v21-core-ui.css?')
 assert 'printcenter' in app and 'ศูนย์พิมพ์และสรุปผล' in app and 'พิมพ์เอกสารของฉัน' in app
 assert 'renderPrintCenterV196' in platform and 'renderPrintSubjectV196' in platform
 assert 'printGradebookSummaryV196' in platform and 'printStudentGradeV196' in platform

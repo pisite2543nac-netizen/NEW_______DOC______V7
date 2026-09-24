@@ -1,38 +1,18 @@
-// Compatibility markers: v19-responsive-fit.css?v=20260917-v19-2 | doc-full-nr-v19-2-production-ux-20260917
-// DOC-FULL-NR V20.7 long-term UX / teacher workspace / production stability cache marker
-// V20.1 content-focused teaching slides compatibility marker
-// compatibility cache marker: doc-full-nr-v20-0-teaching-presentation-unified-20260922
-// compatibility asset marker: ./v19-programming-activity.js?v=20260922-v20-0
-// DOC-FULL-NR V19.9 detailed teaching slides compatibility marker
-// DOC-FULL-NR V19.8 standalone special activities cache marker
-// V19.6 production print system cache marker
-// V19.5 exam preset 25+25 production cache marker
-// V19.4 classroom/back production cache marker
-// release marker: doc-full-nr-v18-7-room-checklist-exam-adapted-20260916
-// legacy contract marker: doc-full-nr-v18-2-complete-system-final-20260916
-// compatibility marker: doc-full-nr-v18-6-room-work-checklist-audited-20260916
-// compatibility marker: doc-full-nr-v18-1-complete-learning-system-20260916
-// compatibility marker: doc-full-nr-v18-6-room-work-checklist-audited-20260916
-// compatibility marker: doc-full-nr-v17-8-full-notifications-20260915
-// compatibility marker: doc-full-nr-v17-7-classroom-hardened-20260915
-// compatibility marker: doc-full-nr-v17-6-1-icon-refresh-20260915
-// compatibility marker: doc-full-nr-v17-6-full-11subjects-20260915
-// compatibility marker: doc-full-nr-v17-5-17unit-workpair-20260915
-// compatibility marker: doc-full-nr-v17-4-learning-content-20260915
-// compatibility marker: doc-full-nr-v17-3-full-system-20260915
-// compatibility marker: doc-full-nr-v17-1-course-code-20260915
-// compatibility marker: doc-full-nr-v17-master-flow-20260915
-// compatibility marker: doc-full-nr-v17-2-college-branding-20260915
-// DOC-FULL-NR V17.3 FULL SYSTEM cache
+// DOC-FULL-NR V21.0 major stability / unified runtime cache marker
+// Legacy release markers below are comments only for historical regression traceability.
+// doc-full-nr-v19-2-production-ux-20260917
+// doc-full-nr-v20-7-long-term-ux-teacher-production-stability-20260924
+// doc-full-nr-v20-6-adaptive-stability-teacher-room-integration-20260924
+// doc-full-nr-v20-5-late-teacher-barcode-admin-room-groups-20260923
 const CACHE_PREFIX="doc-full-nr-";
-const CACHE="doc-full-nr-v20-7-long-term-ux-teacher-production-stability-20260924";
+const CACHE="doc-full-nr-v21-0-major-stability-unified-runtime-20260924";
 const SHELL=[
   "./","./index.html","./exam.html",
-  "./styles.css?v=20260924-v20-7","./mobile.css?v=20260924-v20-7","./v18-core-ui.css?v=20260924-v20-7","./v16-minimal.css?v=20260924-v20-7",
-  "./v16-7-hardening.css?v=20260924-v20-7","./v16-8-course-flow.css?v=20260924-v20-7","./v19-responsive-fit.css?v=20260924-v20-7","./v19-production-ui.css?v=20260924-v20-7","./v19-print-system.css?v=20260924-v20-7","./v19-programming-activity.css?v=20260924-v20-7","./v20-unified-ui.css?v=20260924-v20-7","./v20-stability.css?v=20260924-v20-7","./v20-longterm-ui.css?v=20260924-v20-7-lts","./v18-7-exam-adapted.css?v=20260924-v20-7",
-  "./device-camera-runtime.js?v=20260924-v20-7","./camera-registration.js?v=20260924-v20-7","./app.js?v=20260924-v20-7","./mobile.js?v=20260924-v20-7","./v16-platform.js?v=20260924-v20-7",
-  "./v16-7-hardening.js?v=20260924-v20-7","./v16-8-course-flow.js?v=20260924-v20-7","./v16-exam.js?v=20260924-v20-7","./v19-programming-activity.js?v=20260924-v20-7","./v19-ux-runtime.js?v=20260924-v20-7","./v20-stability-runtime.js?v=20260924-v20-7",
-  "./manifest.webmanifest?v=20260924-v20-7","./release-meta.js","./data/teaching-knowledge-v20.js","./data/programming-activity-v197.json","./data/exam-question-bank-v18.json","./data/exam-question-bank-manifest-v18.json",
+  "./styles.css?v=20260924-v21-0","./v18-core-ui.css?v=20260924-v21-0","./v16-minimal.css?v=20260924-v21-0",
+  "./v16-7-hardening.css?v=20260924-v21-0","./v16-8-course-flow.css?v=20260924-v21-0","./v18-7-exam-adapted.css?v=20260924-v21-0","./v19-print-system.css?v=20260924-v21-0","./v19-programming-activity.css?v=20260924-v21-0","./v21-core-ui.css?v=20260924-v21-0",
+  "./device-camera-runtime.js?v=20260924-v21-0","./camera-registration.js?v=20260924-v21-0","./app.js?v=20260924-v21-0","./v16-platform.js?v=20260924-v21-0",
+  "./v16-7-hardening.js?v=20260924-v21-0","./v16-8-course-flow.js?v=20260924-v21-0","./v16-exam.js?v=20260924-v21-0","./v19-programming-activity.js?v=20260924-v21-0","./v21-runtime.js?v=20260924-v21-0",
+  "./manifest.webmanifest?v=20260924-v21-0","./release-meta.js","./data/teaching-knowledge-v20.js","./data/programming-activity-v197.json","./data/exam-question-bank-v18.json","./data/exam-question-bank-manifest-v18.json",
   "./icons/icon-48.png","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-maskable-512.png",
   "./favicon-v1761.ico","./favicon.ico","./icons/nangrong-favicon-16-v1761.png","./icons/nangrong-favicon-32-v1761.png","./icons/nangrong-favicon-48-v1761.png","./icons/nangrong-app-180-v1761.png","./icons/nangrong-app-192-v1761.png","./icons/nangrong-app-512-v1761.png","./icons/nangrong-maskable-512-v1761.png"
 ];
@@ -96,3 +76,22 @@ self.addEventListener("notificationclick",event=>{
 // ./v19-programming-activity.js?v=20260924-v20-6
 // ./v20-stability.css?v=20260924-v20-6
 // ./v20-stability-runtime.js?v=20260924-v20-6
+
+// Historical cache markers retained only for backwards regression contracts.
+// doc-full-nr-v17-1-course-code-20260915
+// doc-full-nr-v17-2-college-branding-20260915
+// doc-full-nr-v17-3-full-system-20260915
+// doc-full-nr-v17-4-learning-content-20260915
+// doc-full-nr-v17-5-17unit-workpair-20260915
+// doc-full-nr-v17-6-full-11subjects-20260915
+// doc-full-nr-v17-6-1-icon-refresh-20260915
+// doc-full-nr-v17-7-classroom-hardened-20260915
+// doc-full-nr-v17-8-full-notifications-20260915
+// doc-full-nr-v17-9-full-system-20260916
+// doc-full-nr-v18-1-complete-learning-system-20260916
+// doc-full-nr-v18-2-complete-system-final-20260916
+// doc-full-nr-v19-6-production-print-system-20260918
+// doc-full-nr-v19-7-programming-special-activity-20260920
+// doc-full-nr-v19-8-standalone-special-activities-20260921
+// doc-full-nr-v19-9-detailed-teaching-slides-20260922
+// doc-full-nr-v20-0-teaching-presentation-unified-20260922

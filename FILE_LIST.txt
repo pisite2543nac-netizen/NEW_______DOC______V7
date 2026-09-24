@@ -36,6 +36,7 @@ README_V20_4_TH.txt
 README_V20_5_TH.txt
 README_V20_6_LONG_TERM_TH.txt
 README_V20_6_TH.txt
+README_V21_0_TH.txt
 SECURITY.md
 SubjectsPage.tsx
 SubmissionPage.tsx
@@ -67,6 +68,10 @@ V20_5_TEST_RESULTS.txt
 V20_6_TEST_RESULTS.txt
 V20_7_FINAL_ACCEPTANCE_REPORT.md
 V20_7_TEST_RESULTS.txt
+V21_0_FINAL_ACCEPTANCE_REPORT.md
+V21_0_R1_HOTFIX_TEST_RESULTS.txt
+V21_0_R1_WINDOWS_UTF8_HOTFIX.txt
+V21_0_TEST_RESULTS.txt
 VERSION.json
 WorksheetsPage.tsx
 app.js
@@ -204,6 +209,8 @@ site/v20-longterm-ui.css
 site/v20-stability-runtime.js
 site/v20-stability.css
 site/v20-unified-ui.css
+site/v21-core-ui.css
+site/v21-runtime.js
 site/v9-features.css
 site/v9-features.js
 src/App.tsx
@@ -287,6 +294,7 @@ supabase/migrations/20260921_v19_8_special_activity_standalone_hub.sql
 supabase/migrations/20260922_v20_0_reversible_teaching_close.sql
 supabase/migrations/20260922_v20_0_teaching_slide_metadata.sql
 supabase/migrations/20260923_v20_5_teacher_late_barcode_admin_room_groups.sql
+supabase/migrations/20260924_v21_0_production_alignment.sql
 sw.js
 tests/README.md
 tests/branding_contract.py
@@ -347,6 +355,8 @@ tests/v206_adaptive_stability_contract.py
 tests/v206_longterm_ui_teacher_contract.py
 tests/v207_long_term_ux_teacher_browser_contract.py
 tests/v207_long_term_ux_teacher_contract.py
+tests/v210_major_stability_browser_contract.py
+tests/v210_major_stability_contract.py
 tsconfig.app.json
 tsconfig.app.tsbuildinfo
 tsconfig.json

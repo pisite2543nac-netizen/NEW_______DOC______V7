@@ -1,9 +1,9 @@
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-app=(ROOT/'site/app.js').read_text()
-platform=(ROOT/'site/v16-platform.js').read_text()
-css=(ROOT/'site/v18-core-ui.css').read_text()
-version=(ROOT/'VERSION.json').read_text()
+app=(ROOT/'site/app.js').read_text(encoding='utf-8')
+platform=(ROOT/'site/v16-platform.js').read_text(encoding='utf-8')
+css=(ROOT/'site/v18-core-ui.css').read_text(encoding='utf-8')
+version=(ROOT/'VERSION.json').read_text(encoding='utf-8')
 checks={
  'admin route': '["workcheck","ตารางเช็กรวม"]' in app and 'workcheck:renderRoomWorkChecklist' in platform,
  'registration grouping': all(x in platform for x in ['grade_level','room_label','department','major']),

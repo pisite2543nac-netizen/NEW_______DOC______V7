@@ -1,0 +1,23 @@
+DOC-FULL-NR V21.0 R1 WINDOWS UTF-8 HOTFIX TEST RESULTS
+Date: 2026-09-24
+
+REAL INSTALLER LOG ROOT CAUSE
+PASS - Backup branch creation succeeded before failure.
+PASS - Installer fail-safe stopped deployment and kept main on previous release.
+ROOT CAUSE - Windows Python 3.13 default cp874 decoding failed on UTF-8 V21 source inside v206_adaptive_stability_contract.py.
+
+HOTFIX
+PASS - Remaining bare Path.read_text() calls in Python contracts changed to explicit UTF-8.
+PASS - 00_INSTALL_UPDATE_SYSTEM.cmd forces code page 65001, PYTHONUTF8=1, PYTHONIOENCODING=utf-8.
+PASS - UPDATE_SYSTEM.ps1 forces PYTHONUTF8/PYTHONIOENCODING and UTF-8 console output before Python contracts.
+
+VALIDATION AFTER HOTFIX
+PASS - Exact installer static sequence V20.1 -> V21.0: 8/8.
+PASS - Legacy/non-UTF8 locale simulation for affected contracts: 4/4.
+PASS - Full static contract/validation set: 37/37.
+PASS - site/*.js syntax: 24/24.
+PASS - Installer JavaScript syntax subset: 10/10.
+
+SCOPE
+Business UI/runtime/backend code remains V21.0. R1 changes installer/test-runner encoding robustness only.
+Physical iPhone/Android/iPad camera permission still requires real-device verification after successful live deployment.

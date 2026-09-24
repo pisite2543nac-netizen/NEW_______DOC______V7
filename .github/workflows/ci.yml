@@ -1,4 +1,4 @@
-name: DOC-FULL-NR V17 MASTER FLOW CI
+name: DOC-FULL-NR V21 MAJOR STABILITY CI
 
 on:
   pull_request:
@@ -36,13 +36,19 @@ jobs:
           python tests/v179_full_system_hardening_contract.py
           python tests/v201_content_focused_slides_contract.py
           python tests/v202_adaptive_mobile_camera_contract.py
+          python tests/v203_mobile_interaction_camera_contract.py
+          python tests/v204_real_device_mobile_router_contract.py
+          python tests/v205_late_barcode_room_groups_contract.py
+          python tests/v206_adaptive_stability_contract.py
+          python tests/v207_long_term_ux_teacher_contract.py
+          python tests/v210_major_stability_contract.py
       - name: JavaScript syntax
         run: |
           node --check site/app.js
           node --check site/camera-registration.js
           node --check site/device-camera-runtime.js
-          node --check site/mobile.js
-          node --check site/v20-stability-runtime.js
+          node --check site/v19-programming-activity.js
+          node --check site/v21-runtime.js
           node --check site/sw.js
           node --check site/v16-platform.js
           node --check site/v16-7-hardening.js
