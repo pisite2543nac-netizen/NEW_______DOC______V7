@@ -318,15 +318,3 @@ html.docnr-phone .docnr-filterbar{grid-template-columns:1fr!important;position:s
   html.docnr-phone #pagetitle{max-width:86px!important}
   html.docnr-phone #docnr-mobile-nav button{font-size:8.5px!important}
 }
-
-/* V21.3 — no-sidebar production shell. */
-.app.no-sidebar-shell,.app{grid-template-columns:minmax(0,1fr)!important}
-.sidebar,#sidebar,#docnr-v21-backdrop,.mobile-menu,#menubtn{display:none!important}
-.main{width:100%!important;min-width:0!important}
-.top-function-nav{position:sticky;top:var(--docnr-topbar-h);z-index:50;display:flex;gap:6px;overflow-x:auto;padding:8px clamp(12px,1.8vw,22px);background:var(--docnr-surface);border-bottom:1px solid var(--docnr-border);scrollbar-width:thin}
-.top-function-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:7px 11px;border:1px solid var(--docnr-border);border-radius:10px;background:var(--docnr-surface);color:var(--docnr-text);font-weight:750;white-space:nowrap;cursor:pointer}
-.top-function-btn:hover{background:var(--docnr-surface-soft)}
-.top-function-btn.active{background:var(--docnr-primary-soft);border-color:var(--docnr-primary);color:var(--docnr-primary-strong)}
-html.docnr-phone .top-function-nav{display:none!important}
-@media(max-width:1100px) and (min-width:641px){.top-function-nav{padding-inline:10px}.top-function-btn{min-height:44px}}
-@media(max-width:640px){.topbar-actions .install,.topbar-actions #fullscreen,.topbar-actions .user-name{display:none!important}.content,#content{padding-bottom:calc(88px + var(--docnr-safe-bottom))!important}}

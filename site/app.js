@@ -354,7 +354,7 @@ function paintNav(){
   root.dataset.role=isAdmin()?"admin":isTeacher()?"teacher":"user";
   root.dataset.appRoute=S.route||"dashboard";
   if(S.routeArg)root.dataset.appArg=String(S.routeArg);else delete root.dataset.appArg;
-  $$(`[data-route]`).forEach(b=>b.classList.toggle("active",b.dataset.route===active));
+  $$("#sidebar .nav [data-route]").forEach(b=>b.classList.toggle("active",b.dataset.route===active));
   syncGlobalBackButton();
   try{window.dispatchEvent(new CustomEvent("docnr:route-state",{detail:{route:S.route||"dashboard",arg:S.routeArg??null,active}}))}catch{}
 }
@@ -376,7 +376,7 @@ async function goBackUnified(){
   while(S.navHistory.length&&!target){const x=S.navHistory.pop();if(x&&routeAllowed(x.route)&&navKey(x.route,x.arg)!==navKey(S.route,S.routeArg))target=x}
   if(!target)target=fallbackBackTarget();
   const serial=++S.navSerial;
-  S.route=target.route;S.routeArg=target.arg??null;paintNav();
+  S.route=target.route;S.routeArg=target.arg??null;$("#sidebar")?.classList.remove("open");paintNav();
   document.documentElement.dataset.navBusy="1";routeLifecycle("docnr:route-start",{route:S.route,arg:S.routeArg,serial,source:"back"});
   try{await routeCurrent(serial)}finally{if(serial===S.navSerial){delete document.documentElement.dataset.navBusy;routeLifecycle("docnr:route-ready",{route:S.route,arg:S.routeArg,serial})}}
   return true;
@@ -391,7 +391,7 @@ async function navigateUnified(route,arg=null){
     if(S.navHistory.length>30)S.navHistory.splice(0,S.navHistory.length-30);
   }
   const serial=++S.navSerial;
-  S.route=route;S.routeArg=arg;paintNav();
+  S.route=route;S.routeArg=arg;$("#sidebar")?.classList.remove("open");paintNav();
   document.documentElement.dataset.navBusy="1";routeLifecycle("docnr:route-start",{route,arg,serial,source:"navigate"});
   try{await routeCurrent(serial)}finally{if(serial===S.navSerial){delete document.documentElement.dataset.navBusy;routeLifecycle("docnr:route-ready",{route:S.route,arg:S.routeArg,serial})}}
   return true;
@@ -460,12 +460,15 @@ function renderShell(){
   }
   const items=navItems();
   if(!routeAllowed(S.route))S.route="dashboard";
-  const icons={dashboard:"🏠",courses:"📚",teacherwork:"✅",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",users:"👥",workadmin:"📝",workcheck:"📊",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"🔎",work:"📋",attendance:"📷",profile:"🪪",history:"🕘"};
-  const topNav=deviceClass()==="phone"?"":`<nav class="top-function-nav" id="top-function-nav" aria-label="ฟังก์ชันหลัก">${items.map(x=>`<button type="button" data-route="${x[0]}" class="top-function-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span aria-hidden="true">${icons[x[0]]||"•"}</span><span>${x[1]}</span></button>`).join("")}</nav>`;
-  $("#app").innerHTML=`<div class="app no-sidebar-shell">
+  $("#app").innerHTML=`<div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":isTeacher()?"TEACHER":"USER"} • ${RELEASE_VERSION}</div></div></div>
+      <nav class="nav nav-card-menu" aria-label="เมนูหลัก">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",teacherwork:"✅",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",users:"👥",workadmin:"📝",workcheck:"📊",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"🔎",work:"📋",attendance:"📷",profile:"🪪",history:"🕘"};return `<button type="button" data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span class="nav-card-label">${x[1]}</span></button>`}).join("")}</nav>
+      <div class="sidebar-footer"><div class="sidebar-user"><b>${esc(S.profile?.full_name||S.session?.user?.email||"")}</b><span>${isAdmin()?"ผู้ดูแลระบบ":isTeacher()?"ครูผู้สอน":"นักศึกษา"}</span></div><div class="sidebar-utilities"><button type="button" class="btn sm" id="sidebar-theme">◐ ธีม</button><button type="button" class="btn sm" id="sidebar-fullscreen">⛶ เต็มจอ</button><button type="button" class="btn sm" id="sidebar-install">＋ ติดตั้ง</button></div><button type="button" class="btn sm" id="sidebar-logout">ออกจากระบบ</button></div>
+    </aside>
     <main class="main">
       <header class="topbar" id="topbar">
-        <div class="row topbar-leading"><button class="btn sm global-back" id="global-back" type="button" title="ย้อนกลับหน้าก่อนหน้า" aria-label="ย้อนกลับหน้าก่อนหน้า">← <span>ย้อนกลับ</span></button><button class="btn sm home-shortcut" id="homebtn" type="button" title="หน้าแรก" aria-label="หน้าแรก">⌂</button><b id="pagetitle"></b></div>
+        <div class="row topbar-leading"><button class="btn mobile-menu" id="menubtn" type="button" aria-label="เปิดเมนู" aria-controls="sidebar" aria-expanded="false">☰</button><button class="btn sm global-back" id="global-back" type="button" title="ย้อนกลับหน้าก่อนหน้า" aria-label="ย้อนกลับหน้าก่อนหน้า">← <span>ย้อนกลับ</span></button><button class="btn sm home-shortcut" id="homebtn" type="button" title="หน้าแรก" aria-label="หน้าแรก">⌂</button><b id="pagetitle"></b></div>
         <div class="row topbar-actions">
           <button class="btn sm" id="theme-toggle" title="สลับธีม"><span aria-hidden="true">◐</span><span class="utility-label"> ไนท์โหมด</span></button>
           <button class="btn install sm" id="install">ติดตั้งแล้ว</button>
@@ -474,14 +477,18 @@ function renderShell(){
           <button class="btn sm" id="logout" title="ออกจากระบบ"><span aria-hidden="true">↪</span><span class="utility-label"> ออกจากระบบ</span></button>
         </div>
       </header>
-      ${topNav}
       <section class="content" id="content"><div class="card">กำลังโหลด...</div></section>
     </main>
   </div>`;
 
-  $$('[data-route]').forEach(b=>b.onclick=()=>navigateUnified(b.dataset.route));
+  $$("[data-route]").forEach(b=>b.onclick=()=>navigateUnified(b.dataset.route));
   const doLogout=async()=>{try{window.DOCNR_V16_6?.cleanup?.()}catch{}await sb.auth.signOut()};
   $("#logout").onclick=doLogout;
+  const sideLogout=$("#sidebar-logout");if(sideLogout)sideLogout.onclick=doLogout;
+  const sideTheme=$("#sidebar-theme");if(sideTheme)sideTheme.onclick=toggleTheme;
+  const sideFullscreen=$("#sidebar-fullscreen");if(sideFullscreen)sideFullscreen.onclick=()=>window.DOCNR_V21?.toggleFullscreen?.();
+  const sideInstall=$("#sidebar-install");if(sideInstall)sideInstall.onclick=installGuide;
+  $("#menubtn").onclick=()=>window.DOCNR_V21?.toggleDrawer?.();
   const homeBtn=$("#homebtn");if(homeBtn)homeBtn.onclick=()=>navigateUnified("dashboard").catch(e=>toast(friendlyError(e),"error"));
   const backBtn=$("#global-back");if(backBtn)backBtn.onclick=()=>goBackUnified().catch(e=>toast(friendlyError(e),"error"));syncGlobalBackButton();
   $("#install").onclick=installGuide;

@@ -4,8 +4,8 @@ ROOT=Path(__file__).resolve().parents[1]
 site=ROOT/'site'; mig=(ROOT/'supabase/migrations/20260923_v20_5_teacher_late_barcode_admin_room_groups.sql').read_text('utf-8')
 js=(site/'v16-platform.js').read_text('utf-8'); app=(site/'app.js').read_text('utf-8'); css=(site/'v20-unified-ui.css').read_text('utf-8'); idx=(site/'index.html').read_text('utf-8'); meta=(site/'release-meta.js').read_text('utf-8'); ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 assert 'data-docnr-release="v20-5-late-teacher-barcode-admin-room-groups"','data-docnr-release="v20-6-adaptive-stability-teacher-room-integration"' in idx
-assert any(x in meta for x in ['RELEASE_VERSION="V20.5"','RELEASE_VERSION="V20.6"','RELEASE_VERSION="V20.7"','RELEASE_VERSION="V21.0"','RELEASE_VERSION="V21.1"','RELEASE_VERSION="V21.2"','RELEASE_VERSION="V21.3"']) and any(x in meta for x in ['20260923-v20-5','20260924-v20-6','20260924-v20-7','20260924-v21-0','20260925-v21-1','20260925-v21-2','20260925-v21-3'])
-assert float(ver['version'])>=20.5 and ver['release_marker'] in {'V20.5','V20.6','V20.7','V21.0','V21.1','V21.2','V21.3'}
+assert any(x in meta for x in ['RELEASE_VERSION="V20.5"','RELEASE_VERSION="V20.6"','RELEASE_VERSION="V20.7"','RELEASE_VERSION="V21.0"','RELEASE_VERSION="V21.1"','RELEASE_VERSION="V21.2"']) and any(x in meta for x in ['20260923-v20-5','20260924-v20-6','20260924-v20-7','20260924-v21-0','20260925-v21-1','20260925-v21-2'])
+assert float(ver['version'])>=20.5 and ver['release_marker'] in {'V20.5','V20.6','V20.7','V21.0','V21.1','V21.2'}
 for token in [
  'late_attendance_tokens','admin_room_groups','admin_room_group_members',
  'admin_issue_late_attendance_barcode_v205','my_scan_teacher_late_barcode_v205','scan_attendance_qr_v179',

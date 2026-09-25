@@ -1,5 +1,6 @@
-// DOC-FULL-NR V21.3 release metadata
-export const RELEASE_VERSION="V21.3";
-export const RELEASE_NAME="V21.3 NO-SIDEBAR STABILITY • TOP FUNCTION BAR • MOBILE QUICK ACTION";
+// Single visible release source for DOC-FULL-NR production UI.
+export const RELEASE_VERSION="V21.2";
+export const RELEASE_NAME="V21.2 CROSS-DEVICE STABLE • DESKTOP FULL • TABLET OPERATIONAL • MOBILE QUICK ACTION";
 export const RELEASE_DATE="2026-09-25";
-export const RELEASE_CACHE="20260925-v21-3";
+export const RELEASE_CACHE="20260925-v21-2";
+if(typeof window!=="undefined")window.DOCNR_RELEASE_META=Object.freeze({version:RELEASE_VERSION,name:RELEASE_NAME,date:RELEASE_DATE,cache:RELEASE_CACHE});
