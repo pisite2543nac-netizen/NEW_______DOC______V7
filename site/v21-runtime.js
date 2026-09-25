@@ -3,16 +3,16 @@
    route progress, network status and fullscreen chrome. No business data writes. */
 (()=>{
   'use strict';
-  const RELEASE='V21.0';
+  const RELEASE='V21.1';
   const root=document.documentElement;
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>[...r.querySelectorAll(s)];
   const group={accounts:'students',enrollments:'students',profiles:'students',roomgroups:'students',users:'students',grading:'workadmin',overrides:'workadmin',reports:'workadmin',paperscan:'paperscan',presence:'attendancehub',promotion:'academic',audit:'academic',system:'academic',enroll:'catalog',history:'profile',attendance:'attendancehub'};
-  const meta={dashboard:['🏠','หน้าแรก'],courses:['📚','รายวิชา'],workadmin:['✅','งาน/คะแนน'],work:['📋','งาน'],attendancehub:['📷','เช็คชื่อ'],attendance:['📷','เช็คชื่อ'],exam:['🧪','สอบ'],catalog:['🔎','ค้นวิชา'],profile:['👤','โปรไฟล์']};
+  const meta={dashboard:['🏠','หน้าแรก'],courses:['📚','รายวิชา'],workadmin:['✅','งาน/คะแนน'],workcheck:['📊','ติดตาม'],work:['📋','งาน'],paperscan:['📄','ถ่ายใบงาน'],attendancehub:['📷','เช็คชื่อ'],attendance:['📷','เช็คชื่อ'],exam:['🧪','สอบ'],catalog:['🔎','ค้นวิชา'],profile:['👤','โปรไฟล์']};
   const phoneRoutes={
-    admin:['dashboard','courses','workadmin','attendancehub'],
-    teacher:['dashboard','courses','workadmin','attendancehub'],
-    user:['dashboard','courses','work','attendance']
+    admin:['dashboard','attendance','paperscan','workcheck','courses'],
+    teacher:['dashboard','attendance','workcheck','courses','profile'],
+    user:['dashboard','attendance','work','courses','profile']
   };
   let lastViewport='';
   let lastNavigateAt=0;
@@ -50,7 +50,7 @@
     if(kind!=='phone'){nav?.remove();return}
     const r=role(),routes=phoneRoutes[r]||phoneRoutes.user,sig=`${r}:${routes.join('|')}`;
     if(!nav){nav=document.createElement('nav');nav.id='docnr-mobile-nav';nav.setAttribute('aria-label','เมนูหลักบนมือถือ');document.body.appendChild(nav)}
-    if(nav.dataset.sig!==sig){nav.dataset.sig=sig;nav.innerHTML=routes.map(x=>{const [i,t]=navLabel(x);return `<button type="button" data-v21-route="${x}" aria-label="${t}"><span class="icon">${i}</span><span class="label">${t}</span></button>`}).join('')+`<button type="button" data-v21-more aria-label="เปิดเมนูทั้งหมด"><span class="icon">☰</span><span class="label">เมนู</span></button>`}
+    if(nav.dataset.sig!==sig){nav.dataset.sig=sig;nav.innerHTML=routes.map(x=>{const [i,t]=navLabel(x);return `<button type="button" data-v21-route="${x}" aria-label="${t}"><span class="icon">${i}</span><span class="label">${t}</span></button>`}).join('')}
     syncMobileActive();
   }
   function syncMobileActive(){const a=visibleActive();$$('#docnr-mobile-nav [data-v21-route]').forEach(b=>{const on=b.dataset.v21Route===a;b.classList.toggle('active',on);b.setAttribute('aria-current',on?'page':'false')})}
@@ -71,6 +71,7 @@
   function shellReady(){ensureProgress();ensureBackdrop();syncViewport();syncNetwork();updateFullscreen();ensureMobileNav();enhanceRegistry();const menu=$('#menubtn');if(menu){menu.setAttribute('aria-controls','sidebar');menu.setAttribute('aria-expanded',String(root.classList.contains('docnr-drawer-open')))}}
 
   document.addEventListener('click',e=>{
+    const back=e.target.closest?.('#global-back,[data-docnr-back]');if(back){e.preventDefault();e.stopPropagation();const f=window.DOCNR_BASE?.goBack;if(typeof f==='function'){Promise.resolve(f()).catch(()=>navigate('dashboard'));}else if(history.length>1){history.back();}else{navigate('dashboard');}return}
     const route=e.target.closest?.('[data-v21-route]');if(route){e.preventDefault();e.stopPropagation();navigate(route.dataset.v21Route);return}
     if(e.target.closest?.('[data-v21-more]')){e.preventDefault();e.stopPropagation();openDrawer();return}
     const side=e.target.closest?.('#sidebar [data-route]');if(side&&device()!=='desktop')setTimeout(closeDrawer,0);

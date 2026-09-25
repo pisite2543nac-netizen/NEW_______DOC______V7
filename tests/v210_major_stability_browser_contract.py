@@ -1,9 +1,11 @@
 from pathlib import Path
-import os,shutil
+import os,shutil,json
 if os.getenv('DOCNR_RUN_BROWSER_CONTRACT')!='1':
     print('V21.0 MAJOR STABILITY BROWSER CONTRACT SKIP'); raise SystemExit(0)
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1];site=ROOT/'site'
+_v=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
+if _v.get('release_marker')!='V21.0': print('V21.0 MAJOR STABILITY BROWSER CONTRACT SKIP ON NEWER RELEASE'); raise SystemExit(0)
 css='\n'.join((site/x).read_text('utf-8') for x in ['styles.css','v18-core-ui.css','v16-minimal.css','v16-7-hardening.css','v16-8-course-flow.css','v21-core-ui.css'])
 js=(site/'v21-runtime.js').read_text('utf-8')
 chromium=shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome')

@@ -227,3 +227,37 @@ html.docnr-tablet .content,html.docnr-tablet #content{padding-inline:18px!import
 html.docnr-phone .content,html.docnr-phone #content{padding-inline:12px!important;padding-bottom:calc(86px + var(--docnr-safe-bottom))!important}
 .docnr-filterbar{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))!important;gap:10px!important;align-items:end!important;padding:12px!important}
 html.docnr-phone .docnr-filterbar{grid-template-columns:1fr!important;position:static!important}
+
+/* V21.1 Mobile Essentials: phone is a field companion, not a full desktop console. */
+.docnr-mobile-essential-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.docnr-mobile-essential-grid .v1610-flow-card{min-height:112px!important}
+.docnr-mobile-desktop-note{display:grid;gap:4px;margin-top:12px!important}
+.docnr-mobile-desktop-note b{font-size:14px}.docnr-mobile-desktop-note span{font-size:12px;color:var(--docnr-muted)}
+@media (max-width:620px){
+  html.docnr-phone .sidebar,html.docnr-phone #sidebar,html.docnr-phone #docnr-v21-backdrop{display:none!important}
+  html.docnr-phone .mobile-menu,html.docnr-phone #menubtn{display:none!important}
+  html.docnr-phone .topbar-actions>*{display:none!important}
+  html.docnr-phone .topbar-actions #docnr-network-state{display:inline-flex!important}
+  html.docnr-phone .topbar-leading{min-width:0!important;flex:1 1 auto!important;gap:7px!important}
+  html.docnr-phone #pagetitle{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px!important}
+  html.docnr-phone .global-back{display:inline-flex!important;position:relative!important;z-index:5!important;pointer-events:auto!important;touch-action:manipulation!important;min-width:42px!important;min-height:42px!important;border-radius:12px!important}
+  html.docnr-phone #docnr-mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  html.docnr-phone #docnr-mobile-nav button{min-height:58px!important}
+  html.docnr-phone .docnr-mobile-essential-grid{grid-template-columns:1fr 1fr!important}
+  html.docnr-phone .docnr-mobile-essential-grid .v1610-flow-card{min-height:108px!important;padding:12px!important}
+  html.docnr-phone [data-app-route="exam"],
+  html.docnr-phone [data-v15-room-exam],
+  html.docnr-phone [data-app-route="printcenter"],
+  html.docnr-phone [data-app-route="specialactivity"],
+  html.docnr-phone [data-app-route="academic"],
+  html.docnr-phone [data-app-route="students"],
+  html.docnr-phone [data-app-route="roomgroups"],
+  html.docnr-phone [data-app-route="users"],
+  html.docnr-phone [data-app-route="audit"],
+  html.docnr-phone [data-app-route="system"],
+  html.docnr-phone [data-app-route="overrides"],
+  html.docnr-phone [data-app-route="promotion"]{display:none!important}
+}
+@media (max-width:360px){
+  html.docnr-phone .docnr-mobile-essential-grid{grid-template-columns:1fr!important}
+}

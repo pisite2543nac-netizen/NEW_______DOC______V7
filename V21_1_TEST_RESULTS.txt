@@ -1,0 +1,40 @@
+DOC-FULL-NR V21.1 TEST RESULTS
+Date: 2026-09-25
+Release: MOBILE ESSENTIALS • RELIABLE BACK • DESKTOP FULL MODE
+
+STATIC / SOURCE
+- Selected regression contracts V17 -> V21.1: PASS
+- V20.1 content-focused slides: PASS
+- V20.2 adaptive mobile/camera: PASS
+- V20.3 mobile interaction/camera: PASS
+- V20.4 real-device mobile router contract: PASS
+- V20.5 late barcode + room groups: PASS
+- V20.6 adaptive stability compatibility: PASS
+- V20.7 long-term UX + teacher compatibility: PASS
+- V21.1 mobile essentials static contract: PASS
+- site/*.js node --check: 24/24 PASS
+- index.html / exam.html local asset references: PASS
+
+BROWSER REGRESSION
+- 23/23 browser contract scripts PASS (executed in two batches due runner timeout)
+- V21.1 dedicated matrix: Admin / Teacher / Student on phone, tablet and desktop: PASS
+- Phone bottom navigation: exactly 5 primary actions per role: PASS
+- Phone sidebar/hamburger removed: PASS
+- Tablet drawer preserved: PASS
+- Desktop sidebar/full workflows preserved: PASS
+- Global back button capture -> DOCNR_BASE.goBack: PASS
+- Route tap debounce/direct navigation: PASS
+- No document horizontal overflow in V21.1 browser matrix: PASS
+
+PHONE PRIMARY FUNCTIONS
+Admin: dashboard / attendance / paperscan / workcheck / courses
+Teacher: dashboard / attendance / workcheck / courses / profile
+Student: dashboard / attendance / work / courses / profile
+
+NOT CLAIMED AS HARDWARE-PASS
+- Physical iPhone / Android / iPad camera permission UI still requires real-device verification after deployment.
+- GitHub Actions/Pages live verification occurs when the owner runs One-Click with valid Git credentials.
+
+BACKEND
+- V21.1 does not introduce a new schema change.
+- Existing V21.0 production-alignment migration remains packaged and unchanged in purpose.

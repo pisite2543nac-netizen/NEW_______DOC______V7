@@ -37,6 +37,7 @@ README_V20_5_TH.txt
 README_V20_6_LONG_TERM_TH.txt
 README_V20_6_TH.txt
 README_V21_0_TH.txt
+README_V21_1_TH.txt
 SECURITY.md
 SubjectsPage.tsx
 SubmissionPage.tsx
@@ -72,6 +73,8 @@ V21_0_FINAL_ACCEPTANCE_REPORT.md
 V21_0_R1_HOTFIX_TEST_RESULTS.txt
 V21_0_R1_WINDOWS_UTF8_HOTFIX.txt
 V21_0_TEST_RESULTS.txt
+V21_1_FINAL_ACCEPTANCE_REPORT.md
+V21_1_TEST_RESULTS.txt
 VERSION.json
 WorksheetsPage.tsx
 app.js
@@ -357,6 +360,8 @@ tests/v207_long_term_ux_teacher_browser_contract.py
 tests/v207_long_term_ux_teacher_contract.py
 tests/v210_major_stability_browser_contract.py
 tests/v210_major_stability_contract.py
+tests/v211_mobile_essentials_browser_contract.py
+tests/v211_mobile_essentials_contract.py
 tsconfig.app.json
 tsconfig.app.tsbuildinfo
 tsconfig.json

@@ -12,8 +12,8 @@ meta=(site/'release-meta.js').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
 
 assert 'data-docnr-release="v20-5-late-teacher-barcode-admin-room-groups"','data-docnr-release="v20-6-adaptive-stability-teacher-room-integration"' in idx
-assert any(x in meta for x in ['RELEASE_VERSION="V20.5"','RELEASE_VERSION="V20.6"','RELEASE_VERSION="V20.7"','RELEASE_VERSION="V21.0"']) and any(x in meta for x in ['20260923-v20-5','20260924-v20-6','20260924-v20-7','20260924-v21-0'])
-assert float(ver['version'])>=20.5 and ver['release_marker'] in {'V20.5','V20.6','V20.7','V21.0'}
+assert any(x in meta for x in ['RELEASE_VERSION="V20.5"','RELEASE_VERSION="V20.6"','RELEASE_VERSION="V20.7"','RELEASE_VERSION="V21.0"','RELEASE_VERSION="V21.1"']) and any(x in meta for x in ['20260923-v20-5','20260924-v20-6','20260924-v20-7','20260924-v21-0','20260925-v21-1'])
+assert float(ver['version'])>=20.5 and ver['release_marker'] in {'V20.5','V20.6','V20.7','V21.0','V21.1'}
 # Real phone recording regression: Admin Attendance was missing from route authorization and fell back to dashboard.
 m=re.search(r'const ADMIN_ROUTES=new Set\(\[([^\]]+)\]\)',app)
 assert m and '"attendance"' in m.group(1), 'Admin attendance subroute must be authorized'

@@ -16,10 +16,10 @@ manifest=json.loads((site/'manifest.webmanifest').read_text('utf-8'))
 assert 'data-docnr-release="v20-5-late-teacher-barcode-admin-room-groups"','data-docnr-release="v20-6-adaptive-stability-teacher-room-integration"' in index
 assert index.index('device-camera-runtime.js') < index.index('app.js') < index.index('v16-platform.js')
 assert any(x in sw for x in ['doc-full-nr-v20-5-late-teacher-barcode-admin-room-groups','doc-full-nr-v20-6-adaptive-stability-teacher-room-integration'])
-assert any(x in sw for x in ['./device-camera-runtime.js?v=20260923-v20-5','./device-camera-runtime.js?v=20260924-v20-6','./device-camera-runtime.js?v=20260924-v20-7','./device-camera-runtime.js?v=20260924-v21-0'])
-assert any(x in meta for x in ['RELEASE_VERSION="V20.5"','RELEASE_VERSION="V20.6"','RELEASE_VERSION="V20.7"','RELEASE_VERSION="V21.0"']) and any(x in meta for x in ['20260923-v20-5','20260924-v20-6','20260924-v20-7','20260924-v21-0'])
-assert float(version['version'])>=20.5 and version['release_marker'] in {'V20.5','V20.6','V20.7','V21.0'}
-assert any(version['device_usage_policy']['phone'].startswith(x) for x in ['attendance QR scan','camera-first attendance QR scan'])
+assert any(x in sw for x in ['./device-camera-runtime.js?v=20260923-v20-5','./device-camera-runtime.js?v=20260924-v20-6','./device-camera-runtime.js?v=20260924-v20-7','./device-camera-runtime.js?v=20260924-v21-0','./device-camera-runtime.js?v=20260925-v21-1'])
+assert any(x in meta for x in ['RELEASE_VERSION="V20.5"','RELEASE_VERSION="V20.6"','RELEASE_VERSION="V20.7"','RELEASE_VERSION="V21.0"','RELEASE_VERSION="V21.1"']) and any(x in meta for x in ['20260923-v20-5','20260924-v20-6','20260924-v20-7','20260924-v21-0','20260925-v21-1'])
+assert float(version['version'])>=20.5 and version['release_marker'] in {'V20.5','V20.6','V20.7','V21.0','V21.1'}
+assert any(version['device_usage_policy']['phone'].startswith(x) for x in ['attendance QR scan','camera-first attendance QR scan','V21.1 Mobile Essentials'])
 assert version['camera_runtime']['attendance_scan'] is True
 assert manifest['theme_color'].lower()=='#1f7a4f'
 

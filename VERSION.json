@@ -1,6 +1,6 @@
 {
-  "release": "V21.0 MAJOR STABILITY • UNIFIED RUNTIME • PRODUCTION READY",
-  "date": "2026-09-24",
+  "release": "V21.1 MOBILE ESSENTIALS • RELIABLE BACK • DESKTOP FULL MODE",
+  "date": "2026-09-25",
   "product": "Nangrong Smart Worksheet System / DOC-FULL-NR",
   "repo": "pisite2543nac-netizen/NEW_______DOC______V7",
   "pages": "https://pisite2543nac-netizen.github.io/NEW_______DOC______V7/",
@@ -17,13 +17,13 @@
   "ready_templates": 374,
   "paper_templates": 187,
   "digital_templates": 187,
-  "release_marker": "V21.0",
+  "release_marker": "V21.1",
   "compatibility_release_marker": "V19.1-COMPLETE-STABILIZED-CLASSROOM-FLOW",
   "spec_adaptation": "selective",
   "adaptation_note": "นำข้อกำหนดเอกสารต้นทางมาใช้เฉพาะส่วนที่เพิ่มความเสถียร ความปลอดภัย UX และการดูแลระบบ โดยคงสถาปัตยกรรม/ข้อมูล DOC-FULL-NR เดิม",
   "subject_room_model": "subject is the room; approved subject_enrollments are room members; worksheet templates/resources/exams share subject_id",
   "exam_room_integration": "Adapted ALL_Test UX on existing Supabase V18 engine: 50 MCQ / 4 choices / 75 minutes / 20 points; pre-exam instructions; question navigator; autosave/resume; fullscreen and violation audit; per-attempt shuffle; Admin result filters; student score/answer-key hidden.",
-  "version": "21.0",
+  "version": "21.1",
   "notes": "V21.0 is the major stability rebuild driven by real-use desktop and phone video evidence. It removes competing shell/responsive runtimes from production loading, establishes one V21 presentation runtime, preserves business modules and data history, and packages a production-alignment backend migration plus fail-closed installer gates.",
   "gradebook": "17 official work units averaged to 40; behavior 20; midterm 20; final 20; admin raw-score adjustment with audit log; automatic 4.0 grade cut and pass/fail",
   "paper_scan": "multi-page immutable packet",
@@ -238,8 +238,8 @@
     "analytical_compare_distinguish_questions": true
   },
   "unified_ux_ui": {
-    "visible_release_source": "site/release-meta.js (V21.0 presentation owner)",
-    "release_version": "V21.0",
+    "visible_release_source": "site/release-meta.js (V21.1 presentation owner)",
+    "release_version": "V21.1",
     "compact_professional": true,
     "special_activity_top_level_admin": true,
     "special_activity_top_level_user": true,
@@ -258,7 +258,7 @@
   },
   "production_database_release": "V20.6.1 production contract + V21.0 consolidated alignment migration",
   "device_usage_policy": {
-    "phone": "camera-first attendance QR scan + late-paper barcode/evidence capture + view learning content; Digital Worksheet read-only/no draft/no submit",
+    "phone": "V21.1 Mobile Essentials: max 5 primary navigation actions per role; camera-first attendance/paper evidence, read/track work, courses/profile; desktop-only heavy workflows are hidden on phones.",
     "tablet": "full learning + Digital Worksheet editing/submission + camera workflows with touch-first layout",
     "desktop": "full learning/admin/exam/gradebook/print workflows with compact information density",
     "server_authority_preserved": true,
@@ -288,7 +288,7 @@
     "route_start_teardown": true,
     "direct_mobile_route_navigation": true
   },
-  "phone_workflow": "Phone is camera-first: direct Attendance QR scan and late-paper evidence capture are primary; Digital Worksheet is view-only on phones. The mobile shell uses direct route descriptors and does not proxy navigation through hidden desktop/sidebar controls.",
+  "phone_workflow": "V21.1 Mobile Essentials: phone exposes only five primary functions per role. Admin: dashboard, attendance camera, paper evidence capture, work tracking, courses. Teacher: dashboard, attendance camera, work tracking, courses, profile. Student: dashboard, attendance, work status, courses, profile. Full exam/print/admin management remains desktop-first.",
   "late_attendance": "after 15 minutes: teacher/Admin issues temporary barcode; student scans teacher barcode on own device; server records late with audit/idempotency",
   "admin_room_grouping": "separate Admin-defined groups and memberships; does not replace subject enrollment or academic history",
   "long_term_ui": {
@@ -325,5 +325,35 @@
     "history_preservation": true,
     "staff_filtering": true
   },
-  "backend_alignment_migration": "supabase/migrations/20260924_v21_0_production_alignment.sql"
+  "backend_alignment_migration": "supabase/migrations/20260924_v21_0_production_alignment.sql",
+  "mobile_essentials": {
+    "release": "V21.1",
+    "max_primary_buttons": 5,
+    "full_desktop_preserved": true,
+    "tablet_full_mode_preserved": true,
+    "admin": [
+      "dashboard",
+      "attendance",
+      "paperscan",
+      "workcheck",
+      "courses"
+    ],
+    "teacher": [
+      "dashboard",
+      "attendance",
+      "workcheck",
+      "courses",
+      "profile"
+    ],
+    "student": [
+      "dashboard",
+      "attendance",
+      "work",
+      "courses",
+      "profile"
+    ],
+    "reliable_back_owner": "app.js goBackUnified + v21-runtime capture fallback",
+    "phone_sidebar_removed": true,
+    "desktop_only_heavy_routes_hidden": true
+  }
 }

@@ -119,6 +119,10 @@ function startCountdowns(){clearInterval(state.countdownTimer);updateCountdowns(
 function deviceLabel(){
   const ua=navigator.userAgent||"";if(/iPhone|iPad|iPod/i.test(ua))return "iOS Safari/PWA";if(/Android/i.test(ua))return "Android";if(/Windows/i.test(ua))return "Windows";return "Browser";
 }
+function isPhoneUI(){
+  const d=window.DOCNR_DEVICE_RUNTIME?.classify?.();
+  return d?d==="phone":Math.max(1,window.innerWidth||0)<=620;
+}
 async function heartbeat(){
   if(!uid()||document.visibilityState==="hidden")return;
   try{await client().rpc("heartbeat_user_presence",{p_activity:state.route||"online",p_activity_ref:state.subjectId||null,p_device:deviceLabel()})}catch{}
@@ -483,7 +487,13 @@ async function teacherAssignmentsV207(){
   const r=await client().rpc("my_teacher_assignments_v206");if(r.error)throw r.error;return r.data||[];
 }
 async function renderTeacherDashboardV207(){
-  setTitle("ภาพรวมครู");busy("กำลังเตรียมพื้นที่ทำงานครู...");
+  setTitle("ภาพรวมครู");
+  if(isPhoneUI()){
+    const p=await getProfile(true);
+    content().innerHTML=`<section class="v14-page v1610-dashboard docnr-mobile-essentials"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">MOBILE ESSENTIALS • ${RELEASE_VERSION}</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"ครูผู้สอน")}</h1><p>โทรศัพท์เหลือเฉพาะงานภาคสนามและการติดตาม งานเต็มใช้บนคอมพิวเตอร์</p></div></div><div class="docnr-mobile-essential-grid">${hubCard("attendance","📷","กล้องเช็คชื่อ","สแกน QR • บาร์โค้ดเข้าสาย","orange")}${hubCard("workcheck","📊","ติดตามงาน","ดูความคืบหน้าและคะแนนรวม","green")}${hubCard("courses","📚","รายวิชา","ดูวิชาและห้องที่รับผิดชอบ","cyan")}${hubCard("profile","👤","โปรไฟล์","ข้อมูลบัญชีและความปลอดภัย","slate")}</div><div class="card docnr-mobile-desktop-note"><b>งานเต็มใช้บนคอม</b><span>ตรวจงานละเอียด • ให้คะแนน • ระบบสอบ • พิมพ์รายงาน</span></div></section>`;
+    return;
+  }
+  busy("กำลังเตรียมพื้นที่ทำงานครู...");
   const [p,ar,sr,att,ex]=await Promise.all([getProfile(true),client().rpc("my_teacher_assignments_v206"),client().rpc("staff_submission_queue_v206"),client().rpc("staff_attendance_sessions_v206"),client().rpc("staff_exam_dashboard_v206")]);
   if(ar.error)throw ar.error;if(sr.error)throw sr.error;if(att.error)throw att.error;if(ex.error)throw ex.error;
   const assignments=ar.data||[],subs=Array.isArray(sr.data)?sr.data:[],sessions=att.data||[],examData=ex.data||{};
@@ -529,6 +539,10 @@ async function renderTeacherPrintCenterV207(){
 async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile(),kind=window.DOCNR_DEVICE_RUNTIME?.classify?.()||"desktop",phone=kind==="phone";
+  if(phone){
+    content().innerHTML=`<section class="v14-page v1610-dashboard docnr-mobile-essentials"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">MOBILE ESSENTIALS • ${RELEASE_VERSION}</span><h1>งานภาคสนาม</h1><p>โทรศัพท์ใช้กล้องและติดตามข้อมูลเป็นหลัก งานจัดการเต็มใช้บนคอมพิวเตอร์</p></div></div><div class="docnr-mobile-essential-grid">${dashboardRouteCard("attendance","📷","กล้องเช็คชื่อ","เลือกห้อง/วิชาแล้วสแกน QR","orange")}${dashboardRouteCard("paperscan","📄","ถ่ายใบงาน","สแกนรหัสและเก็บภาพครบทุกหน้า","red")}${dashboardRouteCard("workcheck","📊","ติดตามงาน","ดูการส่งงานรายห้อง","green")}${dashboardRouteCard("courses","📚","รายวิชา","ดูรายวิชา หน่วย และสถานะ","cyan")}</div><div class="card docnr-mobile-desktop-note"><b>งานเต็มใช้บนคอม</b><span>ผู้ใช้/สิทธิ์ • จัดกลุ่มห้อง • สอบ • คะแนนละเอียด • พิมพ์ • ตั้งค่า • Audit</span></div></section>`;
+    return;
+  }
   const phoneTools=phone?`<div class="card v204-phone-primary"><div class="v204-phone-primary-head"><span class="v14-kicker">PHONE CAPTURE MODE</span><h2>งานหลักบนโทรศัพท์</h2><p>แตะครั้งเดียวเพื่อเข้ากล้อง • ออกแบบสำหรับเช็คชื่อและเก็บหลักฐานใบงานโดยตรง</p></div><div class="v204-phone-primary-actions">${dashboardRouteCard("attendance","📷","เปิดกล้องเช็คชื่อ","เลือกห้อง/วิชา → สแกน QR นักศึกษา","orange")}${dashboardRouteCard("paperscan","📄","ถ่ายสำเนาใบงาน","สแกน Barcode/QR → ถ่ายเอกสารทุกหน้า","red")}</div></div>`:"";
   const mainCards=phone?
     `${dashboardRouteCard("courses","📚","การเรียนการสอน","CODE • 17 หน่วย • สไลด์ • ใบงาน","cyan")}${dashboardRouteCard("students","👨‍🎓","นักศึกษาและสิทธิ์","อนุมัติบัญชี • สมาชิก • โปรไฟล์","green")}${dashboardRouteCard("workadmin","📝","งานและคะแนน","ตรวจงาน • Gradebook • รายงาน","violet")}${dashboardRouteCard("exam","🧪","ระบบสอบ","ข้อสอบ • ช่วงเวลาสอบ • ผลสอบ","red")}${dashboardRouteCard("academic","⚙️","ระบบและปีการศึกษา","Promotion • Audit • Settings","slate")}`:
@@ -545,8 +559,8 @@ async function renderAdminDashboard(){
 }
 async function renderStudentDashboard(){
   setTitle("หน้าแรก");const p=await getProfile(),kind=window.DOCNR_DEVICE_RUNTIME?.classify?.()||"desktop",phone=kind==="phone";
-  const phoneNotice=phone?`<div class="card v204-phone-student-note"><b>📱 โหมดโทรศัพท์</b><span>เหมาะสำหรับดูบทเรียน เช็คชื่อ ดูสถานะงานและข้อมูลส่วนตัว • ใบงานอิเล็กทรอนิกส์เปิดดูได้ แต่การพิมพ์คำตอบ/ส่งงานใช้แท็บเล็ตหรือคอมพิวเตอร์</span></div>`:"";
-  const cards=phone?`${dashboardRouteCard("attendance","📷","เช็คชื่อ","แสดง QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("courses","🏫","การเรียนการสอน","ดูหน่วย สไลด์ และสถานะใบงาน","green")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์และประวัติการศึกษา","slate")}`:`${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","การเรียนการสอน","17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Challenge","orange")}${dashboardRouteCard("work","📋","งานและคะแนนของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("printcenter","🖨️","พิมพ์เอกสารของฉัน","ใบงานย้อนหลัง • สรุปงาน • PDF","green")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}`;
+  const phoneNotice=phone?`<div class="card v204-phone-student-note"><b>📱 Mobile Essentials</b><span>โทรศัพท์ใช้สำหรับเช็คชื่อ ดูรายวิชา ดูสถานะงาน และข้อมูลส่วนตัว • การทำข้อสอบ/พิมพ์/งานละเอียดให้ใช้คอมพิวเตอร์หรือแท็บเล็ต</span></div>`:"";
+  const cards=phone?`${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR • ประวัติ • สแกนบาร์โค้ดเข้าสาย","orange")}${dashboardRouteCard("work","📋","งานของฉัน","งานค้าง • ส่งแล้ว • ตรวจแล้ว","violet")}${dashboardRouteCard("courses","🏫","รายวิชา","ดูหน่วย สไลด์ สถานะใบงาน และเพิ่ม CODE","green")}${dashboardRouteCard("profile","👤","โปรไฟล์","ข้อมูลส่วนตัวและความปลอดภัยบัญชี","slate")}`:`${dashboardRouteCard("catalog","📚","รายวิชาทั้งหมด / ใส่ CODE","เลือกวิชาและใช้ CODE จากครู","cyan")}${dashboardRouteCard("courses","🏫","การเรียนการสอน","17 หน่วย • สไลด์สอนจริง 20 หน้า • ใบงานประจำหน่วย","green")}${dashboardRouteCard("specialactivity","🎮","กิจกรรมพิเศษ","Code Typing Academy • Practice • Ranking • Challenge","orange")}${dashboardRouteCard("work","📋","งานและคะแนนของฉัน","งานค้าง • Draft • ส่งแล้ว • กำหนดเวลา","violet")}${dashboardRouteCard("printcenter","🖨️","พิมพ์เอกสารของฉัน","ใบงานย้อนหลัง • สรุปงาน • PDF","green")}${dashboardRouteCard("attendance","📷","เช็คชื่อ","QR และประวัติการเข้าเรียน","orange")}${dashboardRouteCard("exam","🧪","ข้อสอบ","เข้าสอบเมื่อครูเปิด","red")}${dashboardRouteCard("profile","👤","ข้อมูลของฉัน","โปรไฟล์อ่านอย่างเดียว • ประวัติการศึกษา","slate")}`;
   content().innerHTML=`<section class="v14-page v1610-dashboard ${phone?"v204-phone-dashboard":""}"><div class="v1610-dashboard-hero"><img class="v172-dashboard-seal" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><span class="v14-kicker">SMART LEARNING • ${RELEASE_VERSION}</span><h1>สวัสดี ${esc(p?.display_name||p?.full_name||"นักศึกษา")}</h1><p>${phone?"หน้าจอโทรศัพท์แสดงเฉพาะงานที่เหมาะกับการใช้งานแบบสัมผัส":"เลือกงานจากปุ่มใหญ่ ระบบจะพาเข้าสู่ขั้นตอนจริงโดยตรง"}</p></div><div class="v1610-student-id"><span>🎓</span><b>${esc(p?.student_code||"นักศึกษา")}</b><small>${esc(`${p?.grade_level||""}${p?.room_label||""}`)}</small></div></div>
   ${phoneNotice}<div class="v1610-flow-grid ${phone?"v204-phone-secondary":""}">${cards}</div>
   ${phone?"":`<div class="card v1610-system-note"><b>ลำดับการเรียน</b><span>รายวิชา → CODE → ครูปลดล็อกหน่วย → สไลด์/ใบงาน → ส่งงาน → เช็คชื่อ/สอบ</span></div>`}</section>`;

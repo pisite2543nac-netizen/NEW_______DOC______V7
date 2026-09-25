@@ -1,4 +1,4 @@
-name: DOC-FULL-NR V21 MAJOR STABILITY CI
+name: DOC-FULL-NR V21.1 MOBILE ESSENTIALS CI
 
 on:
   pull_request:
@@ -41,7 +41,7 @@ jobs:
           python tests/v205_late_barcode_room_groups_contract.py
           python tests/v206_adaptive_stability_contract.py
           python tests/v207_long_term_ux_teacher_contract.py
-          python tests/v210_major_stability_contract.py
+          python tests/v211_mobile_essentials_contract.py
       - name: JavaScript syntax
         run: |
           node --check site/app.js

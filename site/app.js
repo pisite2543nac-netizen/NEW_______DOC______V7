@@ -287,7 +287,13 @@ function signupDialog(){
   };
 }
 
+const MOBILE_ESSENTIAL_NAV={
+  admin:[["dashboard","หน้าแรก"],["attendance","เช็คชื่อ"],["paperscan","ถ่ายใบงาน"],["workcheck","ติดตามงาน"],["courses","รายวิชา"]],
+  teacher:[["dashboard","หน้าแรก"],["attendance","เช็คชื่อ"],["workcheck","ติดตามงาน"],["courses","รายวิชา"],["profile","โปรไฟล์"]],
+  user:[["dashboard","หน้าแรก"],["attendance","เช็คชื่อ"],["work","งานของฉัน"],["courses","รายวิชา"],["profile","โปรไฟล์"]]
+};
 function navItems(){
+  if(isPhoneDevice())return MOBILE_ESSENTIAL_NAV[isAdmin()?"admin":isTeacher()?"teacher":"user"];
   if(isAdmin())return [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["specialactivity","กิจกรรมพิเศษ"],["students","นักศึกษาและสิทธิ์"],["roomgroups","จัดกลุ่มห้อง"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["printcenter","ศูนย์พิมพ์และสรุปผล"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]];
   if(isTeacher())return [["dashboard","หน้าแรก"],["courses","วิชาและห้องที่สอน"],["workadmin","ตรวจงานและคะแนน"],["workcheck","เช็กงานรายห้อง"],["attendancehub","เช็คชื่อ"],["exam","ระบบสอบ"],["printcenter","พิมพ์/รายงาน"],["profile","โปรไฟล์ของฉัน"]];
   return [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["specialactivity","กิจกรรมพิเศษ"],["work","งานของฉัน"],["printcenter","พิมพ์เอกสารของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
@@ -1438,6 +1444,7 @@ document.addEventListener("click",e=>{
 // are placed on window; Supabase secrets and internal state remain module-scoped.
 window.DOCNR_BASE = Object.freeze({
   navigate:navigateUnified,
+  goBack:goBackUnified,
   openWorksheet,
   printWorksheet,
   printSubjectWorksheetPack,

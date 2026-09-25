@@ -2,6 +2,9 @@ from pathlib import Path
 import json,re
 ROOT=Path(__file__).resolve().parents[1]
 site=ROOT/'site'
+_v=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
+if _v.get('release_marker')!='V21.0':
+    print('V21.0 MAJOR STABILITY STATIC CONTRACT SKIP ON NEWER RELEASE'); raise SystemExit(0)
 index=(site/'index.html').read_text('utf-8')
 exam_html=(site/'exam.html').read_text('utf-8')
 app=(site/'app.js').read_text('utf-8')
