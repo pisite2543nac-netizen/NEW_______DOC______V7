@@ -271,6 +271,7 @@ async function ensureNav(){
   // Remove extension-owned navigation left by older cached DOMs.
   $$("#sidebar .nav [data-v14-route],#sidebar .nav [data-v16-primary-nav],#sidebar .nav [data-v14-divider]").forEach(x=>x.remove());
 }
+window.DOCNR_NOTIFICATIONS=Object.freeze({show:showNotificationPanel,requestPermission:requestMobileNotificationPermission,refresh:refreshNotificationBadge});
 function scheduleEnsureNav(){if(state.navTimer)return;state.navTimer=setTimeout(()=>{state.navTimer=null;ensureNav().catch(()=>{});ensureNotificationUI();startNotificationRealtime().catch(()=>{});refreshNotificationBadge().catch(()=>{})},80)}
 const shellObserver=new MutationObserver(scheduleEnsureNav);
 shellObserver.observe($("#app")||document.body,{childList:true,subtree:true});
@@ -540,7 +541,7 @@ async function renderAdminDashboard(){
   setTitle("หน้าแรก");
   const p=await getProfile(),kind=window.DOCNR_DEVICE_RUNTIME?.classify?.()||"desktop",phone=kind==="phone";
   if(phone){
-    content().innerHTML=`<section class="v14-page v1610-dashboard docnr-mobile-essentials"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">MOBILE ESSENTIALS • ${RELEASE_VERSION}</span><h1>งานภาคสนาม</h1><p>โทรศัพท์ใช้กล้องและติดตามข้อมูลเป็นหลัก งานจัดการเต็มใช้บนคอมพิวเตอร์</p></div></div><div class="docnr-mobile-essential-grid">${dashboardRouteCard("attendance","📷","กล้องเช็คชื่อ","เลือกห้อง/วิชาแล้วสแกน QR","orange")}${dashboardRouteCard("paperscan","📄","ถ่ายใบงาน","สแกนรหัสและเก็บภาพครบทุกหน้า","red")}${dashboardRouteCard("workcheck","📊","ติดตามงาน","ดูการส่งงานรายห้อง","green")}${dashboardRouteCard("courses","📚","รายวิชา","ดูรายวิชา หน่วย และสถานะ","cyan")}</div><div class="card docnr-mobile-desktop-note"><b>งานเต็มใช้บนคอม</b><span>ผู้ใช้/สิทธิ์ • จัดกลุ่มห้อง • สอบ • คะแนนละเอียด • พิมพ์ • ตั้งค่า • Audit</span></div></section>`;
+    content().innerHTML=`<section class="v14-page v1610-dashboard docnr-mobile-essentials"><div class="v1610-dashboard-hero"><div><span class="v14-kicker">MOBILE ESSENTIALS • ${RELEASE_VERSION}</span><h1>งานภาคสนาม</h1><p>โทรศัพท์ใช้กล้องและติดตามข้อมูลเป็นหลัก งานจัดการเต็มใช้บนคอมพิวเตอร์</p></div></div><div class="docnr-mobile-essential-grid">${dashboardRouteCard("attendance","📷","กล้องเช็คชื่อ","เลือกห้อง/วิชาแล้วสแกน QR","orange")}${dashboardRouteCard("paperscan","📄","ถ่ายใบงาน","สแกนรหัสและเก็บภาพครบทุกหน้า","red")}${dashboardRouteCard("workcheck","📊","ติดตามงาน","ดูการส่งงานรายห้อง","green")}${dashboardRouteCard("courses","📚","รายวิชา","ดูรายวิชา หน่วย และสถานะ","cyan")}${dashboardRouteCard("users","👥","ผู้ใช้ด่วน","เพิ่มบัญชีและเปิด/ระงับการใช้งาน","slate")}</div><div class="card docnr-mobile-desktop-note"><b>งานเต็มใช้บนคอม</b><span>ผู้ใช้/สิทธิ์ • จัดกลุ่มห้อง • สอบ • คะแนนละเอียด • พิมพ์ • ตั้งค่า • Audit</span></div></section>`;
     return;
   }
   const phoneTools=phone?`<div class="card v204-phone-primary"><div class="v204-phone-primary-head"><span class="v14-kicker">PHONE CAPTURE MODE</span><h2>งานหลักบนโทรศัพท์</h2><p>แตะครั้งเดียวเพื่อเข้ากล้อง • ออกแบบสำหรับเช็คชื่อและเก็บหลักฐานใบงานโดยตรง</p></div><div class="v204-phone-primary-actions">${dashboardRouteCard("attendance","📷","เปิดกล้องเช็คชื่อ","เลือกห้อง/วิชา → สแกน QR นักศึกษา","orange")}${dashboardRouteCard("paperscan","📄","ถ่ายสำเนาใบงาน","สแกน Barcode/QR → ถ่ายเอกสารทุกหน้า","red")}</div></div>`:"";

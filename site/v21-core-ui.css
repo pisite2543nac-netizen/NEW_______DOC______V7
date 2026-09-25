@@ -187,7 +187,7 @@ html.docnr-offline #docnr-network-state{color:var(--docnr-warning)}html.docnr-of
   .sidebar-utilities{display:grid!important}
   #docnr-network-state{display:none!important}
   .content,#content{padding:11px 9px calc(var(--docnr-mobile-nav-h) + var(--docnr-safe-bottom) + 13px)!important;max-width:100vw!important}
-  #docnr-mobile-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+  #docnr-mobile-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
   .v14-page{gap:10px!important}.card{padding:12px!important;border-radius:12px!important}
   .v14-section-head,.section-head{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:7px!important}.v14-section-head h1,.section-head h1{font-size:21px!important}.v14-section-head p,.section-head p{font-size:12px!important;line-height:1.45!important}.v14-section-head>.btn,.section-head>.btn{width:100%!important}
   .row:not(.nowrap){flex-wrap:wrap!important}
@@ -241,7 +241,7 @@ html.docnr-phone .docnr-filterbar{grid-template-columns:1fr!important;position:s
   html.docnr-phone .topbar-leading{min-width:0!important;flex:1 1 auto!important;gap:7px!important}
   html.docnr-phone #pagetitle{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px!important}
   html.docnr-phone .global-back{display:inline-flex!important;position:relative!important;z-index:5!important;pointer-events:auto!important;touch-action:manipulation!important;min-width:42px!important;min-height:42px!important;border-radius:12px!important}
-  html.docnr-phone #docnr-mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  html.docnr-phone #docnr-mobile-nav{grid-template-columns:repeat(6,minmax(0,1fr))!important}
   html.docnr-phone #docnr-mobile-nav button{min-height:58px!important}
   html.docnr-phone .docnr-mobile-essential-grid{grid-template-columns:1fr 1fr!important}
   html.docnr-phone .docnr-mobile-essential-grid .v1610-flow-card{min-height:108px!important;padding:12px!important}
@@ -260,4 +260,61 @@ html.docnr-phone .docnr-filterbar{grid-template-columns:1fr!important;position:s
 }
 @media (max-width:360px){
   html.docnr-phone .docnr-mobile-essential-grid{grid-template-columns:1fr!important}
+}
+
+
+/* V21.2 Cross-device stable architecture.
+   Desktop = full system; Tablet = operational subset; Phone = quick-action subset.
+   Authentication, home, back, theme and logout remain shell-level on every device. */
+.home-shortcut{display:none!important}
+.docnr-user-lite{max-width:980px;margin-inline:auto}
+.docnr-lite-search{padding:10px!important}
+.docnr-user-lite-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.docnr-user-lite-card{display:grid;gap:12px!important}
+.docnr-user-lite-main{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0}
+.docnr-user-lite-main>div{display:grid;gap:3px;min-width:0}.docnr-user-lite-main b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.docnr-user-lite-main span:not(.badge){font-size:12px;color:var(--docnr-muted)}
+.docnr-user-lite-actions{display:flex;justify-content:flex-end}.docnr-user-lite-actions .btn{min-width:128px}
+
+@media (max-width:959px){
+  html.docnr-tablet .home-shortcut,html.docnr-phone .home-shortcut{display:inline-flex!important;align-items:center!important;justify-content:center!important}
+  html.docnr-tablet .nav-card-menu{gap:6px!important}
+  html.docnr-tablet .nav-card-btn{min-height:48px!important}
+  html.docnr-tablet .docnr-user-lite-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:620px){
+  html.docnr-phone .topbar,#topbar{gap:5px!important}
+  html.docnr-phone .topbar-actions{display:flex!important;gap:4px!important;flex:0 0 auto!important}
+  html.docnr-phone .topbar-actions>*{display:none!important}
+  html.docnr-phone .topbar-actions #theme-toggle,
+  html.docnr-phone .topbar-actions #logout{display:inline-flex!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important;align-items:center!important;justify-content:center!important;border-radius:12px!important;font-size:17px!important}
+  html.docnr-phone .topbar-actions .utility-label{display:none!important}
+  html.docnr-phone .topbar-actions #v161-notification-button,
+  html.docnr-phone .topbar-actions #docnr-network-state,
+  html.docnr-phone .topbar-actions #install,
+  html.docnr-phone .topbar-actions #fullscreen,
+  html.docnr-phone .topbar-actions .user-name{display:none!important}
+  html.docnr-phone .home-shortcut{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important;border-radius:12px!important;font-size:18px!important}
+  html.docnr-phone .global-back{width:40px!important;min-width:40px!important}
+  html.docnr-phone #pagetitle{font-size:13px!important;max-width:clamp(72px,31vw,142px)!important}
+  html.docnr-phone #docnr-mobile-nav{grid-template-columns:repeat(6,minmax(0,1fr))!important;height:calc(68px + var(--docnr-safe-bottom))!important}
+  html.docnr-phone #docnr-mobile-nav button{min-height:58px!important;padding-inline:1px!important;font-size:9px!important}
+  html.docnr-phone #docnr-mobile-nav button .icon{font-size:17px!important}
+  html.docnr-phone .content,html.docnr-phone #content{padding-bottom:calc(76px + var(--docnr-safe-bottom))!important}
+  html.docnr-phone .docnr-user-lite-grid{grid-template-columns:1fr!important;gap:8px!important}
+  html.docnr-phone .docnr-user-lite-main{align-items:center}
+  html.docnr-phone .docnr-user-lite-actions .btn{width:100%!important;min-width:0!important}
+  html.docnr-phone [data-app-route="exam"],
+  html.docnr-phone [data-app-route="printcenter"],
+  html.docnr-phone [data-app-route="specialactivity"],
+  html.docnr-phone [data-app-route="academic"],
+  html.docnr-phone [data-app-route="students"],
+  html.docnr-phone [data-app-route="roomgroups"],
+  html.docnr-phone [data-app-route="audit"],
+  html.docnr-phone [data-app-route="system"],
+  html.docnr-phone [data-app-route="overrides"],
+  html.docnr-phone [data-app-route="promotion"]{display:none!important}
+}
+@media (max-width:360px){
+  html.docnr-phone #pagetitle{max-width:86px!important}
+  html.docnr-phone #docnr-mobile-nav button{font-size:8.5px!important}
 }

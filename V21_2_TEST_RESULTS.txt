@@ -1,0 +1,76 @@
+DOC-FULL-NR V21.2 CROSS-DEVICE STABLE — TEST RESULTS
+Date: 2026-09-25
+
+RELEASE CONTRACT
+PASS  VERSION.json = 21.2 / release marker V21.2
+PASS  site release marker = v21-2-cross-device-stable
+PASS  app.js = single business router/shell owner
+PASS  v21-runtime.js = single presentation viewport/drawer/mobile-navigation owner
+PASS  legacy mobile.js / v19-ux-runtime.js / v20-stability-runtime.js are not production-loaded
+
+AUTHENTICATION / ACCOUNT CORE
+PASS  Register UI/code remains available
+PASS  Login via Supabase Auth remains available
+PASS  Logout remains available in shared shell
+PASS  getSession + onAuthStateChange session guard remains available
+PASS  Role-aware route guard remains available
+PASS  Responsive Login/Register browser layout: 8 viewport/orientation cases
+NOTE  No production user credentials were created or used for destructive/live login E2E testing.
+
+CROSS-DEVICE POLICY
+PASS  Desktop = full role-authorized feature system
+PASS  Tablet = operational subset, <=10 top-level hubs per role
+PASS  Phone = quick-action subset, <=6 primary actions per role
+PASS  Home / Back / Theme / Logout are shared shell controls and do not count as phone primary actions
+PASS  Admin Lite on Tablet/Phone = search/create/enable-disable only
+PASS  Heavy Admin/permission/settings/audit workflows remain Desktop-first
+PASS  Unsupported Phone/Tablet deep links are normalized to safe device routes
+
+PHONE PRIMARY ACTIONS
+Admin   = Attendance Camera / Paper Capture / Work Tracking / Courses / Quick Users / Notifications (6)
+Teacher = Attendance Camera / Work Tracking / Courses / Profile / Notifications (5)
+Student = Attendance / My Work / Courses / Profile / Notifications (5)
+
+STATIC VALIDATION
+PASS  static_validation.py
+PASS  38 / 38 non-browser static contracts
+PASS  site JavaScript syntax 24 / 24
+
+BROWSER REGRESSION
+PASS  25 / 25 browser contract files
+PASS  Core router / Course CODE / real-use navigation
+PASS  Room checklist / Exam / Responsive / Gradebook / Print / Programming Activity
+PASS  Teaching slides / presentation / content-focused slides
+PASS  Mobile camera / mobile interaction / real-device router
+PASS  Late attendance barcode / Room Group
+PASS  V20.6 adaptive stability / V20.7 teacher UX compatibility
+PASS  V21.1 Mobile Essentials compatibility
+PASS  V21.2 Cross-Device matrix: Admin/Teacher/Student × 8 phone/tablet/desktop viewports
+PASS  V21.2 Login/Register responsive matrix × 8 viewports
+
+PRODUCTION BACKEND READ-ONLY VERIFICATION
+PASS  Active subjects = 11
+PASS  Digital worksheets = 187
+PASS  Paper worksheets = 187
+PASS  Canonical worksheets total = 374
+PASS  Exam question bank = 550
+PASS  Required V20.6 staff/admin RPCs = 20 / 20 present
+
+INSTALLER / WINDOWS
+PASS  Windows UTF-8 mode forced: PYTHONUTF8=1 / PYTHONIOENCODING=utf-8 / console UTF-8
+PASS  V21.2 required-file fail-closed gate
+PASS  V21.2 release/build marker gate
+PASS  Backup branch created before replacing repository source
+PASS  Local static contracts and JavaScript checks before push
+PASS  GitHub Pages live-marker verification/rollback logic retained
+
+KNOWN PRODUCTION SECURITY ADVISOR ITEMS — NOT SILENTLY MODIFIED
+INFO  RLS enabled with no policy = 15 tables (RPC/internal style tables require per-table review)
+WARN  authenticated SECURITY DEFINER executable = 162 functions (many are intentional server-authoritative RPCs; do not revoke globally)
+WARN  leaked password protection = 1 Auth setting
+
+NOT CLAIMED AS HARDWARE/LIVE PASS
+- iPhone / Android / iPad physical camera permission behavior still requires post-deploy hardware smoke test.
+- This build has not been pushed to GitHub Pages by this execution environment; One-Click installer performs push/Actions/Pages verification using the owner's Git credentials.
+
+FINAL LOCAL RELEASE GATE: PASS

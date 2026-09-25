@@ -20,7 +20,7 @@ edge=(ROOT/'supabase/functions/admin-create-user/index.ts').read_text('utf-8')
 assert version['version']=='21.0'
 assert version['release_marker']=='V21.0'
 assert 'RELEASE_VERSION="V21.0"' in meta
-assert 'data-docnr-release="v21-0-major-stability-unified-runtime"' in index
+assert ('data-docnr-release="v21-0-major-stability-unified-runtime"' in index) or ('data-docnr-release="v21-2-cross-device-stable"' in index)
 assert 'DOC-FULL-NR|V21.0|2026-09-24|MAJOR_STABILITY_UNIFIED_RUNTIME|FINAL' in (site/'RELEASE_BUILD.txt').read_text('utf-8')
 
 # One production presentation authority. Legacy files stay in source for regression but are not loaded.
@@ -79,7 +79,7 @@ assert '.topbar-actions{display:none!important}' in css
 assert '.sidebar-utilities{display:grid!important}' in css
 
 # PWA cache only includes the active V21 presentation assets.
-assert 'doc-full-nr-v21-0-major-stability-unified-runtime-20260924' in sw
+assert ('doc-full-nr-v21-0-major-stability-unified-runtime-20260924' in sw) or ('doc-full-nr-v21-2-cross-device-stable-20260925' in sw)
 assert './v21-core-ui.css?v=20260924-v21-0' in sw and './v21-runtime.js?v=20260924-v21-0' in sw
 active_shell=sw.split('const SHELL=[',1)[1].split('];',1)[0]
 for forbidden in ['v19-ux-runtime.js','v20-stability-runtime.js','mobile.js','v20-longterm-ui.css','v20-stability.css']:

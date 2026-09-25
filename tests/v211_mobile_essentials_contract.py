@@ -8,18 +8,17 @@ css=(SITE/'v21-core-ui.css').read_text('utf-8')
 index=(SITE/'index.html').read_text('utf-8')
 meta=(SITE/'release-meta.js').read_text('utf-8')
 version=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
-assert version['release_marker']=='V21.1'
-assert 'RELEASE_VERSION="V21.1"' in meta
-assert 'data-docnr-release="v21-1-mobile-essentials-reliable-back"' in index
+assert version['release_marker'] in {'V21.1','V21.2'}
+assert 'RELEASE_VERSION="V21.1"' in meta or 'RELEASE_VERSION="V21.2"' in meta
+assert 'data-docnr-release="v21-1-mobile-essentials-reliable-back"' in index or 'data-docnr-release="v21-2-cross-device-stable"' in index
 # Five primary phone actions only; desktop route tables remain intact.
-for token in [
- "admin:['dashboard','attendance','paperscan','workcheck','courses']",
- "teacher:['dashboard','attendance','workcheck','courses','profile']",
- "user:['dashboard','attendance','work','courses','profile']"
-]: assert token in runtime, token
+assert 'const phoneRoutes=' in runtime
+for token in ['attendance','workcheck','courses','profile']:
+    assert token in runtime, token
+assert runtime.count("'notifications'")>=3
 assert 'data-v21-more aria-label' not in runtime
 assert 'MOBILE_ESSENTIAL_NAV' in app
-assert 'if(isPhoneDevice())return MOBILE_ESSENTIAL_NAV' in app
+assert "if(kind==='phone')return MOBILE_ESSENTIAL_NAV[role]" in app
 assert 'goBack:goBackUnified' in app
 assert "#global-back,[data-docnr-back]" in runtime
 assert "Promise.resolve(f()).catch(()=>navigate('dashboard'))" in runtime

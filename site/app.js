@@ -288,12 +288,22 @@ function signupDialog(){
 }
 
 const MOBILE_ESSENTIAL_NAV={
-  admin:[["dashboard","หน้าแรก"],["attendance","เช็คชื่อ"],["paperscan","ถ่ายใบงาน"],["workcheck","ติดตามงาน"],["courses","รายวิชา"]],
-  teacher:[["dashboard","หน้าแรก"],["attendance","เช็คชื่อ"],["workcheck","ติดตามงาน"],["courses","รายวิชา"],["profile","โปรไฟล์"]],
-  user:[["dashboard","หน้าแรก"],["attendance","เช็คชื่อ"],["work","งานของฉัน"],["courses","รายวิชา"],["profile","โปรไฟล์"]]
+  // Phone sidebar is hidden, but this policy remains the canonical role/device contract.
+  // Notifications are owned by v21-runtime as a direct action, not a business route.
+  admin:[["attendance","เช็คชื่อ"],["paperscan","ถ่ายใบงาน"],["workcheck","ติดตามงาน"],["courses","รายวิชา"],["users","ผู้ใช้ด่วน"]],
+  teacher:[["attendance","เช็คชื่อ"],["workcheck","ติดตามงาน"],["courses","รายวิชา"],["profile","โปรไฟล์"]],
+  user:[["attendance","เช็คชื่อ"],["work","งานของฉัน"],["courses","รายวิชา"],["profile","โปรไฟล์"]]
 };
+const TABLET_OPERATIONAL_NAV={
+  admin:[["dashboard","หน้าแรก"],["courses","รายวิชา"],["users","ผู้ใช้ด่วน"],["workadmin","งาน/คะแนน"],["workcheck","ติดตามงาน"],["paperscan","กล้องเก็บใบงาน"],["attendancehub","เช็คชื่อ"],["exam","ระบบสอบ"],["printcenter","รายงาน/พิมพ์"],["profile","โปรไฟล์"]],
+  teacher:[["dashboard","หน้าแรก"],["courses","วิชาและห้องที่สอน"],["workadmin","ตรวจงาน/คะแนน"],["workcheck","ติดตามงาน"],["attendancehub","เช็คชื่อ"],["exam","ระบบสอบ"],["printcenter","รายงาน/พิมพ์"],["profile","โปรไฟล์"]],
+  user:[["dashboard","หน้าแรก"],["catalog","ค้นหารายวิชา"],["courses","วิชาที่เรียน"],["work","งานของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["printcenter","เอกสาร"],["specialactivity","กิจกรรม"],["history","ประวัติ"],["profile","โปรไฟล์"]]
+};
+function currentRoleKey(){return isAdmin()?"admin":isTeacher()?"teacher":"user"}
 function navItems(){
-  if(isPhoneDevice())return MOBILE_ESSENTIAL_NAV[isAdmin()?"admin":isTeacher()?"teacher":"user"];
+  const kind=deviceClass(),role=currentRoleKey();
+  if(kind==='phone')return MOBILE_ESSENTIAL_NAV[role];
+  if(kind==='tablet')return TABLET_OPERATIONAL_NAV[role];
   if(isAdmin())return [["dashboard","หน้าแรก"],["courses","การสอนและรายวิชา"],["specialactivity","กิจกรรมพิเศษ"],["students","นักศึกษาและสิทธิ์"],["roomgroups","จัดกลุ่มห้อง"],["workadmin","งาน คะแนน รายงาน"],["workcheck","ตารางเช็กรวม"],["printcenter","ศูนย์พิมพ์และสรุปผล"],["paperscan","สแกนงานย้อนหลัง"],["attendancehub","เช็คชื่อและห้องเรียน"],["exam","ระบบสอบ"],["academic","ปีการศึกษาและระบบ"],["profile","โปรไฟล์ของฉัน"]];
   if(isTeacher())return [["dashboard","หน้าแรก"],["courses","วิชาและห้องที่สอน"],["workadmin","ตรวจงานและคะแนน"],["workcheck","เช็กงานรายห้อง"],["attendancehub","เช็คชื่อ"],["exam","ระบบสอบ"],["printcenter","พิมพ์/รายงาน"],["profile","โปรไฟล์ของฉัน"]];
   return [["dashboard","หน้าแรก"],["catalog","รายวิชาทั้งหมด"],["courses","วิชาที่เรียนอยู่"],["specialactivity","กิจกรรมพิเศษ"],["work","งานของฉัน"],["printcenter","พิมพ์เอกสารของฉัน"],["attendance","เช็คชื่อ"],["exam","ข้อสอบ"],["profile","ข้อมูลของฉัน"]];
@@ -309,12 +319,36 @@ const BASE_ROUTES=new Set(["users","grading","overrides","reports","audit","syst
 const ADMIN_ROUTES=new Set(["dashboard","courses","specialactivity","students","workadmin","workcheck","printcenter","paperscan","attendancehub","attendance","exam","academic","profile","accounts","enrollments","profiles","roomgroups","presence","promotion","users","grading","overrides","reports","audit","system"]);
 const TEACHER_ROUTES=new Set(["dashboard","courses","workadmin","workcheck","attendancehub","attendance","exam","printcenter","profile"]);
 const USER_ROUTES=new Set(["dashboard","catalog","enroll","courses","specialactivity","work","printcenter","attendance","exam","profile","history","presence"]);
+const PHONE_ALLOWED={
+  admin:new Set(["dashboard","attendance","paperscan","workcheck","courses","users","profile"]),
+  teacher:new Set(["dashboard","attendance","workcheck","courses","profile"]),
+  user:new Set(["dashboard","attendance","work","courses","profile","history"])
+};
+const TABLET_ALLOWED={
+  admin:new Set(["dashboard","courses","users","workadmin","workcheck","paperscan","attendancehub","attendance","exam","printcenter","profile","grading","reports","overrides","presence"]),
+  teacher:new Set(["dashboard","courses","workadmin","workcheck","attendancehub","attendance","exam","printcenter","profile"]),
+  user:new Set(["dashboard","catalog","enroll","courses","work","attendance","exam","printcenter","specialactivity","profile","history","presence"])
+};
 const ROUTE_GROUP={accounts:"students",enrollments:"students",profiles:"students",roomgroups:"students",users:"students",grading:"workadmin",overrides:"workadmin",reports:"workadmin",paperscan:"paperscan",printcenter:"printcenter",presence:"attendancehub",promotion:"academic",audit:"academic",system:"academic",enroll:"catalog",history:"profile"};
 function activeNavRoute(route){
   if(isStaff()&&route==="attendance")return "attendancehub";
   return ROUTE_GROUP[route]||route
 }
-function routeAllowed(route){return (isAdmin()?ADMIN_ROUTES:isTeacher()?TEACHER_ROUTES:USER_ROUTES).has(route)}
+function roleRouteSet(){return isAdmin()?ADMIN_ROUTES:isTeacher()?TEACHER_ROUTES:USER_ROUTES}
+function deviceRouteSet(){const kind=deviceClass(),role=currentRoleKey();return kind==='phone'?PHONE_ALLOWED[role]:kind==='tablet'?TABLET_ALLOWED[role]:roleRouteSet()}
+function routeAllowed(route){return roleRouteSet().has(route)&&deviceRouteSet().has(route)}
+function normalizeDeviceRoute(route){
+  route=String(route||"dashboard");const kind=deviceClass();if(kind==='desktop')return route;
+  const role=currentRoleKey();
+  if(kind==='phone'){
+    if(role==='admin'&&["students","accounts","profiles","roomgroups"].includes(route))return "users";
+    if(role!=='user'&&["grading","reports","overrides","work"].includes(route))return "workcheck";
+    if(role==='user'&&["exam","printcenter","specialactivity","catalog","enroll"].includes(route))return routeAllowed("work")?"work":"courses";
+    if(["academic","audit","system","promotion"].includes(route))return "dashboard";
+  }
+  if(kind==='tablet'&&role==='admin'&&["students","accounts","profiles","roomgroups"].includes(route))return "users";
+  return route;
+}
 function paintNav(){
   const active=activeNavRoute(S.route),root=document.documentElement;
   root.dataset.role=isAdmin()?"admin":isTeacher()?"teacher":"user";
@@ -348,7 +382,7 @@ async function goBackUnified(){
   return true;
 }
 async function navigateUnified(route,arg=null){
-  route=String(route||"dashboard");
+  route=normalizeDeviceRoute(route);
   if(!routeAllowed(route))route="dashboard";
   const nextKey=navKey(route,arg);
   if(document.documentElement.dataset.navBusy==="1"&&navKey(S.route,S.routeArg)===nextKey)return false;
@@ -429,18 +463,18 @@ function renderShell(){
   $("#app").innerHTML=`<div class="app">
     <aside class="sidebar" id="sidebar">
       <div class="brand"><img class="brand-app-icon" src="./icons/icon-192.png" alt="ตราวิทยาลัยเทคนิคนางรอง"><div><b>DOC-FULL-NR</b><div class="smalltext" style="color:#94a3b8">${isAdmin()?"ADMIN":isTeacher()?"TEACHER":"USER"} • ${RELEASE_VERSION}</div></div></div>
-      <nav class="nav nav-card-menu" aria-label="เมนูหลัก">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",teacherwork:"✅",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",workadmin:"📝",workcheck:"✅",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"📚",work:"📋",attendance:"📷",profile:"🪪"};return `<button type="button" data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span class="nav-card-label">${x[1]}</span></button>`}).join("")}</nav>
+      <nav class="nav nav-card-menu" aria-label="เมนูหลัก">${items.map(x=>{const icons={dashboard:"🏠",courses:"📚",teacherwork:"✅",specialactivity:"🎮",students:"👨‍🎓",roomgroups:"🏷️",users:"👥",workadmin:"📝",workcheck:"📊",printcenter:"🖨️",paperscan:"📄",attendancehub:"📷",exam:"🧪",academic:"⚙️",catalog:"🔎",work:"📋",attendance:"📷",profile:"🪪",history:"🕘"};return `<button type="button" data-route="${x[0]}" class="nav-card-btn ${activeNavRoute(S.route)===x[0]?"active":""}"><span class="nav-card-icon">${icons[x[0]]||"•"}</span><span class="nav-card-label">${x[1]}</span></button>`}).join("")}</nav>
       <div class="sidebar-footer"><div class="sidebar-user"><b>${esc(S.profile?.full_name||S.session?.user?.email||"")}</b><span>${isAdmin()?"ผู้ดูแลระบบ":isTeacher()?"ครูผู้สอน":"นักศึกษา"}</span></div><div class="sidebar-utilities"><button type="button" class="btn sm" id="sidebar-theme">◐ ธีม</button><button type="button" class="btn sm" id="sidebar-fullscreen">⛶ เต็มจอ</button><button type="button" class="btn sm" id="sidebar-install">＋ ติดตั้ง</button></div><button type="button" class="btn sm" id="sidebar-logout">ออกจากระบบ</button></div>
     </aside>
     <main class="main">
       <header class="topbar" id="topbar">
-        <div class="row topbar-leading"><button class="btn mobile-menu" id="menubtn" type="button" aria-label="เปิดเมนู" aria-controls="sidebar" aria-expanded="false">☰</button><button class="btn sm global-back" id="global-back" type="button" title="ย้อนกลับหน้าก่อนหน้า" aria-label="ย้อนกลับหน้าก่อนหน้า">← <span>ย้อนกลับ</span></button><b id="pagetitle"></b></div>
+        <div class="row topbar-leading"><button class="btn mobile-menu" id="menubtn" type="button" aria-label="เปิดเมนู" aria-controls="sidebar" aria-expanded="false">☰</button><button class="btn sm global-back" id="global-back" type="button" title="ย้อนกลับหน้าก่อนหน้า" aria-label="ย้อนกลับหน้าก่อนหน้า">← <span>ย้อนกลับ</span></button><button class="btn sm home-shortcut" id="homebtn" type="button" title="หน้าแรก" aria-label="หน้าแรก">⌂</button><b id="pagetitle"></b></div>
         <div class="row topbar-actions">
-          <button class="btn sm" id="theme-toggle" title="สลับธีม">🌙 ไนท์โหมด</button>
+          <button class="btn sm" id="theme-toggle" title="สลับธีม"><span aria-hidden="true">◐</span><span class="utility-label"> ไนท์โหมด</span></button>
           <button class="btn install sm" id="install">ติดตั้งแล้ว</button>
           <button class="btn sm" id="fullscreen" title="เปิด/ปิดเต็มหน้าจอ">⛶ ออกจากเต็มจอ</button>
           <span class="muted user-name">${esc(S.profile?.full_name||S.session?.user?.email||"")}</span>
-          <button class="btn sm" id="logout">ออกจากระบบ</button>
+          <button class="btn sm" id="logout" title="ออกจากระบบ"><span aria-hidden="true">↪</span><span class="utility-label"> ออกจากระบบ</span></button>
         </div>
       </header>
       <section class="content" id="content"><div class="card">กำลังโหลด...</div></section>
@@ -455,6 +489,7 @@ function renderShell(){
   const sideFullscreen=$("#sidebar-fullscreen");if(sideFullscreen)sideFullscreen.onclick=()=>window.DOCNR_V21?.toggleFullscreen?.();
   const sideInstall=$("#sidebar-install");if(sideInstall)sideInstall.onclick=installGuide;
   $("#menubtn").onclick=()=>window.DOCNR_V21?.toggleDrawer?.();
+  const homeBtn=$("#homebtn");if(homeBtn)homeBtn.onclick=()=>navigateUnified("dashboard").catch(e=>toast(friendlyError(e),"error"));
   const backBtn=$("#global-back");if(backBtn)backBtn.onclick=()=>goBackUnified().catch(e=>toast(friendlyError(e),"error"));syncGlobalBackButton();
   $("#install").onclick=installGuide;
   const themeBtn=$("#theme-toggle");if(themeBtn)themeBtn.onclick=toggleTheme;
@@ -589,12 +624,21 @@ async function subjectDialog(id=null){
   $("#subform").onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const r=id?await sb.from("subjects").update(f).eq("id",id):await sb.from("subjects").insert(f);if(r.error)return toast(friendlyError(r.error),"error");closeModal();toast("บันทึกรายวิชาแล้ว");subjects()};
 }
 
+function userStateText(x){return x.approval_status==="approved"&&x.active?"ใช้งาน":x.approval_status==="pending"?"รออนุมัติ":x.approval_status==="rejected"?"ไม่อนุมัติ":"ระงับ"}
+function usersLite(items,rooms){
+  const roleLabel=x=>x==="admin"?"Admin":x==="teacher"?"ครู":"นักศึกษา";
+  $("#content").innerHTML=`<section class="v14-page docnr-user-lite"><div class="section-head"><div><span class="v14-kicker">ADMIN LITE</span><h1>ผู้ใช้ด่วน</h1><p class="muted">สำหรับ Tablet/Phone: ค้นหา เพิ่มบัญชี และเปิด/ระงับการใช้งานเท่านั้น • การกำหนดสิทธิ์/ห้อง/รหัสผ่านแบบละเอียดใช้คอมพิวเตอร์</p></div><button class="btn primary" id="createuser">+ เพิ่มผู้ใช้</button></div><div class="card docnr-lite-search"><input class="input" id="usersearch" placeholder="ค้นหาชื่อ / รหัส / Username"></div><div id="userlitebody" class="docnr-user-lite-grid"></div></section>`;
+  const paint=()=>{const z=$("#usersearch")?.value.trim().toLowerCase()||"";const data=(items||[]).filter(x=>!z||[x.full_name,x.display_name,x.username,x.student_code,x.class_name].some(v=>String(v||"").toLowerCase().includes(z)));$("#userlitebody").innerHTML=data.map(x=>`<article class="card docnr-user-lite-card"><div class="docnr-user-lite-main"><div><b>${esc(x.full_name||x.username||"-")}</b><span>${esc(x.student_code||x.username||"-")} • ${esc(roleLabel(x.role))}</span></div><span class="badge ${x.approval_status==="approved"&&x.active?"green":x.approval_status==="pending"?"warn":"red"}">${esc(userStateText(x))}</span></div><div class="docnr-user-lite-actions">${x.id!==uid()?`<button class="btn ${x.approval_status==="approved"&&x.active?"red":"green"}" data-user-toggle="${x.id}" data-status="${esc(x.approval_status||"pending")}">${x.approval_status==="approved"&&x.active?"ระงับบัญชี":"เปิดใช้งาน"}</button>`:`<span class="muted smalltext">บัญชีที่กำลังใช้งาน</span>`}</div></article>`).join("")||`<div class="card empty">ไม่พบผู้ใช้</div>`;$$('[data-user-toggle]').forEach(b=>b.onclick=async()=>{const approved=b.dataset.status==="approved";const status=approved?"suspended":"approved";const reason=approved?(prompt("เหตุผลการระงับบัญชี (ไม่บังคับ)","")||null):null;const {error}=await sb.rpc("decide_account_approval",{p_user_id:b.dataset.userToggle,p_status:status,p_reason:reason});if(error)return toast(friendlyError(error),"error");toast(status==="approved"?"เปิดใช้งานบัญชีแล้ว":"ระงับบัญชีแล้ว");users()})};
+  paint();$("#usersearch").oninput=paint;$("#createuser").onclick=()=>createUserDialog(rooms||[]);
+}
+
 async function users(){
   const [{data:items,error},{data:rooms},{data:leaders,error:leadersError}]=await Promise.all([
     sb.from("profiles").select("*").order("created_at",{ascending:false}),
     sb.from("classrooms").select("*").eq("active",true).order("name"),
     sb.from("classroom_leaders").select("classroom_id,user_id,active").eq("active",true)
   ]);if(error)throw error;if(leadersError)console.warn("classroom_leaders",leadersError);
+  if(deviceClass()!=="desktop")return usersLite(items||[],rooms||[]);
   const activeLeaders=new Map((leaders||[]).map(x=>[x.user_id,x.classroom_id]));
   const uniq=(key)=>[...new Set((items||[]).map(x=>x[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"th"));
   const opts=(key,label)=>`<option value="">${label}</option>${uniq(key).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")}`;

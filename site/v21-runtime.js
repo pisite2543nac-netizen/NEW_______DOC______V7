@@ -3,16 +3,17 @@
    route progress, network status and fullscreen chrome. No business data writes. */
 (()=>{
   'use strict';
-  const RELEASE='V21.1';
+  const RELEASE='V21.2';
   const root=document.documentElement;
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>[...r.querySelectorAll(s)];
   const group={accounts:'students',enrollments:'students',profiles:'students',roomgroups:'students',users:'students',grading:'workadmin',overrides:'workadmin',reports:'workadmin',paperscan:'paperscan',presence:'attendancehub',promotion:'academic',audit:'academic',system:'academic',enroll:'catalog',history:'profile',attendance:'attendancehub'};
-  const meta={dashboard:['🏠','หน้าแรก'],courses:['📚','รายวิชา'],workadmin:['✅','งาน/คะแนน'],workcheck:['📊','ติดตาม'],work:['📋','งาน'],paperscan:['📄','ถ่ายใบงาน'],attendancehub:['📷','เช็คชื่อ'],attendance:['📷','เช็คชื่อ'],exam:['🧪','สอบ'],catalog:['🔎','ค้นวิชา'],profile:['👤','โปรไฟล์']};
+  const meta={dashboard:['🏠','หน้าแรก'],courses:['📚','รายวิชา'],users:['👥','ผู้ใช้'],workadmin:['✅','งาน/คะแนน'],workcheck:['📊','ติดตาม'],work:['📋','งาน'],paperscan:['📄','ถ่ายใบงาน'],attendancehub:['📷','เช็คชื่อ'],attendance:['📷','เช็คชื่อ'],exam:['🧪','สอบ'],catalog:['🔎','ค้นวิชา'],profile:['👤','โปรไฟล์'],notifications:['🔔','แจ้งเตือน']};
   const phoneRoutes={
-    admin:['dashboard','attendance','paperscan','workcheck','courses'],
-    teacher:['dashboard','attendance','workcheck','courses','profile'],
-    user:['dashboard','attendance','work','courses','profile']
+    // Home/back/theme/logout are standard shell controls and are not counted here.
+    admin:['attendance','paperscan','workcheck','courses','users','notifications'],
+    teacher:['attendance','workcheck','courses','profile','notifications'],
+    user:['attendance','work','courses','profile','notifications']
   };
   let lastViewport='';
   let lastNavigateAt=0;
@@ -50,10 +51,10 @@
     if(kind!=='phone'){nav?.remove();return}
     const r=role(),routes=phoneRoutes[r]||phoneRoutes.user,sig=`${r}:${routes.join('|')}`;
     if(!nav){nav=document.createElement('nav');nav.id='docnr-mobile-nav';nav.setAttribute('aria-label','เมนูหลักบนมือถือ');document.body.appendChild(nav)}
-    if(nav.dataset.sig!==sig){nav.dataset.sig=sig;nav.innerHTML=routes.map(x=>{const [i,t]=navLabel(x);return `<button type="button" data-v21-route="${x}" aria-label="${t}"><span class="icon">${i}</span><span class="label">${t}</span></button>`}).join('')}
+    if(nav.dataset.sig!==sig){nav.dataset.sig=sig;nav.innerHTML=routes.map(x=>{const [i,t]=navLabel(x);const attr=x==='notifications'?`data-v21-action="notifications"`:`data-v21-route="${x}"`;return `<button type="button" ${attr} aria-label="${t}"><span class="icon">${i}</span><span class="label">${t}</span></button>`}).join('')}
     syncMobileActive();
   }
-  function syncMobileActive(){const a=visibleActive();$$('#docnr-mobile-nav [data-v21-route]').forEach(b=>{const on=b.dataset.v21Route===a;b.classList.toggle('active',on);b.setAttribute('aria-current',on?'page':'false')})}
+  function syncMobileActive(){const a=visibleActive();$$('#docnr-mobile-nav [data-v21-route]').forEach(b=>{const on=b.dataset.v21Route===a;b.classList.toggle('active',on);b.setAttribute('aria-current',on?'page':'false')});$$('#docnr-mobile-nav [data-v21-action]').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-current','false')})}
   function navigate(route,arg=null){
     const key=`${route}:${arg||''}`,now=Date.now();if(key===lastNavigateKey&&now-lastNavigateAt<500)return;lastNavigateKey=key;lastNavigateAt=now;
     closeDrawer();const f=window.DOCNR_BASE?.navigate;if(typeof f==='function')return f(route,arg);const b=$(`#sidebar [data-route="${CSS.escape(route)}"]`);b?.click();
@@ -72,6 +73,7 @@
 
   document.addEventListener('click',e=>{
     const back=e.target.closest?.('#global-back,[data-docnr-back]');if(back){e.preventDefault();e.stopPropagation();const f=window.DOCNR_BASE?.goBack;if(typeof f==='function'){Promise.resolve(f()).catch(()=>navigate('dashboard'));}else if(history.length>1){history.back();}else{navigate('dashboard');}return}
+    const action=e.target.closest?.('[data-v21-action]');if(action){e.preventDefault();e.stopPropagation();if(action.dataset.v21Action==='notifications'){const f=window.DOCNR_NOTIFICATIONS?.show;if(typeof f==='function')Promise.resolve(f()).catch(()=>{});else $('#v161-notification-button')?.click();}return}
     const route=e.target.closest?.('[data-v21-route]');if(route){e.preventDefault();e.stopPropagation();navigate(route.dataset.v21Route);return}
     if(e.target.closest?.('[data-v21-more]')){e.preventDefault();e.stopPropagation();openDrawer();return}
     const side=e.target.closest?.('#sidebar [data-route]');if(side&&device()!=='desktop')setTimeout(closeDrawer,0);

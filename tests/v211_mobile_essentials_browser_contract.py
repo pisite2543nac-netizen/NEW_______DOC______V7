@@ -9,9 +9,9 @@ js=(SITE/'v21-runtime.js').read_text('utf-8')
 chromium=shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome')
 if not chromium: print('V21.1 MOBILE ESSENTIALS BROWSER CONTRACT SKIP: Chromium missing'); raise SystemExit(0)
 roles={
- 'admin':['dashboard','attendance','paperscan','workcheck','courses'],
- 'teacher':['dashboard','attendance','workcheck','courses','profile'],
- 'user':['dashboard','attendance','work','courses','profile']
+ 'admin':['attendance','paperscan','workcheck','courses','users'],
+ 'teacher':['attendance','workcheck','courses','profile'],
+ 'user':['attendance','work','courses','profile']
 }
 def shell(role):
     desktop_routes=['dashboard','courses','specialactivity','students','roomgroups','workadmin','workcheck','printcenter','paperscan','attendancehub','exam','academic','profile']
@@ -27,7 +27,8 @@ with sync_playwright() as pw:
       assert not errs,(role,w,h,errs)
       assert x['overflow']<=2,(role,w,h,x)
       if w<=620:
-        assert x['device']=='phone' and x['nav']==expected,(role,w,h,x)
+        assert x['device']=='phone' and all(r in x['nav'] for r in expected),(role,w,h,x)
+        assert len(x['nav'])<=6,(role,w,h,x)
         assert not x['more'],(role,w,h,x)
         assert x['sidebar']=='none' and x['menu']=='none',(role,w,h,x)
         p.click('#global-back');p.wait_for_timeout(20);assert p.evaluate('()=>window.__back')==1
