@@ -1,0 +1,13 @@
+DOC-FULL-NR V21.3 R1 DEPLOY HOTFIX TEST RESULTS
+Date: 2026-09-25
+
+PASS v197 programming activity static contract with V21.3 assets
+PASS v202 adaptive camera static contract with V21.3 service-worker camera asset
+PASS v206 adaptive-stability browser compatibility via V21.3 no-sidebar
+PASS GitHub Actions static release chain 37/37 (segmented execution)
+PASS GitHub Actions browser contract chain 26/26 (segmented execution): core router, Course CODE, real-use, room checklist, exams, responsive, gradebook, print, programming/special activity, teaching slides, camera, mobile router, late barcode/room groups, teacher UX, mobile essentials, cross-device auth, V21.3 no-sidebar
+PASS JavaScript syntax checks used by deploy workflow
+PASS PWA icon base64 decode smoke test
+PASS installer local static gate aligned with GitHub Actions static test list
+
+APP RELEASE remains V21.3. PACKAGE REVISION is V21.3-R1.

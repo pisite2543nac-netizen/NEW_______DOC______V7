@@ -3,7 +3,7 @@
    route progress, network status and fullscreen chrome. No business data writes. */
 (()=>{
   'use strict';
-  const RELEASE='V21.2';
+  const RELEASE='V21.3';
   const root=document.documentElement;
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -39,9 +39,9 @@
     if(root.dataset.docnrSurface==='exam')return null;
     let b=$('#docnr-v21-backdrop');if(!b){b=document.createElement('button');b.type='button';b.id='docnr-v21-backdrop';b.setAttribute('aria-label','ปิดเมนู');b.addEventListener('click',closeDrawer);document.body.appendChild(b)}return b;
   }
-  function openDrawer(){if(root.dataset.docnrSurface==='exam'||device()==='desktop')return;ensureBackdrop();root.classList.add('docnr-drawer-open');document.body.classList.add('nav-open');$('#menubtn')?.setAttribute('aria-expanded','true')}
-  function closeDrawer(){root.classList.remove('docnr-drawer-open');document.body.classList.remove('nav-open');$('#menubtn')?.setAttribute('aria-expanded','false')}
-  function toggleDrawer(){root.classList.contains('docnr-drawer-open')?closeDrawer():openDrawer()}
+  function openDrawer(){}
+  function closeDrawer(){root.classList.remove('docnr-drawer-open');document.body.classList.remove('nav-open')}
+  function toggleDrawer(){}
   function activeRoute(){return root.dataset.appRoute||'dashboard'}
   function visibleActive(){return group[activeRoute()]||activeRoute()}
   function navLabel(r){return meta[r]||['•',r]}
@@ -57,7 +57,7 @@
   function syncMobileActive(){const a=visibleActive();$$('#docnr-mobile-nav [data-v21-route]').forEach(b=>{const on=b.dataset.v21Route===a;b.classList.toggle('active',on);b.setAttribute('aria-current',on?'page':'false')});$$('#docnr-mobile-nav [data-v21-action]').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-current','false')})}
   function navigate(route,arg=null){
     const key=`${route}:${arg||''}`,now=Date.now();if(key===lastNavigateKey&&now-lastNavigateAt<500)return;lastNavigateKey=key;lastNavigateAt=now;
-    closeDrawer();const f=window.DOCNR_BASE?.navigate;if(typeof f==='function')return f(route,arg);const b=$(`#sidebar [data-route="${CSS.escape(route)}"]`);b?.click();
+    const f=window.DOCNR_BASE?.navigate;if(typeof f==='function')return f(route,arg);return false;
   }
   function syncNetwork(){root.classList.toggle('docnr-offline',navigator.onLine===false);let e=$('#docnr-network-state');const actions=$('.topbar-actions');if(!actions)return;if(!e){e=document.createElement('span');e.id='docnr-network-state';actions.insertBefore(e,actions.firstChild)}e.textContent=navigator.onLine===false?'ออฟไลน์':'ออนไลน์'}
   function updateFullscreen(){const b=$('#fullscreen');if(!b)return;const on=!!document.fullscreenElement;b.innerHTML=on?'⛶ ออกจากเต็มจอ':'⛶ เต็มจอ';b.setAttribute('aria-pressed',String(on))}
@@ -69,14 +69,13 @@
   function paintRegistryToggle(reg,b,n){const open=reg.classList.contains('docnr-registry-expanded');b.textContent=open?'ย่อรายการ CODE':'ดู CODE ทั้งหมด '+n+' วิชา';b.setAttribute('aria-expanded',String(open))}
   function routeStart(){ensureProgress();root.dataset.navBusy='1';$('#content')?.setAttribute('aria-busy','true');closeDrawer()}
   function routeReady(){delete root.dataset.navBusy;$('#content')?.removeAttribute('aria-busy');$$('.docnr-route-loading').forEach(x=>x.remove());syncMobileActive();syncNetwork();enhanceRegistry()}
-  function shellReady(){ensureProgress();ensureBackdrop();syncViewport();syncNetwork();updateFullscreen();ensureMobileNav();enhanceRegistry();const menu=$('#menubtn');if(menu){menu.setAttribute('aria-controls','sidebar');menu.setAttribute('aria-expanded',String(root.classList.contains('docnr-drawer-open')))}}
+  function shellReady(){ensureProgress();ensureBackdrop();syncViewport();syncNetwork();updateFullscreen();ensureMobileNav();enhanceRegistry()}
 
   document.addEventListener('click',e=>{
     const back=e.target.closest?.('#global-back,[data-docnr-back]');if(back){e.preventDefault();e.stopPropagation();const f=window.DOCNR_BASE?.goBack;if(typeof f==='function'){Promise.resolve(f()).catch(()=>navigate('dashboard'));}else if(history.length>1){history.back();}else{navigate('dashboard');}return}
     const action=e.target.closest?.('[data-v21-action]');if(action){e.preventDefault();e.stopPropagation();if(action.dataset.v21Action==='notifications'){const f=window.DOCNR_NOTIFICATIONS?.show;if(typeof f==='function')Promise.resolve(f()).catch(()=>{});else $('#v161-notification-button')?.click();}return}
     const route=e.target.closest?.('[data-v21-route]');if(route){e.preventDefault();e.stopPropagation();navigate(route.dataset.v21Route);return}
-    if(e.target.closest?.('[data-v21-more]')){e.preventDefault();e.stopPropagation();openDrawer();return}
-    const side=e.target.closest?.('#sidebar [data-route]');if(side&&device()!=='desktop')setTimeout(closeDrawer,0);
+    if(e.target.closest?.('[data-v21-more]')){e.preventDefault();e.stopPropagation();navigate('dashboard');return}
   },true);
   addEventListener('docnr:route-start',routeStart);
   addEventListener('docnr:route-ready',routeReady);

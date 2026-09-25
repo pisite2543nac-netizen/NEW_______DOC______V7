@@ -10,5 +10,5 @@ for rpc in ['my_teacher_assignments_v206','staff_submission_queue_v206','staff_s
 for rpc in ['staff_create_exam_preset_v206','staff_publish_exam_v206','staff_exam_attempts_v206','staff_grade_exam_attempt_v206','staff_reset_exam_user_v206']: assert rpc in exam
 for rpc in ['admin_room_groups_v206','admin_replace_room_group_members_v206','admin_bind_room_group_subject_v206','admin_sync_room_group_v206','admin_auto_number_room_group_v206']: assert rpc in plat
 assert 'staff_issue_late_attendance_barcode_v206' in plat and 'staff_revoke_late_attendance_barcode_v206' in plat
-assert ver['version'] in {'21.0','21.1','21.2'}
+assert ver['version'] in {'21.0','21.1','21.2','21.3'}
 print('V20.6 LONG-TERM UI + TEACHER WORKSPACE COMPATIBILITY PASS VIA V21')

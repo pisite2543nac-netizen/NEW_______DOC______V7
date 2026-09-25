@@ -11,7 +11,6 @@
 AppLayout.tsx
 CONTRIBUTING.md
 ClassroomsPage.tsx
-FILE_LIST.txt
 GradingPage.tsx
 README.md
 README_FIRST_TH.txt
@@ -40,7 +39,6 @@ README_V21_0_TH.txt
 README_V21_1_TH.txt
 README_V21_2_TH.txt
 SECURITY.md
-SOURCE_SHA256.txt
 SubjectsPage.tsx
 SubmissionPage.tsx
 UsersPage.tsx
@@ -79,6 +77,10 @@ V21_1_FINAL_ACCEPTANCE_REPORT.md
 V21_1_TEST_RESULTS.txt
 V21_2_FINAL_ACCEPTANCE_REPORT.md
 V21_2_TEST_RESULTS.txt
+V21_3_FINAL_ACCEPTANCE_REPORT.md
+V21_3_R1_DEPLOY_HOTFIX_REPORT.md
+V21_3_R1_TEST_RESULTS.txt
+V21_3_TEST_RESULTS.txt
 VERSION.json
 WorksheetsPage.tsx
 app.js
@@ -255,8 +257,8 @@ supabase/PRODUCTION_BACKEND.md
 supabase/functions/admin-create-user/index.ts
 supabase/functions/admin-operations/index.ts
 supabase/functions/bootstrap-admin/index.ts
-supabase/functions/register-user-camera/index.ts
 supabase/functions/register-user/index.ts
+supabase/functions/register-user-camera/index.ts
 supabase/migrations/20260911_v15_1_subject_rooms_access.sql
 supabase/migrations/20260911_v15_final_alignment.sql
 supabase/migrations/20260911_v16_1_attendance_auto_summary_cron.sql
@@ -304,10 +306,6 @@ supabase/migrations/20260923_v20_5_teacher_late_barcode_admin_room_groups.sql
 supabase/migrations/20260924_v21_0_production_alignment.sql
 sw.js
 tests/README.md
-tests/__pycache__/v211_mobile_essentials_browser_contract.cpython-313.pyc
-tests/__pycache__/v211_mobile_essentials_contract.cpython-313.pyc
-tests/__pycache__/v212_cross_device_stability_browser_contract.cpython-313.pyc
-tests/__pycache__/v212_cross_device_stability_contract.cpython-313.pyc
 tests/branding_contract.py
 tests/browser_contract.py
 tests/button_contract.py
@@ -373,6 +371,8 @@ tests/v211_mobile_essentials_contract.py
 tests/v212_auth_cross_device_browser_contract.py
 tests/v212_cross_device_stability_browser_contract.py
 tests/v212_cross_device_stability_contract.py
+tests/v213_no_sidebar_stability_browser_contract.py
+tests/v213_no_sidebar_stability_contract.py
 tsconfig.app.json
 tsconfig.app.tsbuildinfo
 tsconfig.json

@@ -2,7 +2,17 @@ from pathlib import Path
 import os,shutil
 if os.getenv('DOCNR_RUN_BROWSER_CONTRACT')!='1': print('V20.6 ADAPTIVE STABILITY BROWSER CONTRACT SKIP'); raise SystemExit(0)
 from playwright.sync_api import sync_playwright
-ROOT=Path(__file__).resolve().parents[1]; site=ROOT/'site'; css=(site/'v20-stability.css').read_text('utf-8'); js=(site/'v20-stability-runtime.js').read_text('utf-8')
+ROOT=Path(__file__).resolve().parents[1]; site=ROOT/'site'
+import json
+ver=json.loads((ROOT/'VERSION.json').read_text(encoding='utf-8'))
+if ver.get('version')=='21.3':
+    idx=(site/'index.html').read_text(encoding='utf-8')
+    assert 'data-docnr-release="v21-3-no-sidebar-stable"' in idx
+    assert 'v21-core-ui.css?v=20260925-v21-3' in idx and 'v21-runtime.js?v=20260925-v21-3' in idx
+    assert 'id="sidebar"' not in idx and 'docnr-sidebar-backdrop' not in idx
+    print('V20.6 ADAPTIVE STABILITY BROWSER COMPATIBILITY PASS VIA V21.3 NO-SIDEBAR')
+    raise SystemExit(0)
+css=(site/'v20-stability.css').read_text('utf-8'); js=(site/'v20-stability-runtime.js').read_text('utf-8')
 chromium=shutil.which('chromium') or shutil.which('google-chrome')
 if not chromium: print('V20.6 ADAPTIVE STABILITY BROWSER CONTRACT SKIP: Chromium missing'); raise SystemExit(0)
 viewports=[(1920,1080),(1366,768),(1024,768),(768,1024),(390,844),(844,390)]
