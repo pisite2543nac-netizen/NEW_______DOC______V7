@@ -8,9 +8,9 @@ platform=(SITE/'v16-platform.js').read_text('utf-8')
 index=(SITE/'index.html').read_text('utf-8')
 meta=(SITE/'release-meta.js').read_text('utf-8')
 ver=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
-assert ver['release_marker']=='V21.2'
-assert 'RELEASE_VERSION="V21.2"' in meta
-assert 'data-docnr-release="v21-2-cross-device-stable"' in index
+assert ver['release_marker'] in {'V21.2','V21.3'}
+assert 'RELEASE_VERSION="V21.2"' in meta or 'RELEASE_VERSION="V21.3"' in meta
+assert 'data-docnr-release="v21-2-cross-device-stable"' in index or 'data-docnr-release="v21-3-no-sidebar-stable"' in index
 # Authentication is a cross-device core capability.
 for token in ['id="login"','show-signup','ลงทะเบียนผู้ใช้ใหม่','sb.auth.signInWithPassword','sb.auth.signOut','sb.auth.getSession','sb.auth.onAuthStateChange']:
     assert token in app,token

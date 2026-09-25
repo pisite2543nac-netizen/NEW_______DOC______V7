@@ -8,9 +8,9 @@ css=(SITE/'v21-core-ui.css').read_text('utf-8')
 index=(SITE/'index.html').read_text('utf-8')
 meta=(SITE/'release-meta.js').read_text('utf-8')
 version=json.loads((ROOT/'VERSION.json').read_text('utf-8'))
-assert version['release_marker'] in {'V21.1','V21.2'}
-assert 'RELEASE_VERSION="V21.1"' in meta or 'RELEASE_VERSION="V21.2"' in meta
-assert 'data-docnr-release="v21-1-mobile-essentials-reliable-back"' in index or 'data-docnr-release="v21-2-cross-device-stable"' in index
+assert version['release_marker'] in {'V21.1','V21.2','V21.3'}
+assert 'RELEASE_VERSION="V21.1"' in meta or 'RELEASE_VERSION="V21.2"' in meta or 'RELEASE_VERSION="V21.3"' in meta
+assert 'data-docnr-release="v21-1-mobile-essentials-reliable-back"' in index or 'data-docnr-release="v21-2-cross-device-stable"' in index or 'data-docnr-release="v21-3-no-sidebar-stable"' in index
 # Five primary phone actions only; desktop route tables remain intact.
 assert 'const phoneRoutes=' in runtime
 for token in ['attendance','workcheck','courses','profile']:
